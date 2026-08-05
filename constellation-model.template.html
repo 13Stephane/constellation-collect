@@ -1,5 +1,6 @@
 <!doctype html>
-<!-- Constellation model — single-file render of the 4 slices (injected DATA).
+<!-- Constellation model — single-file render of the slices (injected DATA).
+     Slice 5 (scenarios) appears only when a schema-v3 file with scenarios.computed is injected.
      Build: inject a schema-v2 JSON into the #constellation-data block (see build-viewer.py).
      Falls back to each slice's own ASML SAMPLE when no data is injected. -->
 <html lang="en">
@@ -341,10 +342,259 @@ const Slice4 = (() => {
   return App;
 })();
 
+/* ============================ SLICE 5 — SCENARIOS ============================ */
+const Slice5 = (() => {
+  const C = {
+    bg: "rgb(25,60,63)", ink: "rgb(244,240,233)",
+    dim: "rgba(244,240,233,0.55)", faint: "rgba(244,240,233,0.30)",
+    line: "rgba(244,240,233,0.13)", panel: "rgba(244,240,233,0.035)",
+    gold: "rgb(198,165,83)", goldFill: "rgba(198,165,83,0.22)",
+    green: "rgb(120,180,140)", red: "rgb(200,120,100)", blue: "rgb(130,160,200)"
+  };
+  const mono = "'IBM Plex Mono', ui-monospace, Menlo, monospace";
+  const serif = "Georgia, 'Times New Roman', serif";
+  const fk = v => v == null || isNaN(v) ? "—" : Math.round(v).toLocaleString();
+  const f2 = v => v == null || isNaN(v) ? "—" : v.toFixed(2);
+  const pc = v => v == null || isNaN(v) ? "—" : (v * 100).toFixed(1) + "%";
+
+  const CASES = ["bear", "base", "bull"];
+  const CASE_COLOR = { bear: "rgb(200,120,100)", base: "rgb(198,165,83)", bull: "rgb(120,180,140)" };
+
+  function App() {
+    const [view, setView] = useState("share");      // ev | equity | share
+    const [pfCase, setPfCase] = useState("base");
+    const [showConv, setShowConv] = useState(true);
+
+    const sc = DATA && DATA.scenarios && DATA.scenarios.computed;
+    if (!sc) {
+      return (
+        <div style={{ maxWidth: 1000, margin: "0 auto", padding: "40px 18px", fontFamily: serif, color: C.dim }}>
+          <div style={{ fontFamily: mono, fontSize: 10, letterSpacing: "0.2em", textTransform: "uppercase", marginBottom: 10 }}>
+            Constellation · financial model · slice 5 (scenarios)
+          </div>
+          <p style={{ fontSize: 14, lineHeight: 1.6 }}>
+            No <code style={{ color: C.gold }}>scenarios.computed</code> block in the injected data.
+            This slice needs a schema-v3 file produced by the projection engine.
+          </p>
+        </div>
+      );
+    }
+
+    const unit = (sc.footballField && sc.footballField.unit) || (DATA && DATA.unit) || "";
+    const val = c => sc.cases[c].valuation;
+    const pick = v => view === "ev" ? v.ev : view === "equity" ? v.equity : v.perShare;
+    const fmtV = view === "share" ? f2 : fk;
+    const unitLabel = view === "share"
+      ? `${String(unit).split(" ")[0]} / share`
+      : `${unit} (${view === "ev" ? "enterprise" : "equity"} value)`;
+
+    const vals = CASES.map(c => pick(val(c)));
+    const lo = Math.min.apply(null, vals), hi = Math.max.apply(null, vals);
+    const pad = (hi - lo) * 0.18 || 1;
+    const aMin = lo - pad, aMax = hi + pad, aRange = aMax - aMin || 1;
+    const xp = v => ((v - aMin) / aRange) * 100;
+
+    const termShare = val("base").terminalSharePct;
+    const termHot = termShare != null && termShare > 0.75;
+
+    // tornado
+    const tor = (sc.tornado || []).filter(r => r.span > 0);
+    const zeroSpan = (sc.tornado || []).filter(r => !(r.span > 0));
+    const tMax = tor.length ? Math.max.apply(null, tor.map(r => Math.max(Math.abs(r.deltaLow), Math.abs(r.deltaHigh)))) : 1;
+
+    const pf = sc.cases[pfCase].proforma || [];
+
+    return (
+      <div style={{ minHeight: "100vh", background: C.bg, padding: "26px 18px 60px", fontFamily: serif }}>
+        <div style={{ maxWidth: 1000, margin: "0 auto" }}>
+          <div style={{ fontFamily: mono, fontSize: 10, letterSpacing: "0.2em", color: C.dim, textTransform: "uppercase", marginBottom: 6 }}>
+            Constellation · financial model · slice 5 of 5 (scenarios)
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: 10 }}>
+            <h1 style={{ fontFamily: serif, fontSize: 26, fontWeight: 400, margin: 0, color: C.ink }}>
+              {(DATA && DATA.company) || "—"} <span style={{ color: C.dim, fontSize: 15 }}>· {unit}</span>
+            </h1>
+            <div style={{ fontFamily: mono, fontSize: 9.5, color: C.faint, letterSpacing: "0.08em" }}>
+              ENGINE v{sc.engineVersion} · COMPUTED {sc.computedAt}
+            </div>
+          </div>
+
+          {/* headline */}
+          <div style={{ display: "flex", gap: 30, flexWrap: "wrap", margin: "16px 0 6px", alignItems: "baseline" }}>
+            <div>
+              <div style={{ fontFamily: mono, fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: C.gold }}>
+                Base case · {view === "share" ? "per share" : view === "ev" ? "enterprise value" : "equity value"}
+              </div>
+              <div style={{ fontFamily: serif, fontSize: 30, color: C.ink }}>{fmtV(pick(val("base")))}</div>
+              <div style={{ fontFamily: serif, fontSize: 12, color: C.dim }}>
+                {val("base").terminalMethod === "gordon" ? "explicit forecast + Gordon terminal" : "explicit forecast + fade + Gordon"} · WACC {pc(val("base").wacc)} · g {pc(val("base").terminalGrowth)}
+              </div>
+            </div>
+            <div>
+              <div style={{ fontFamily: mono, fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: C.gold }}>Range (bear → bull)</div>
+              <div style={{ fontFamily: serif, fontSize: 30, color: C.ink }}>{fmtV(Math.min.apply(null, vals))} – {fmtV(Math.max.apply(null, vals))}</div>
+              <div style={{ fontFamily: serif, fontSize: 12, color: C.dim }}>{unitLabel}</div>
+            </div>
+            <div>
+              <div style={{ fontFamily: mono, fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: termHot ? C.red : C.gold }}>Terminal share of EV</div>
+              <div style={{ fontFamily: serif, fontSize: 30, color: termHot ? C.red : C.ink }}>{pc(termShare)}</div>
+              <div style={{ fontFamily: serif, fontSize: 12, color: termHot ? C.red : C.dim }}>
+                {termHot ? "above 75%: value sits in the terminal, not the forecast" : "explicit forecast carries the value"}
+              </div>
+            </div>
+          </div>
+
+          {/* view toggle */}
+          <div style={{ display: "flex", gap: 6, margin: "18px 0 6px" }}>
+            {[["ev", "Enterprise value"], ["equity", "Equity value"], ["share", "Share price"]].map(([k, l]) => (
+              <button key={k} onClick={() => setView(k)} style={{ fontFamily: mono, fontSize: 10, letterSpacing: "0.08em", color: view === k ? C.bg : C.dim, background: view === k ? C.gold : "transparent", border: `1px solid ${view === k ? C.gold : C.line}`, padding: "6px 13px", borderRadius: 2, cursor: "pointer" }}>{l}</button>
+            ))}
+          </div>
+          <div style={{ fontFamily: serif, fontSize: 12, color: C.dim, marginBottom: 14 }}>
+            Football field across three pre-registered scenarios. Unlike slice 4, which spreads one year across eight methods, this spreads one method across five forecast years and three coherent driver sets.
+          </div>
+
+          {/* football field */}
+          <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 3, padding: "18px 16px 8px" }}>
+            {CASES.map(c => {
+              const v = pick(val(c));
+              return (
+                <div key={c} style={{ display: "grid", gridTemplateColumns: "150px 1fr", gap: 10, alignItems: "center", marginBottom: 14 }}>
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ fontFamily: serif, fontSize: 14, color: C.ink, fontWeight: 600, textTransform: "capitalize" }}>{c}</div>
+                    <div style={{ fontFamily: mono, fontSize: 9, color: C.dim }}>
+                      {DATA.scenarios.cases && DATA.scenarios.cases[c] && DATA.scenarios.cases[c].narrative
+                        ? String(DATA.scenarios.cases[c].narrative).slice(0, 34) + "…" : ""}
+                    </div>
+                  </div>
+                  <div style={{ position: "relative", height: 30 }}>
+                    <div style={{ position: "absolute", left: 0, right: 0, top: 14, height: 1, background: C.line }} />
+                    <div style={{ position: "absolute", left: `${xp(Math.min.apply(null, vals))}%`, width: `${xp(Math.max.apply(null, vals)) - xp(Math.min.apply(null, vals))}%`, top: 12, height: 4, background: "rgba(198,165,83,0.14)" }} />
+                    <div style={{ position: "absolute", left: `${xp(v)}%`, top: 7, transform: "translateX(-50%)", width: 15, height: 15, borderRadius: 8, background: CASE_COLOR[c], border: `1px solid ${C.bg}` }} />
+                    <span style={{ position: "absolute", left: `${xp(v)}%`, top: 0, transform: "translateX(-50%)", fontFamily: mono, fontSize: 10, color: C.ink, whiteSpace: "nowrap" }}>{fmtV(v)}</span>
+                  </div>
+                </div>
+              );
+            })}
+            <div style={{ marginLeft: 160, marginTop: 4, borderTop: `1px solid ${C.line}`, paddingTop: 4, display: "flex", justifyContent: "space-between", fontFamily: mono, fontSize: 9, color: C.faint }}>
+              <span>{fmtV(aMin)}</span><span>{fmtV((aMin + aMax) / 2)}</span><span>{fmtV(aMax)}</span>
+            </div>
+            <div style={{ textAlign: "center", fontFamily: serif, fontSize: 11, color: C.faint, fontStyle: "italic", marginTop: 2 }}>{unitLabel}</div>
+          </div>
+
+          {/* tornado */}
+          <div style={{ fontFamily: mono, fontSize: 11, letterSpacing: "0.16em", textTransform: "uppercase", color: C.gold, margin: "26px 0 6px" }}>Sensitivity (EV span)</div>
+          <div style={{ fontFamily: serif, fontSize: 12, color: C.dim, marginBottom: 12 }}>
+            Each driver swung from its bear path to its bull path, holding every other driver at base. Ranked by the width of the swing.
+          </div>
+          <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 3, padding: "16px 16px 10px" }}>
+            {tor.map((r, k) => {
+              const lw = Math.abs(r.deltaLow) / tMax * 46, rw = Math.abs(r.deltaHigh) / tMax * 46;
+              return (
+                <div key={k} style={{ display: "grid", gridTemplateColumns: "190px 1fr 110px", gap: 10, alignItems: "center", marginBottom: 9 }}>
+                  <div style={{ textAlign: "right", fontFamily: mono, fontSize: 10.5, color: C.ink, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.driver}</div>
+                  <div style={{ position: "relative", height: 17 }}>
+                    <div style={{ position: "absolute", left: "50%", top: 0, bottom: 0, width: 1, background: C.line }} />
+                    <div style={{ position: "absolute", right: "50%", width: `${lw}%`, top: 2, height: 13, background: "rgba(200,120,100,0.45)", border: "1px solid rgb(200,120,100)" }} />
+                    <div style={{ position: "absolute", left: "50%", width: `${rw}%`, top: 2, height: 13, background: "rgba(120,180,140,0.4)", border: "1px solid rgb(120,180,140)" }} />
+                  </div>
+                  <div style={{ fontFamily: mono, fontSize: 10, color: C.dim, textAlign: "right" }}>{fk(r.span)}</div>
+                </div>
+              );
+            })}
+            {zeroSpan.length > 0 && (
+              <div style={{ fontFamily: serif, fontSize: 11.5, color: C.faint, marginTop: 10, borderTop: `1px solid ${C.line}`, paddingTop: 8, lineHeight: 1.5 }}>
+                <span style={{ color: C.gold }}>Zero span ({zeroSpan.length}):</span> {zeroSpan.map(r => r.driver).join(", ")}. These carry identical paths in all three cases, so the swing is nil by construction, not because the driver does not matter.
+              </div>
+            )}
+          </div>
+
+          {/* pro forma */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", margin: "26px 0 6px", flexWrap: "wrap", gap: 8 }}>
+            <div style={{ fontFamily: mono, fontSize: 11, letterSpacing: "0.16em", textTransform: "uppercase", color: C.gold }}>Pro forma · {pfCase}</div>
+            <div style={{ display: "flex", gap: 6 }}>
+              {CASES.map(c => (
+                <button key={c} onClick={() => setPfCase(c)} style={{ fontFamily: mono, fontSize: 10, letterSpacing: "0.08em", textTransform: "capitalize", color: pfCase === c ? C.bg : C.dim, background: pfCase === c ? CASE_COLOR[c] : "transparent", border: `1px solid ${pfCase === c ? CASE_COLOR[c] : C.line}`, padding: "5px 12px", borderRadius: 2, cursor: "pointer" }}>{c}</button>
+              ))}
+            </div>
+          </div>
+          <div style={{ overflowX: "auto", border: `1px solid ${C.line}`, borderRadius: 3, marginBottom: 8 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 660 }}>
+              <thead><tr>
+                <th style={thL}></th>
+                {pf.map(r => <th key={r.t} style={thY}>{r.year || ("t+" + r.t)}</th>)}
+              </tr></thead>
+              <tbody>
+                <Row label="Revenue" vals={pf.map(r => r.revenue)} f={fk} />
+                <Row label="Gross profit" vals={pf.map(r => r.grossProfit)} f={fk} />
+                <Row label="EBIT" vals={pf.map(r => r.ebit)} f={fk} />
+                <Row label="EBIT margin" vals={pf.map(r => r.ebitMarginPct)} f={pc} />
+                <Row label="NOPLAT" vals={pf.map(r => r.noplat)} f={fk} />
+                <Row label="Capex (incl. dep)" vals={pf.map(r => r.capexIncl)} f={fk} />
+                <Row label="Δ working capital" vals={pf.map(r => r.deltaOWC)} f={fk} />
+                <Row label="Free operating cash flow" vals={pf.map(r => r.focf)} f={fk} bold />
+                <Row label="Invested capital" vals={pf.map(r => r.investedCapital)} f={fk} />
+                <Row label="ROIC (on prior-year IC)" vals={pf.map(r => r.roic)} f={pc} color={C.blue} />
+                <Row label="EVA" vals={pf.map(r => r.eva)} f={fk} color={C.green} />
+              </tbody>
+            </table>
+          </div>
+          <div style={{ fontFamily: serif, fontSize: 11.5, color: C.faint, lineHeight: 1.5, marginBottom: 6 }}>
+            ROIC is struck on the policy-basis invested capital (operating cash {pc((sc.cashPolicy && sc.cashPolicy.operatingCashPctRevenue) || 0)} of revenue), so it is not comparable with a return computed on the full balance-sheet capital base. Net debt {fk(val("base").netDebt)} — {val("base").netDebtBasis}.
+          </div>
+
+          {/* unresolved conventions — on the face, per the visible-pipeline-gap principle */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", margin: "22px 0 8px" }}>
+            <div style={{ fontFamily: mono, fontSize: 11, letterSpacing: "0.16em", textTransform: "uppercase", color: C.red }}>
+              Unresolved conventions ({(sc.unresolvedConventions || []).length})
+            </div>
+            <button onClick={() => setShowConv(s => !s)} style={{ fontFamily: mono, fontSize: 9.5, letterSpacing: "0.1em", textTransform: "uppercase", color: C.dim, background: "transparent", border: `1px solid ${C.line}`, padding: "5px 11px", borderRadius: 2, cursor: "pointer" }}>{showConv ? "collapse" : "expand"}</button>
+          </div>
+          <div style={{ fontFamily: serif, fontSize: 12, color: C.dim, marginBottom: 10, lineHeight: 1.5 }}>
+            Carried on the face of the artifact rather than in a footnote. Each is a question the engine could not settle on its own, travelling with the numbers it affects.
+          </div>
+          {showConv && (
+            <div style={{ background: "rgba(200,120,100,0.05)", border: "1px solid rgba(200,120,100,0.28)", borderRadius: 3, padding: "14px 16px" }}>
+              {(sc.unresolvedConventions || []).map((t, k) => (
+                <div key={k} style={{ display: "flex", gap: 10, marginBottom: 10, alignItems: "flex-start" }}>
+                  <span style={{ fontFamily: mono, fontSize: 10, color: C.red, minWidth: 22, paddingTop: 2 }}>{String(t).split(" ")[0]}</span>
+                  <span style={{ fontFamily: serif, fontSize: 12.5, color: C.ink, lineHeight: 1.55 }}>{String(t).split(" ").slice(1).join(" ")}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div style={{ fontFamily: mono, fontSize: 9, color: C.faint, letterSpacing: "0.08em", marginTop: 24, borderTop: `1px solid ${C.line}`, paddingTop: 10, lineHeight: 1.7 }}>
+            S. GUERRAZ, CFA, MBA · SLICE 5/5 SCENARIOS · CONVENTIONS: {sc.conventionsSource || "—"}<br />
+            EVERY DRIVER IN THIS SLICE CARRIES A VALUE, A SOURCE AND A STATED RULE. THE ENGINE REFUSES TO COMPUTE OTHERWISE.
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  function Row({ label, vals, f, bold, color }) {
+    return (
+      <tr style={bold ? { background: "rgba(198,165,83,0.06)" } : {}}>
+        <td style={{ ...tdL, fontWeight: bold ? 700 : 400 }}>{label}</td>
+        {vals.map((v, i) => <td key={i} style={{ ...tdN, color: color || (bold ? "rgb(244,240,233)" : "rgba(244,240,233,0.8)"), fontWeight: bold ? 700 : 400 }}>{f(v)}</td>)}
+      </tr>
+    );
+  }
+  const thL = { textAlign: "left", padding: "10px 14px", borderBottom: "1px solid rgba(244,240,233,0.13)", position: "sticky", left: 0, background: "rgb(25,60,63)" };
+  const thY = { textAlign: "right", padding: "10px 14px", borderBottom: "1px solid rgba(244,240,233,0.13)", fontFamily: "'IBM Plex Mono', ui-monospace, Menlo, monospace", fontSize: 11, color: "rgba(244,240,233,0.55)" };
+  const tdL = { textAlign: "left", padding: "8px 14px", borderBottom: "1px solid rgba(244,240,233,0.08)", fontFamily: "Georgia, serif", fontSize: 13, color: "rgb(244,240,233)", position: "sticky", left: 0, background: "rgb(25,60,63)", whiteSpace: "nowrap" };
+  const tdN = { textAlign: "right", padding: "8px 14px", borderBottom: "1px solid rgba(244,240,233,0.08)", fontFamily: "'IBM Plex Mono', ui-monospace, Menlo, monospace", fontSize: 12.5, whiteSpace: "nowrap" };
+
+  return App;
+})();
+
 /* ============================ SHELL ============================ */
 function Shell() {
   const [tab, setTab] = useState(1);
-  const tabs = [[1, "Statements", Slice1], [2, "Performance", Slice2], [3, "Health", Slice3], [4, "Valuation", Slice4]];
+  const hasScenarios = !!(DATA && DATA.schemaVersion >= 3 && DATA.scenarios && DATA.scenarios.computed);
+  const tabs = [[1, "Statements", Slice1], [2, "Performance", Slice2], [3, "Health", Slice3], [4, "Valuation", Slice4]]
+    .concat(hasScenarios ? [[5, "Scenarios", Slice5]] : []);
   const Cur = tabs.find(t => t[0] === tab)[2];
   const co = (DATA && DATA.company) || "ASML Holding NV";
   const injected = !!DATA;
@@ -360,7 +610,7 @@ function Shell() {
       </div>
       <Cur />
       <div style={{ maxWidth: 1000, margin: "26px auto 0", fontFamily: "'IBM Plex Mono', ui-monospace, Menlo, monospace", fontSize: 9, color: "rgba(244,240,233,0.30)", letterSpacing: "0.08em", borderTop: "1px solid rgba(244,240,233,0.13)", paddingTop: 10 }}>
-        S. GUERRAZ, CFA, MBA · CONSTELLATION MODEL · STATEMENTS · PERFORMANCE · HEALTH · VALUATION · EDITS ON THE STATEMENTS TAB RECOMPUTE THE MODEL
+        S. GUERRAZ, CFA, MBA · CONSTELLATION MODEL · {`STATEMENTS · PERFORMANCE · HEALTH · VALUATION${hasScenarios ? ' · SCENARIOS' : ''} · EDITS ON THE STATEMENTS TAB RECOMPUTE THE MODEL`}
       </div>
     </div>);
 }

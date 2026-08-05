@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Inject a schema-v2 JSON into the Constellation viewer template.
+"""Inject a schema-v2 or schema-v3 JSON into the Constellation viewer template.
 
 Usage:
     python3 build-viewer.py outputs/ASML_schema-v2.json [outputs/ASML_model.html]
@@ -7,6 +7,9 @@ Usage:
 Reads constellation-model.template.html, replaces the #constellation-data block
 with the given JSON, and writes a standalone HTML that opens straight to the model
 (no paste, no server). Falls back path defaults to outputs/<COMPANY-or-stem>_model.html.
+
+schema-v3 is additive over v2: slices 1-4 read the historical block unchanged and the
+Scenarios tab appears only when scenarios.computed is present.
 """
 import json
 import re
@@ -25,6 +28,16 @@ def main() -> int:
     for k in ("years", "income", "balance"):
         if k not in data:
             raise SystemExit(f"not a schema-v2 file: missing '{k}'")
+
+    sv = data.get("schemaVersion")
+    has_sc = bool((data.get("scenarios") or {}).get("computed"))
+    if has_sc:
+        n_unres = len((data["scenarios"]["computed"].get("unresolvedConventions") or []))
+        print(f"schema-v{sv}: scenarios.computed present "
+              f"(engine v{data['scenarios']['computed'].get('engineVersion')}, "
+              f"{n_unres} unresolved conventions) -> Scenarios tab enabled")
+    else:
+        print(f"schema-v{sv}: no scenarios.computed -> 4 tabs only")
 
     out_path = Path(sys.argv[2]) if len(sys.argv) > 2 else (
         HERE / "outputs" / f"{data_path.stem.replace('_schema-v2', '')}_model.html")
