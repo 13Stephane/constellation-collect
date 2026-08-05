@@ -1,0 +1,10 @@
+Produce a Constellation schema-v2 valuation dataset for ticker ASML (ASML Holding NV, Euronext Amsterdam; reporting currency EUR, millions).
+
+Collect the last 5 completed fiscal years available as of today from public sources. Map every line item to the schema-v2 contract exactly, stamp a source URL + as-of date on each figure (cross-check load-bearing numbers), and make the balance sheet check to zero every year. Construct the W1 Market WACC (CAPM point + band, single-name stated beta with source + date) and write the point into assumptions.wacc. Set valuationMultiples bands for ASML's semiconductor-equipment arena with sources — do not leave the tech-saas placeholder.
+
+Emit to /mnt/session/outputs/:
+- ASML_schema-v2.json  (valid schema-v2, loads into the front-end unchanged)
+- ASML_valuation.xlsx   (traceable snapshot: statements, performance ROIC/EVA/DuPont, health, valuation football-field; values + provenance + integrity block)
+- sources.json          (every figure as {value, source_url, as_of_date, cross_checked} + the full WACC parameter set)
+
+Follow the constellation-valuation skill exactly. The balance sheet must check to zero every year; do not emit an unbalanced dataset.

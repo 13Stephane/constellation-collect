@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>constellation-collect — agent schema</title>
+<link rel="stylesheet" href="overview.css">
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <div class="ident">
+      <div class="sigil">🤖</div>
+      <div>
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+          <h1>constellation-collect</h1>
+          <span class="statepill live"><span class="led live"></span>LAUNCHED · RUNNING</span>
+        </div>
+        <div class="byline">Claude Managed Agent · Stéphane Guerraz · Constellation · created 2026-07-22</div>
+      </div>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="stat-k">Model</div><div class="stat-v">claude-opus-4-8</div></div>
+      <div class="stat"><div class="stat-k">Trigger</div><div class="stat-v">▶️ on-demand <span class="dim">per ticker</span></div></div>
+      <div class="stat"><div class="stat-k">Agent</div><div class="stat-v"><a class="console" href="https://platform.claude.com/workspaces/default/agents/agent_013upt6mfNhXigYgmMgkfQgG">agent_013upt6m…</a> <span class="dim">v1</span></div></div>
+      <div class="stat"><div class="stat-k">Deployment</div><div class="stat-v"><span class="dim">next direction</span></div></div>
+    </div>
+  </div>
+
+  <p class="problem">A financial-analysis tool for individual European listed stocks. The front-end already exists (4-slice model that loads a schema-v2 JSON); this agent is the missing <code>/collect</code> step — ticker → provenance-stamped schema-v2 dataset the model can render. First name: ASML.</p>
+
+  <p class="lane-label">System schema</p>
+  <div class="pipeline">
+
+    <div class="col">
+      <p class="col-title">Trigger</p>
+      <div class="node key grow">
+        <div class="node-head"><span class="node-icon">▶️</span><h2>On-demand session</h2><span class="node-meta">manual · <code>LAUNCH.md</code></span></div>
+        <div class="node-body">
+          <div class="field"><div class="field-k">how it starts</div><strong>One ticker per run</strong> <span class="sub small">kickoff task carries the ticker (ASML for case 1)</span></div>
+          <div class="field"><div class="field-k">user.define_outcome</div><p class="small sub">The task + the 🎯 outcome rubric (right) are sent as one event into a fresh ▶️ session.</p></div>
+        </div>
+        <div class="node-foot">🗓️ Deployment — not scheduled; a watchlist refresh sits in the version rail below.</div>
+      </div>
+    </div>
+
+    <div class="joint" aria-hidden="true"></div>
+
+    <div class="col">
+      <p class="col-title">Worker</p>
+      <div class="env-frame">
+        <span class="env-tab">📦 environment · type: cloud · networking: unrestricted · pip: pandas · numpy · openpyxl</span>
+
+        <div class="node key">
+          <div class="node-head"><span class="node-icon">🤖</span><h2>Agent — constellation-collect</h2><span class="node-meta"><b>claude-opus-4-8</b> · v1 at launch</span></div>
+          <div class="node-body">
+            <div class="field"><div class="field-k">system · the job</div>
+              <p class="small">Ticker → web-fetch 5 fiscal years → map to <strong>schema-v2</strong> (balances to zero) → construct <strong>W1 WACC point + band</strong> → emit <code>&lt;TICKER&gt;_schema-v2.json</code> + <code>_valuation.xlsx</code> + <code>sources.json</code> to <code>/mnt/session/outputs/</code>.</p></div>
+          </div>
+        </div>
+
+        <div class="attach-grid">
+          <div class="attach">
+            <h3>🛠️ Tools</h3>
+            <p><code>tools[] · agent_toolset_20260401</code><br><span class="tag on">web_search</span><span class="tag on">web_fetch</span><span class="tag">bash</span><span class="tag">read</span><span class="tag">write</span><span class="tag">edit</span><span class="tag">glob</span><span class="tag">grep</span></p>
+          </div>
+          <div class="attach">
+            <h3>📄 Skills</h3>
+            <p><code>skills[]</code> <span class="tag good">custom</span> <strong>constellation-valuation</strong> — schema-v2 contract + locked conventions + W1 CAPM/band + provenance + honesty rules. <span class="tag">anthropic</span> <strong>xlsx</strong> — the snapshot workbook.</p>
+          </div>
+          <div class="attach ghost">
+            <h3>🔌 Connectors &amp; 🔐 vaults</h3>
+            <p><code>mcp_servers[]</code> + <code>vault_ids[]</code> — empty in v0, public web only. A fundamentals data API sits in the version rail.</p>
+          </div>
+          <div class="attach ghost">
+            <h3>🧠 Memory store</h3>
+            <p><code>resources[] · memory_store</code> — none in v0. Calibration store (arena priors, decision log) is a next direction.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="joint" aria-hidden="true"></div>
+
+    <div class="col">
+      <p class="col-title">Output &amp; grading</p>
+
+      <div class="node">
+        <div class="node-head"><span class="node-icon">📤</span><h2>Deliverables</h2><span class="node-meta">files api</span></div>
+        <div class="node-body">
+          <p class="small"><code>ASML_schema-v2.json</code> — loads into the 4-slice front-end unchanged · <code>ASML_valuation.xlsx</code> — snapshot (values + provenance + integrity) · <code>sources.json</code>.</p>
+          <div class="field"><div class="field-k">auto-load</div><span class="tag">local pipeline injects JSON → <code>ASML_model.html</code></span></div>
+          <div class="field"><div class="field-k">Guardrails in effect</div>
+            <span class="tag">max_iterations: 3</span><span class="tag">analysis only — no write actions</span></div>
+        </div>
+      </div>
+
+      <div class="node key grow">
+        <div class="node-head"><span class="node-icon">🎯</span><h2>Outcome</h2><span class="node-meta"><b>user.define_outcome</b> · max_iterations 3</span></div>
+        <div class="node-body">
+          <p class="small sub" style="margin-bottom:8px;">Your definition of done — <code>rubric.content</code>, graded every run.</p>
+          <ol class="rubric small">
+            <li>Valid schema-v2 (exact keys) &amp; balance checks to zero every year</li>
+            <li>Three-WACC discipline: only W1; CAPM params each a field w/ source + date</li>
+            <li>WACC is a band, not a number; point → <code>assumptions.wacc</code>; spread judged vs band</li>
+            <li>Provenance on every input (source URL + date; load-bearing cross-checked)</li>
+            <li>Locked conventions reproduced (NOPLAT, ROIC prior-year IC, capex-incl, net-debt)</li>
+            <li>Deliverables complete + honesty block; no formula-recompute claim</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="lane-grid">
+    <div class="lane">
+      <div class="lane-head"><span class="node-icon">📜</span><h2>Sessions · run log</h2><span class="lane-meta">no runs yet</span></div>
+      <div class="lane-body">
+        <div class="overflow">
+        <table>
+          <thead><tr><th>Run</th><th>Session</th><th>Rubric</th><th>Verdict</th><th>Note</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td class="mono"><a class="console" href="https://platform.claude.com/workspaces/default/sessions/sesn_01L6DpzzsFsCnEXSsTETRsX6">sesn_01L6Dpzz…</a></td><td>ASML</td><td><span class="tag">running</span></td><td class="sub">first run — schema-v2 + WACC</td></tr>
+          </tbody>
+        </table>
+        </div>
+      </div>
+    </div>
+    <div class="lane">
+      <div class="lane-head"><span class="node-icon">🧪</span><h2>Evals</h2><span class="lane-meta">1 case · golden</span></div>
+      <div class="lane-body">
+        <div class="overflow">
+        <table>
+          <thead><tr><th>Case</th><th>Known-good answer</th><th>Last verdict</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">case-01 · ASML</td><td>Your hand-verified SAMPLE (balances to zero)</td><td><span class="tag">not run yet</span></td></tr>
+          </tbody>
+        </table>
+        </div>
+        <p class="small sub" style="margin:.5em 0 0;">Statement inputs are graded on match; WACC + multiples are the judgment layer the agent constructs. Held-back names (AIR.PA, SAP, …) join as regression.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="lane full">
+    <div class="lane-head"><span class="node-icon">🧭</span><h2>Next directions</h2><span class="lane-meta">the version rail</span></div>
+    <div class="lane-body">
+      <div class="rail">
+        <div class="ver">
+          <div class="ver-tag">v1</div>
+          <div class="ver-what">Forward scenario module — 5y projection (bear/base/bull)</div>
+          <div class="ver-why">Builds on v0's clean base + WACC; additive S2 layer</div>
+          <div class="ver-how">Driver registry (EUV/High-NA · service · margin · capex · WC) → 5y DCF per scenario → tornado + armed triggers → 5th "Projection" slice</div>
+        </div>
+        <div class="ver">
+          <div class="ver-tag">v1</div>
+          <div class="ver-what">Interactive auto-trigger front-end (type a ticker → run → live-load)</div>
+          <div class="ver-why">Needs a backend that holds the API key</div>
+          <div class="ver-how">Backend <span class="mono">POST /v1/sessions</span> + define_outcome; front-end polls + loads the Files-API JSON</div>
+        </div>
+        <div class="ver">
+          <div class="ver-tag">v1</div>
+          <div class="ver-what">Fundamentals data API / filings instead of web-fetch</div>
+          <div class="ver-why">Needs a data credential not on hand this session</div>
+          <div class="ver-how">Provider MCP + 🔐 vault; <span class="mono">networking: limited</span> to provider hosts</div>
+        </div>
+        <div class="ver">
+          <div class="ver-tag">v1</div>
+          <div class="ver-what">Full relational arena beta + peer overlay</div>
+          <div class="ver-why">Out of scope for v0 — single-name stated beta first</div>
+          <div class="ver-how">Extend the skill with §3 unlever/relever; peer set in the kickoff</div>
+        </div>
+        <div class="ver">
+          <div class="ver-tag">v2</div>
+          <div class="ver-what">Scheduled watchlist refresh</div>
+          <div class="ver-why">Chose on-demand for v0</div>
+          <div class="ver-how"><span class="mono">POST /v1/deployments</span> cron + initial_events (relative dates); manual run to verify</div>
+        </div>
+        <div class="ver">
+          <div class="ver-tag">always</div>
+          <div class="ver-what">Re-run evals before promoting a new version</div>
+          <div class="ver-why">Process habit, not a build task</div>
+          <div class="ver-how"><span class="mono">evals/run-evals.sh</span>; balance check must hold, targets within tolerance</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>generated from build-sheet.json by claude code · live runs &amp; traces: <a href="https://platform.claude.com/workspaces/default/agents">open the console</a> (your key's workspace — swap "default" if yours differs)</footer>
+</div>
+</body>
+</html>

@@ -1,0 +1,570 @@
+{
+  "_file": "asml_drivers_v0_2.json",
+  "_purpose": "Constellation Track B, steps B2 and B4. schema-v3 overlay for ASML. Successor to v0.1, reconciled to constellation-valuation/SKILL.md section 2: capex renamed capex_incl_pct_revenue (delta net ppe plus depreciation), nwc renamed owc_pct_revenue, other_op_assets_pct_revenue added, net debt now derived. Structure is complete; every value is null by design. The engine refuses to compute until each null is filled with a sourced number. Nothing here is inferred.",
+  "_fillOrder": "1) scenarios.discount from the W1 band produced by the /collect run. 2) scenarios.netDebt. 3) the three case path blocks. 4) sources for each. 5) triggers.",
+  "drivers": {
+    "arena": "semiconductor-capital-equipment",
+    "registryVersion": "0.2",
+    "horizonYears": 5,
+    "baseYearSource": "model.years[-1] (the engine reads it from the schema-v2 block; do not restate it here)",
+    "unitNote": "All currency drivers are in model.unit. ASP drivers are model.unit per system, so units x ASP lands in model.unit directly.",
+    "revenueModel": {
+      "type": "components",
+      "terms": [
+        {
+          "id": "euv",
+          "kind": "units_x_asp",
+          "units": "euv_units",
+          "asp": "euv_asp"
+        },
+        {
+          "id": "highna",
+          "kind": "units_x_asp",
+          "units": "highna_units",
+          "asp": "highna_asp"
+        },
+        {
+          "id": "duv",
+          "kind": "units_x_asp",
+          "units": "duv_units",
+          "asp": "duv_asp"
+        },
+        {
+          "id": "ibm",
+          "kind": "direct",
+          "value": "ibm_revenue"
+        }
+      ],
+      "_note": "Installed Base Management (service plus upgrades) enters as a direct revenue line, not a unit tree. Metrology/inspection is folded into duv unless split out in a later registry version; if the schema-v2 revenue line includes it, the duv term will absorb the residual and the fit should be checked against the base year."
+    },
+    "depreciationModel": {
+      "kind": "pct_prior_ppe",
+      "driver": "dep_pct_prior_ppe",
+      "_alternatives": "explicit | pct_revenue"
+    },
+    "definitions": [
+      {
+        "id": "euv_units",
+        "appliesTo": "revenue",
+        "unit": "systems",
+        "label": "EUV (0.33 NA) systems recognised"
+      },
+      {
+        "id": "euv_asp",
+        "appliesTo": "revenue",
+        "unit": "model.unit/sys",
+        "label": "EUV average selling price"
+      },
+      {
+        "id": "highna_units",
+        "appliesTo": "revenue",
+        "unit": "systems",
+        "label": "High-NA EUV systems recognised"
+      },
+      {
+        "id": "highna_asp",
+        "appliesTo": "revenue",
+        "unit": "model.unit/sys",
+        "label": "High-NA average selling price"
+      },
+      {
+        "id": "duv_units",
+        "appliesTo": "revenue",
+        "unit": "systems",
+        "label": "DUV systems recognised"
+      },
+      {
+        "id": "duv_asp",
+        "appliesTo": "revenue",
+        "unit": "model.unit/sys",
+        "label": "DUV average selling price"
+      },
+      {
+        "id": "ibm_revenue",
+        "appliesTo": "revenue",
+        "unit": "model.unit",
+        "label": "Installed Base Management revenue (service and upgrades)"
+      },
+      {
+        "id": "gross_margin_pct",
+        "appliesTo": "margin",
+        "unit": "fraction",
+        "label": "Gross margin on the costOfSales line. House GP = revenue - costOfSales, depreciation stated separately (SKILL section 2). See extraction rule E1"
+      },
+      {
+        "id": "opex_pct_revenue",
+        "appliesTo": "margin",
+        "unit": "fraction",
+        "label": "R&D plus SG&A as a share of revenue, mapped to the sga line. sga is the only line between GP and EBITDA (SKILL section 2)"
+      },
+      {
+        "id": "dep_pct_prior_ppe",
+        "appliesTo": "capital",
+        "unit": "fraction",
+        "label": "Depreciation as a share of prior-year PPE"
+      },
+      {
+        "id": "capex_incl_pct_revenue",
+        "appliesTo": "capital",
+        "unit": "fraction",
+        "label": "Capex-incl as a share of revenue. House capex is delta(net ppe) plus depreciation, i.e. gross capex (SKILL section 2)"
+      },
+      {
+        "id": "owc_pct_revenue",
+        "appliesTo": "capital",
+        "unit": "fraction",
+        "label": "Operating working capital as a share of revenue. OWC = (operatingCash + otherCurrentAssets) - (accountsPayable + otherNonInterestLiab). Can be negative: customer prepayments sit in otherNonInterestLiab"
+      },
+      {
+        "id": "tax_rate",
+        "appliesTo": "margin",
+        "unit": "fraction",
+        "label": "Effective tax rate applied to EBIT for NOPLAT"
+      },
+      {
+        "id": "other_op_assets_pct_revenue",
+        "appliesTo": "capital",
+        "unit": "fraction",
+        "label": "Other operating assets as a share of revenue. Enters FOCF through delta(otherOperatingAssets) and invested capital"
+      }
+    ]
+  },
+  "scenarios": {
+    "method": "explicit-forecast-dcf",
+    "_supersedes": "the single-year Gordon in front-end slice 4",
+    "discount": {
+      "waccLow": 0.075,
+      "waccMid": 0.085,
+      "waccHigh": 0.095,
+      "terminalGrowth": 0.02,
+      "terminalMethod": "gordon",
+      "fadeYears": 0,
+      "midYearDiscounting": false,
+      "waccByCase": {},
+      "source": "synthetic fixture",
+      "_note_waccByCase": "Empty means the W1 mid band is held constant across bear/base/bull and WACC is swung only in the tornado. To couple the rate to the case instead, set {\"bear\":\"waccHigh\",\"base\":\"waccMid\",\"bull\":\"waccLow\"} and record the reason (unresolved convention C5).",
+      "_note_terminal": "Set terminalMethod to fade_then_gordon and fadeYears > 0 to fade the final explicit growth rate down to terminalGrowth before capitalising."
+    },
+    "netDebt": {
+      "value": null,
+      "asOf": null,
+      "source": null,
+      "_note": "OPTIONAL OVERRIDE. Leave value null and the engine derives net debt as longTermDebt - operatingCash per SKILL section 2. Nulls here do not block. See open item X1: operatingCash is inside OWC and also netted against debt."
+    },
+    "cases": {
+      "bear": {
+        "narrative": "WFE downcycle, China revenue share bites, High-NA adoption slips right.",
+        "paths": {
+          "euv_units": [
+            8,
+            8,
+            7,
+            7,
+            7
+          ],
+          "euv_asp": [
+            18,
+            18,
+            18,
+            19,
+            19
+          ],
+          "highna_units": [
+            0,
+            0,
+            1,
+            1,
+            2
+          ],
+          "highna_asp": [
+            35,
+            35,
+            36,
+            36,
+            37
+          ],
+          "duv_units": [
+            60,
+            58,
+            56,
+            55,
+            55
+          ],
+          "duv_asp": [
+            6,
+            6,
+            6,
+            6,
+            6
+          ],
+          "ibm_revenue": [
+            300,
+            310,
+            320,
+            330,
+            340
+          ],
+          "gross_margin_pct": [
+            0.48,
+            0.47,
+            0.47,
+            0.46,
+            0.46
+          ],
+          "opex_pct_revenue": [
+            0.22,
+            0.23,
+            0.23,
+            0.24,
+            0.24
+          ],
+          "dep_pct_prior_ppe": [
+            0.1,
+            0.1,
+            0.1,
+            0.1,
+            0.1
+          ],
+          "tax_rate": [
+            0.2,
+            0.2,
+            0.2,
+            0.2,
+            0.2
+          ],
+          "capex_incl_pct_revenue": [
+            0.08,
+            0.08,
+            0.08,
+            0.08,
+            0.08
+          ],
+          "owc_pct_revenue": [
+            0.05,
+            0.05,
+            0.05,
+            0.05,
+            0.05
+          ],
+          "other_op_assets_pct_revenue": [
+            0.04,
+            0.04,
+            0.04,
+            0.04,
+            0.04
+          ]
+        },
+        "sources": {
+          "euv_units": "synthetic fixture",
+          "euv_asp": "synthetic fixture",
+          "highna_units": "synthetic fixture",
+          "highna_asp": "synthetic fixture",
+          "duv_units": "synthetic fixture",
+          "duv_asp": "synthetic fixture",
+          "ibm_revenue": "synthetic fixture",
+          "gross_margin_pct": "synthetic fixture",
+          "opex_pct_revenue": "synthetic fixture",
+          "dep_pct_prior_ppe": "synthetic fixture",
+          "tax_rate": "synthetic fixture",
+          "capex_incl_pct_revenue": "synthetic fixture",
+          "owc_pct_revenue": "synthetic fixture",
+          "other_op_assets_pct_revenue": "synthetic fixture"
+        }
+      },
+      "base": {
+        "narrative": "AI logic demand holds, steady EUV, High-NA ramps 2026-28, Installed Base Management compounds.",
+        "paths": {
+          "euv_units": [
+            10,
+            11,
+            12,
+            13,
+            14
+          ],
+          "euv_asp": [
+            19,
+            19,
+            20,
+            20,
+            21
+          ],
+          "highna_units": [
+            1,
+            2,
+            4,
+            6,
+            8
+          ],
+          "highna_asp": [
+            36,
+            36,
+            37,
+            37,
+            38
+          ],
+          "duv_units": [
+            65,
+            66,
+            68,
+            70,
+            72
+          ],
+          "duv_asp": [
+            6,
+            6.1,
+            6.2,
+            6.3,
+            6.4
+          ],
+          "ibm_revenue": [
+            330,
+            360,
+            395,
+            435,
+            480
+          ],
+          "gross_margin_pct": [
+            0.51,
+            0.52,
+            0.53,
+            0.53,
+            0.54
+          ],
+          "opex_pct_revenue": [
+            0.21,
+            0.21,
+            0.2,
+            0.2,
+            0.2
+          ],
+          "dep_pct_prior_ppe": [
+            0.1,
+            0.1,
+            0.1,
+            0.1,
+            0.1
+          ],
+          "tax_rate": [
+            0.2,
+            0.2,
+            0.2,
+            0.2,
+            0.2
+          ],
+          "capex_incl_pct_revenue": [
+            0.075,
+            0.075,
+            0.075,
+            0.075,
+            0.075
+          ],
+          "owc_pct_revenue": [
+            0.03,
+            0.03,
+            0.03,
+            0.03,
+            0.03
+          ],
+          "other_op_assets_pct_revenue": [
+            0.04,
+            0.04,
+            0.04,
+            0.04,
+            0.04
+          ]
+        },
+        "sources": {
+          "euv_units": "synthetic fixture",
+          "euv_asp": "synthetic fixture",
+          "highna_units": "synthetic fixture",
+          "highna_asp": "synthetic fixture",
+          "duv_units": "synthetic fixture",
+          "duv_asp": "synthetic fixture",
+          "ibm_revenue": "synthetic fixture",
+          "gross_margin_pct": "synthetic fixture",
+          "opex_pct_revenue": "synthetic fixture",
+          "dep_pct_prior_ppe": "synthetic fixture",
+          "tax_rate": "synthetic fixture",
+          "capex_incl_pct_revenue": "synthetic fixture",
+          "owc_pct_revenue": "synthetic fixture",
+          "other_op_assets_pct_revenue": "synthetic fixture"
+        }
+      },
+      "bull": {
+        "narrative": "Broad capex supercycle, memory recovery, faster High-NA adoption.",
+        "paths": {
+          "euv_units": [
+            12,
+            14,
+            17,
+            20,
+            23
+          ],
+          "euv_asp": [
+            20,
+            20,
+            21,
+            21,
+            22
+          ],
+          "highna_units": [
+            2,
+            4,
+            7,
+            11,
+            15
+          ],
+          "highna_asp": [
+            37,
+            37,
+            38,
+            39,
+            40
+          ],
+          "duv_units": [
+            70,
+            75,
+            80,
+            86,
+            92
+          ],
+          "duv_asp": [
+            6.2,
+            6.4,
+            6.6,
+            6.8,
+            7.0
+          ],
+          "ibm_revenue": [
+            350,
+            395,
+            445,
+            505,
+            575
+          ],
+          "gross_margin_pct": [
+            0.53,
+            0.55,
+            0.56,
+            0.57,
+            0.58
+          ],
+          "opex_pct_revenue": [
+            0.2,
+            0.19,
+            0.19,
+            0.18,
+            0.18
+          ],
+          "dep_pct_prior_ppe": [
+            0.1,
+            0.1,
+            0.1,
+            0.1,
+            0.1
+          ],
+          "tax_rate": [
+            0.2,
+            0.2,
+            0.2,
+            0.2,
+            0.2
+          ],
+          "capex_incl_pct_revenue": [
+            0.07,
+            0.07,
+            0.07,
+            0.07,
+            0.07
+          ],
+          "owc_pct_revenue": [
+            0.01,
+            0.01,
+            0.01,
+            0.01,
+            0.01
+          ],
+          "other_op_assets_pct_revenue": [
+            0.04,
+            0.04,
+            0.04,
+            0.04,
+            0.04
+          ]
+        },
+        "sources": {
+          "euv_units": "synthetic fixture",
+          "euv_asp": "synthetic fixture",
+          "highna_units": "synthetic fixture",
+          "highna_asp": "synthetic fixture",
+          "duv_units": "synthetic fixture",
+          "duv_asp": "synthetic fixture",
+          "ibm_revenue": "synthetic fixture",
+          "gross_margin_pct": "synthetic fixture",
+          "opex_pct_revenue": "synthetic fixture",
+          "dep_pct_prior_ppe": "synthetic fixture",
+          "tax_rate": "synthetic fixture",
+          "capex_incl_pct_revenue": "synthetic fixture",
+          "owc_pct_revenue": "synthetic fixture",
+          "other_op_assets_pct_revenue": "synthetic fixture"
+        }
+      }
+    },
+    "triggers": [
+      {
+        "id": "bookings",
+        "observable": "Quarterly net system bookings",
+        "threshold": null,
+        "direction": null,
+        "flipsTo": null,
+        "playbook": null,
+        "resolutions": []
+      },
+      {
+        "id": "china_mix",
+        "observable": "China as a share of system sales",
+        "threshold": null,
+        "direction": null,
+        "flipsTo": null,
+        "playbook": null,
+        "resolutions": []
+      },
+      {
+        "id": "highna_ship",
+        "observable": "High-NA systems shipped per period",
+        "threshold": null,
+        "direction": null,
+        "flipsTo": null,
+        "playbook": null,
+        "resolutions": []
+      },
+      {
+        "id": "memory_capex",
+        "observable": "HBM/DRAM capex announcements",
+        "threshold": null,
+        "direction": null,
+        "flipsTo": null,
+        "playbook": null,
+        "resolutions": []
+      },
+      {
+        "id": "semi_wfe",
+        "observable": "SEMI WFE spend forecast revisions",
+        "threshold": null,
+        "direction": null,
+        "flipsTo": null,
+        "playbook": null,
+        "resolutions": []
+      }
+    ],
+    "_note_triggers": "Nulls here are reported as unarmed but do not block a run. Each armed trigger needs a threshold, a direction, the case it flips to, and a playbook. Resolutions accumulate over time and are the calibration loop.",
+    "_openItems": [
+      "C5 wacc across cases",
+      "C6 discounting timing",
+      "X1 operatingCash counted twice",
+      "X2 slice-4 Gordon capitalises NOPLAT, Track B capitalises FOCF",
+      "E1 costOfSales must be depreciation-free",
+      "E2 projected block does not drive interest or tax lines"
+    ]
+  }
+}

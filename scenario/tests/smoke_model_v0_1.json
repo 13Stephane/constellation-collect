@@ -1,0 +1,124 @@
+{
+  "schemaVersion": 2,
+  "company": "SYNTHCO (synthetic fixture, not a real name)",
+  "unit": "EUR m",
+  "years": [
+    2022,
+    2023,
+    2024,
+    2025
+  ],
+  "income": {
+    "revenue": [
+      1000,
+      1100,
+      1210,
+      1330
+    ],
+    "costOfSales": [
+      500,
+      540,
+      590,
+      640
+    ],
+    "depreciation": [
+      60,
+      66,
+      72,
+      80
+    ],
+    "sga": [
+      200,
+      220,
+      240,
+      260
+    ],
+    "interestIncome": [
+      5,
+      5,
+      6,
+      6
+    ],
+    "interestExpense": [
+      10,
+      10,
+      11,
+      11
+    ],
+    "incomeTaxes": [
+      50,
+      55,
+      60,
+      65
+    ]
+  },
+  "balance": {
+    "operatingCash": [
+      100,
+      110,
+      120,
+      130
+    ],
+    "otherCurrentAssets": [
+      300,
+      330,
+      360,
+      395
+    ],
+    "ppe": [
+      600,
+      660,
+      720,
+      790
+    ],
+    "otherOperatingAssets": [
+      50,
+      50,
+      50,
+      50
+    ],
+    "accountsPayable": [
+      150,
+      165,
+      180,
+      198
+    ],
+    "otherNonInterestLiab": [
+      200,
+      220,
+      240,
+      262
+    ],
+    "longTermDebt": [
+      300,
+      300,
+      300,
+      300
+    ],
+    "equity": [
+      400,
+      465,
+      530,
+      605
+    ]
+  },
+  "assumptions": {
+    "taxRate": 0.2,
+    "wacc": 0.085
+  },
+  "sharesOutstanding": [
+    400,
+    400,
+    400,
+    400
+  ],
+  "valuationMultiples": {
+    "industry": "synthetic",
+    "evRevenue": 4.0,
+    "evEbitda": 15.0,
+    "evEbit": 20.0,
+    "pe": 25.0,
+    "growth": 0.08
+  },
+  "labels": {}
+}

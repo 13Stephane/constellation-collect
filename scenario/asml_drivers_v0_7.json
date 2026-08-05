@@ -1,0 +1,467 @@
+{
+  "_file": "asml_drivers_v0_7.json",
+  "_purpose": "Constellation Track B, steps B2 and B4. schema-v3 overlay for ASML. Successor to v0.6. Fills the discount block. WACC mid comes from assumptions.wacc in the golden file; NO band is set, because the W1 market band was never delivered (the first /collect run was interrupted). Only the seven revenue-tree drivers remain null. The engine will still refuse to compute.",
+  "_fillOrder": "1) scenarios.discount from the W1 band produced by the /collect run. 2) scenarios.netDebt. 3) the three case path blocks. 4) sources for each. 5) triggers.",
+  "drivers": {
+    "arena": "semiconductor-capital-equipment",
+    "registryVersion": "0.7",
+    "horizonYears": 5,
+    "baseYearSource": "model.years[-1] (the engine reads it from the schema-v2 block; do not restate it here)",
+    "unitNote": "All currency drivers are in model.unit. ASP drivers are model.unit per system, so units x ASP lands in model.unit directly.",
+    "revenueModel": {
+      "type": "components",
+      "terms": [
+        {
+          "id": "euv",
+          "kind": "units_x_asp",
+          "units": "euv_units",
+          "asp": "euv_asp"
+        },
+        {
+          "id": "highna",
+          "kind": "units_x_asp",
+          "units": "highna_units",
+          "asp": "highna_asp"
+        },
+        {
+          "id": "duv",
+          "kind": "units_x_asp",
+          "units": "duv_units",
+          "asp": "duv_asp"
+        },
+        {
+          "id": "ibm",
+          "kind": "direct",
+          "value": "ibm_revenue"
+        }
+      ],
+      "_note": "Installed Base Management (service plus upgrades) enters as a direct revenue line, not a unit tree. Metrology/inspection is folded into duv unless split out in a later registry version; if the schema-v2 revenue line includes it, the duv term will absorb the residual and the fit should be checked against the base year."
+    },
+    "depreciationModel": {
+      "kind": "pct_prior_ppe",
+      "driver": "dep_pct_prior_ppe",
+      "_alternatives": "explicit | pct_revenue"
+    },
+    "definitions": [
+      {
+        "id": "euv_units",
+        "appliesTo": "revenue",
+        "unit": "systems",
+        "label": "EUV (0.33 NA) systems recognised"
+      },
+      {
+        "id": "euv_asp",
+        "appliesTo": "revenue",
+        "unit": "model.unit/sys",
+        "label": "EUV average selling price"
+      },
+      {
+        "id": "highna_units",
+        "appliesTo": "revenue",
+        "unit": "systems",
+        "label": "High-NA EUV systems recognised"
+      },
+      {
+        "id": "highna_asp",
+        "appliesTo": "revenue",
+        "unit": "model.unit/sys",
+        "label": "High-NA average selling price"
+      },
+      {
+        "id": "duv_units",
+        "appliesTo": "revenue",
+        "unit": "systems",
+        "label": "DUV systems recognised"
+      },
+      {
+        "id": "duv_asp",
+        "appliesTo": "revenue",
+        "unit": "model.unit/sys",
+        "label": "DUV average selling price"
+      },
+      {
+        "id": "ibm_revenue",
+        "appliesTo": "revenue",
+        "unit": "model.unit",
+        "label": "Installed Base Management revenue (service and upgrades)"
+      },
+      {
+        "id": "gross_margin_pct",
+        "appliesTo": "margin",
+        "unit": "fraction",
+        "label": "Gross margin on the costOfSales line. House GP = revenue - costOfSales, depreciation stated separately (SKILL section 2). See extraction rule E1"
+      },
+      {
+        "id": "opex_pct_revenue",
+        "appliesTo": "margin",
+        "unit": "fraction",
+        "label": "R&D plus SG&A as a share of revenue, mapped to the sga line. sga is the only line between GP and EBITDA (SKILL section 2)"
+      },
+      {
+        "id": "dep_pct_prior_ppe",
+        "appliesTo": "capital",
+        "unit": "fraction",
+        "label": "Depreciation as a share of prior-year PPE"
+      },
+      {
+        "id": "capex_incl_pct_revenue",
+        "appliesTo": "capital",
+        "unit": "fraction",
+        "label": "Capex-incl as a share of revenue. House capex is delta(net ppe) plus depreciation, i.e. gross capex (SKILL section 2)"
+      },
+      {
+        "id": "owc_pct_revenue",
+        "appliesTo": "capital",
+        "unit": "fraction",
+        "label": "Operating working capital as a share of revenue. OWC = (operatingCash + otherCurrentAssets) - (accountsPayable + otherNonInterestLiab). Can be negative: customer prepayments sit in otherNonInterestLiab"
+      },
+      {
+        "id": "tax_rate",
+        "appliesTo": "margin",
+        "unit": "fraction",
+        "label": "Effective tax rate applied to EBIT for NOPLAT"
+      },
+      {
+        "id": "other_op_assets_scaling_pct_revenue",
+        "appliesTo": "capital",
+        "unit": "fraction",
+        "label": "Scaling remainder of other operating assets, as a share of revenue. The non-scaling stock is held in drivers.otherOpAssetsModel.nonScalingStock and does not appear here."
+      }
+    ],
+    "cashPolicy": {
+      "operatingCashPctRevenue": 0.0,
+      "source": "default: all cash treated as excess, pending an operating/excess split from /collect (open item E3)",
+      "_note": "Operating cash = revenue * operatingCashPctRevenue. It sits inside OWC and therefore inside invested capital. The remainder is excess cash and is netted against longTermDebt in the valuation bridge. At 0.0 the bridge is arithmetically identical to SKILL section 2 (netDebt = longTermDebt - operatingCash), so no per-share number moves; only invested capital, ROIC and EVA change. This is the resolution of open item X1."
+    },
+    "otherOpAssetsModel": {
+      "kind": "stock_plus_ratio",
+      "nonScalingStock": 6112.9,
+      "nonScalingStockSource": "FY2024 US GAAP consolidated balance sheet, non-current assets: goodwill 4,588.6 + other intangible assets net 621.3 + equity method investments 903.0 = 6,112.9. Tight split: only balances that do not move with revenue. Reconciliation: total non-current assets 17,852.2 less PPE 6,846.8 = 11,005.4, equal to the model line and to the sum of the eight components. Corroboration: independent OLS of otherOperatingAssets on revenue FY2020-24 gives an intercept of 6,757.9, within 9.5 percent of this composed figure. Behaviour check: this bucket moved -137.0 in FY2024 (goodwill flat, intangibles amortising, equity method flat), which is how a fixed stock behaves. Deferred tax (1,940.7) and loans receivable (1,456.6) were deliberately EXCLUDED: together they grew +458.8 in FY2024 alone, so freezing them would assume that growth stops.",
+      "driver": "other_op_assets_scaling_pct_revenue",
+      "_alternatives": "flat | pct_revenue",
+      "_note": "Under stock_plus_ratio, otherOperatingAssets = nonScalingStock + revenue * driver. nonScalingStock is the portion of the FY2024 balance of 11,005.4 that does not scale with revenue (goodwill, intangibles, equity investments, deferred tax and similar), in model units. The driver then carries only the scaling remainder. Fall back to kind=flat if the split is not to hand: that holds the whole line constant, avoids the error, and gives up the operating portion's genuine scaling."
+    }
+  },
+  "scenarios": {
+    "method": "explicit-forecast-dcf",
+    "_supersedes": "the single-year Gordon in front-end slice 4",
+    "discount": {
+      "waccLow": 0.1,
+      "waccMid": 0.1,
+      "waccHigh": 0.1,
+      "terminalGrowth": 0.02,
+      "terminalMethod": "gordon",
+      "fadeYears": 0,
+      "midYearDiscounting": false,
+      "waccByCase": {},
+      "source": "WACC 0.10 from assumptions.wacc in evals/case-01/expected.json, the founder's hand-verified ASML SAMPLE. NO BAND: low = mid = high, because the W1 market band construction was never delivered. Per STATE.md the first /collect session (sesn_01L6DpzzsFsCnEXSsTETRsX6) was interrupted to stop token spend and no deliverables were fetched. A completed run supplies the band; a band has NOT been invented here. Consequence: the WACC line in the tornado has zero span by construction, exactly as the six anchored drivers do (O7). Terminal growth 0.02: the ECB medium-term inflation target, i.e. zero long-run real growth. No company-specific basis exists in this file. C5 (WACC across cases) settled as: one rate across bear, base and bull, so risk is not double-counted in both the cash flows and the discount rate. Moot while there is no band. C6 (discounting timing) settled as: end-year. Mid-year would raise every case by roughly half a year of discounting and is the more accurate treatment for cash arriving through the year; end-year is retained because SKILL section 2 does not specify and it is the lower number.",
+      "_note_waccByCase": "Empty means the W1 mid band is held constant across bear/base/bull and WACC is swung only in the tornado. To couple the rate to the case instead, set {\"bear\":\"waccHigh\",\"base\":\"waccMid\",\"bull\":\"waccLow\"} and record the reason (unresolved convention C5).",
+      "_note_terminal": "Set terminalMethod to fade_then_gordon and fadeYears > 0 to fade the final explicit growth rate down to terminalGrowth before capitalising."
+    },
+    "netDebt": {
+      "value": null,
+      "asOf": null,
+      "source": null,
+      "_note": "OPTIONAL OVERRIDE. Leave value null and the engine derives net debt as longTermDebt minus excess cash, where excess cash follows drivers.cashPolicy. Nulls here do not block."
+    },
+    "cases": {
+      "bear": {
+        "narrative": "WFE downcycle, China revenue share bites, High-NA adoption slips right.",
+        "paths": {
+          "euv_units": null,
+          "euv_asp": null,
+          "highna_units": null,
+          "highna_asp": null,
+          "duv_units": null,
+          "duv_asp": null,
+          "ibm_revenue": null,
+          "gross_margin_pct": [
+            0.5305,
+            0.5305,
+            0.5305,
+            0.5305,
+            0.5305
+          ],
+          "opex_pct_revenue": [
+            0.1802,
+            0.1802,
+            0.1802,
+            0.1802,
+            0.1802
+          ],
+          "dep_pct_prior_ppe": [
+            0.1663,
+            0.1663,
+            0.1663,
+            0.1663,
+            0.1663
+          ],
+          "capex_incl_pct_revenue": [
+            0.0786,
+            0.0786,
+            0.0786,
+            0.0786,
+            0.0786
+          ],
+          "owc_pct_revenue": [
+            -0.0215,
+            -0.0215,
+            -0.0215,
+            -0.0215,
+            -0.0215
+          ],
+          "tax_rate": [
+            0.1859,
+            0.1859,
+            0.1859,
+            0.1859,
+            0.1859
+          ],
+          "other_op_assets_scaling_pct_revenue": [
+            0.2076,
+            0.2076,
+            0.2076,
+            0.2076,
+            0.2076
+          ]
+        },
+        "sources": {
+          "euv_units": null,
+          "euv_asp": null,
+          "highna_units": null,
+          "highna_asp": null,
+          "duv_units": null,
+          "duv_asp": null,
+          "ibm_revenue": null,
+          "gross_margin_pct": "FY2022-FY2024 anchor window (O2: FY2020-21 excluded). Shape: trend, flattening (52.21, 52.87, 53.05; increments +0.66 then +0.18pp). Rule: hold the FY2024 actual flat, no assumed continuation of the improvement. Note: this is the top driver in the tornado; one pp is worth roughly 3.59 per share undiscounted over five years. Bear, base and bull are IDENTICAL for this driver. The anchor window contains no downcycle, so the observed range understates the true spread and no spread has been invented. Widen from a longer history (FY2012-13, FY2019) or Investor Day 2030 guidance before stamping.",
+          "opex_pct_revenue": "FY2022-FY2024 anchor window (O2: FY2020-21 excluded). Shape: level (18.77, 17.39, 17.90; range 1.38pp). Rule: three-year mean held flat. Covers R&D plus SG&A combined, since schema-v2 has no R&D line. R&D is committed and does not flex with shipments, so this ratio rises in a downcycle. Bear, base and bull are IDENTICAL for this driver. The anchor window contains no downcycle, so the observed range understates the true spread and no spread has been invented. Widen from a longer history (FY2012-13, FY2019) or Investor Day 2030 guidance before stamping.",
+          "dep_pct_prior_ppe": "FY2022-FY2024 anchor window (O2: FY2020-21 excluded). Shape: trend, down (19.46, 18.59, 16.63; decrements -0.87 then -1.96pp). The decline is mechanical: capex near 8 percent of rising revenue grows PPE faster than depreciation follows, and the ratio should asymptote toward the inverse of average useful life. Rule: hold the FY2024 actual flat, because continuing the trend needs a PPE-growth and asset-life view that is not in this file. Denominated in prior PPE rather than revenue, so it is case-independent and carries one path across all three cases by design, not by omission.",
+          "capex_incl_pct_revenue": "FY2022-FY2024 anchor window (O2: FY2020-21 excluded). Shape: level (7.28, 8.28, 8.02; range 1.00pp). Rule: three-year mean held flat. House capex is delta(net PPE) plus depreciation. Capex is committed one to two years out, so this ratio rises when revenue falls. Bear, base and bull are IDENTICAL for this driver. The anchor window contains no downcycle, so the observed range understates the true spread and no spread has been invented. Widen from a longer history (FY2012-13, FY2019) or Investor Day 2030 guidance before stamping.",
+          "owc_pct_revenue": "FY2022-FY2024 anchor window (O2: FY2020-21 excluded). Shape: swing, not level (-6.80, +4.04, -3.68; range 10.84pp on 28.3bn of revenue, i.e. 1.4 to 3bn of FOCF). Rule per O3: three-year mean held flat, with the swing belonging in the tornado rather than in a point estimate. Filled from the POLICY column of the anchor sheet, not the legacy column: under a 0.0 cash policy, cash is excess and does not scale with revenue. Customer prepayments in otherNonInterestLiab are the swing: strong bookings push OWC more negative, a downcycle drains them. Bear, base and bull are IDENTICAL for this driver. The anchor window contains no downcycle, so the observed range understates the true spread and no spread has been invented. Widen from a longer history (FY2012-13, FY2019) or Investor Day 2030 guidance before stamping.",
+          "tax_rate": "FY2022-FY2024 anchor window (O2: FY2020-21 excluded). Shape: trend, up (15.02, 15.81, 18.59). Per open item T1 this is the IMPLIED EFFECTIVE rate from the income lines, NOT assumptions.taxRate of 0.2580, which is near the Dutch statutory rate and overstates tax by roughly 650 per year on FY2024 EBIT. Rule: hold the FY2024 implied rate flat. The climb is consistent with a 15 percent global minimum floor phasing in; if it continues toward statutory, value falls. Case-independent, so one path across all three cases by design.",
+          "other_op_assets_scaling_pct_revenue": "PROVISIONAL, rule-based, not researched. Rule: base = the FY2024 observed scaling remainder of 17.31 percent (4,892.5 on revenue 28,262.9), held flat, i.e. no assumed improvement from the base year the engine starts from. Cases span by the single observed year-on-year move of 3.45pp (FY2023 was 13.86 percent: 4,892.5 becomes 3,820.5 on revenue 27,557.7). Bull is the low ratio (less capital consumed, higher FOCF), bear the high. LIMIT: two observations only. FY2020-22 component detail would settle whether 13.86 to 17.31 is a range or a trend. Revise before stamping."
+        }
+      },
+      "base": {
+        "narrative": "AI logic demand holds, steady EUV, High-NA ramps 2026-28, Installed Base Management compounds.",
+        "paths": {
+          "euv_units": null,
+          "euv_asp": null,
+          "highna_units": null,
+          "highna_asp": null,
+          "duv_units": null,
+          "duv_asp": null,
+          "ibm_revenue": null,
+          "gross_margin_pct": [
+            0.5305,
+            0.5305,
+            0.5305,
+            0.5305,
+            0.5305
+          ],
+          "opex_pct_revenue": [
+            0.1802,
+            0.1802,
+            0.1802,
+            0.1802,
+            0.1802
+          ],
+          "dep_pct_prior_ppe": [
+            0.1663,
+            0.1663,
+            0.1663,
+            0.1663,
+            0.1663
+          ],
+          "capex_incl_pct_revenue": [
+            0.0786,
+            0.0786,
+            0.0786,
+            0.0786,
+            0.0786
+          ],
+          "owc_pct_revenue": [
+            -0.0215,
+            -0.0215,
+            -0.0215,
+            -0.0215,
+            -0.0215
+          ],
+          "tax_rate": [
+            0.1859,
+            0.1859,
+            0.1859,
+            0.1859,
+            0.1859
+          ],
+          "other_op_assets_scaling_pct_revenue": [
+            0.1731,
+            0.1731,
+            0.1731,
+            0.1731,
+            0.1731
+          ]
+        },
+        "sources": {
+          "euv_units": null,
+          "euv_asp": null,
+          "highna_units": null,
+          "highna_asp": null,
+          "duv_units": null,
+          "duv_asp": null,
+          "ibm_revenue": null,
+          "gross_margin_pct": "FY2022-FY2024 anchor window (O2: FY2020-21 excluded). Shape: trend, flattening (52.21, 52.87, 53.05; increments +0.66 then +0.18pp). Rule: hold the FY2024 actual flat, no assumed continuation of the improvement. Note: this is the top driver in the tornado; one pp is worth roughly 3.59 per share undiscounted over five years. Bear, base and bull are IDENTICAL for this driver. The anchor window contains no downcycle, so the observed range understates the true spread and no spread has been invented. Widen from a longer history (FY2012-13, FY2019) or Investor Day 2030 guidance before stamping.",
+          "opex_pct_revenue": "FY2022-FY2024 anchor window (O2: FY2020-21 excluded). Shape: level (18.77, 17.39, 17.90; range 1.38pp). Rule: three-year mean held flat. Covers R&D plus SG&A combined, since schema-v2 has no R&D line. R&D is committed and does not flex with shipments, so this ratio rises in a downcycle. Bear, base and bull are IDENTICAL for this driver. The anchor window contains no downcycle, so the observed range understates the true spread and no spread has been invented. Widen from a longer history (FY2012-13, FY2019) or Investor Day 2030 guidance before stamping.",
+          "dep_pct_prior_ppe": "FY2022-FY2024 anchor window (O2: FY2020-21 excluded). Shape: trend, down (19.46, 18.59, 16.63; decrements -0.87 then -1.96pp). The decline is mechanical: capex near 8 percent of rising revenue grows PPE faster than depreciation follows, and the ratio should asymptote toward the inverse of average useful life. Rule: hold the FY2024 actual flat, because continuing the trend needs a PPE-growth and asset-life view that is not in this file. Denominated in prior PPE rather than revenue, so it is case-independent and carries one path across all three cases by design, not by omission.",
+          "capex_incl_pct_revenue": "FY2022-FY2024 anchor window (O2: FY2020-21 excluded). Shape: level (7.28, 8.28, 8.02; range 1.00pp). Rule: three-year mean held flat. House capex is delta(net PPE) plus depreciation. Capex is committed one to two years out, so this ratio rises when revenue falls. Bear, base and bull are IDENTICAL for this driver. The anchor window contains no downcycle, so the observed range understates the true spread and no spread has been invented. Widen from a longer history (FY2012-13, FY2019) or Investor Day 2030 guidance before stamping.",
+          "owc_pct_revenue": "FY2022-FY2024 anchor window (O2: FY2020-21 excluded). Shape: swing, not level (-6.80, +4.04, -3.68; range 10.84pp on 28.3bn of revenue, i.e. 1.4 to 3bn of FOCF). Rule per O3: three-year mean held flat, with the swing belonging in the tornado rather than in a point estimate. Filled from the POLICY column of the anchor sheet, not the legacy column: under a 0.0 cash policy, cash is excess and does not scale with revenue. Customer prepayments in otherNonInterestLiab are the swing: strong bookings push OWC more negative, a downcycle drains them. Bear, base and bull are IDENTICAL for this driver. The anchor window contains no downcycle, so the observed range understates the true spread and no spread has been invented. Widen from a longer history (FY2012-13, FY2019) or Investor Day 2030 guidance before stamping.",
+          "tax_rate": "FY2022-FY2024 anchor window (O2: FY2020-21 excluded). Shape: trend, up (15.02, 15.81, 18.59). Per open item T1 this is the IMPLIED EFFECTIVE rate from the income lines, NOT assumptions.taxRate of 0.2580, which is near the Dutch statutory rate and overstates tax by roughly 650 per year on FY2024 EBIT. Rule: hold the FY2024 implied rate flat. The climb is consistent with a 15 percent global minimum floor phasing in; if it continues toward statutory, value falls. Case-independent, so one path across all three cases by design.",
+          "other_op_assets_scaling_pct_revenue": "PROVISIONAL, rule-based, not researched. Rule: base = the FY2024 observed scaling remainder of 17.31 percent (4,892.5 on revenue 28,262.9), held flat, i.e. no assumed improvement from the base year the engine starts from. Cases span by the single observed year-on-year move of 3.45pp (FY2023 was 13.86 percent: 4,892.5 becomes 3,820.5 on revenue 27,557.7). Bull is the low ratio (less capital consumed, higher FOCF), bear the high. LIMIT: two observations only. FY2020-22 component detail would settle whether 13.86 to 17.31 is a range or a trend. Revise before stamping."
+        }
+      },
+      "bull": {
+        "narrative": "Broad capex supercycle, memory recovery, faster High-NA adoption.",
+        "paths": {
+          "euv_units": null,
+          "euv_asp": null,
+          "highna_units": null,
+          "highna_asp": null,
+          "duv_units": null,
+          "duv_asp": null,
+          "ibm_revenue": null,
+          "gross_margin_pct": [
+            0.5305,
+            0.5305,
+            0.5305,
+            0.5305,
+            0.5305
+          ],
+          "opex_pct_revenue": [
+            0.1802,
+            0.1802,
+            0.1802,
+            0.1802,
+            0.1802
+          ],
+          "dep_pct_prior_ppe": [
+            0.1663,
+            0.1663,
+            0.1663,
+            0.1663,
+            0.1663
+          ],
+          "capex_incl_pct_revenue": [
+            0.0786,
+            0.0786,
+            0.0786,
+            0.0786,
+            0.0786
+          ],
+          "owc_pct_revenue": [
+            -0.0215,
+            -0.0215,
+            -0.0215,
+            -0.0215,
+            -0.0215
+          ],
+          "tax_rate": [
+            0.1859,
+            0.1859,
+            0.1859,
+            0.1859,
+            0.1859
+          ],
+          "other_op_assets_scaling_pct_revenue": [
+            0.1386,
+            0.1386,
+            0.1386,
+            0.1386,
+            0.1386
+          ]
+        },
+        "sources": {
+          "euv_units": null,
+          "euv_asp": null,
+          "highna_units": null,
+          "highna_asp": null,
+          "duv_units": null,
+          "duv_asp": null,
+          "ibm_revenue": null,
+          "gross_margin_pct": "FY2022-FY2024 anchor window (O2: FY2020-21 excluded). Shape: trend, flattening (52.21, 52.87, 53.05; increments +0.66 then +0.18pp). Rule: hold the FY2024 actual flat, no assumed continuation of the improvement. Note: this is the top driver in the tornado; one pp is worth roughly 3.59 per share undiscounted over five years. Bear, base and bull are IDENTICAL for this driver. The anchor window contains no downcycle, so the observed range understates the true spread and no spread has been invented. Widen from a longer history (FY2012-13, FY2019) or Investor Day 2030 guidance before stamping.",
+          "opex_pct_revenue": "FY2022-FY2024 anchor window (O2: FY2020-21 excluded). Shape: level (18.77, 17.39, 17.90; range 1.38pp). Rule: three-year mean held flat. Covers R&D plus SG&A combined, since schema-v2 has no R&D line. R&D is committed and does not flex with shipments, so this ratio rises in a downcycle. Bear, base and bull are IDENTICAL for this driver. The anchor window contains no downcycle, so the observed range understates the true spread and no spread has been invented. Widen from a longer history (FY2012-13, FY2019) or Investor Day 2030 guidance before stamping.",
+          "dep_pct_prior_ppe": "FY2022-FY2024 anchor window (O2: FY2020-21 excluded). Shape: trend, down (19.46, 18.59, 16.63; decrements -0.87 then -1.96pp). The decline is mechanical: capex near 8 percent of rising revenue grows PPE faster than depreciation follows, and the ratio should asymptote toward the inverse of average useful life. Rule: hold the FY2024 actual flat, because continuing the trend needs a PPE-growth and asset-life view that is not in this file. Denominated in prior PPE rather than revenue, so it is case-independent and carries one path across all three cases by design, not by omission.",
+          "capex_incl_pct_revenue": "FY2022-FY2024 anchor window (O2: FY2020-21 excluded). Shape: level (7.28, 8.28, 8.02; range 1.00pp). Rule: three-year mean held flat. House capex is delta(net PPE) plus depreciation. Capex is committed one to two years out, so this ratio rises when revenue falls. Bear, base and bull are IDENTICAL for this driver. The anchor window contains no downcycle, so the observed range understates the true spread and no spread has been invented. Widen from a longer history (FY2012-13, FY2019) or Investor Day 2030 guidance before stamping.",
+          "owc_pct_revenue": "FY2022-FY2024 anchor window (O2: FY2020-21 excluded). Shape: swing, not level (-6.80, +4.04, -3.68; range 10.84pp on 28.3bn of revenue, i.e. 1.4 to 3bn of FOCF). Rule per O3: three-year mean held flat, with the swing belonging in the tornado rather than in a point estimate. Filled from the POLICY column of the anchor sheet, not the legacy column: under a 0.0 cash policy, cash is excess and does not scale with revenue. Customer prepayments in otherNonInterestLiab are the swing: strong bookings push OWC more negative, a downcycle drains them. Bear, base and bull are IDENTICAL for this driver. The anchor window contains no downcycle, so the observed range understates the true spread and no spread has been invented. Widen from a longer history (FY2012-13, FY2019) or Investor Day 2030 guidance before stamping.",
+          "tax_rate": "FY2022-FY2024 anchor window (O2: FY2020-21 excluded). Shape: trend, up (15.02, 15.81, 18.59). Per open item T1 this is the IMPLIED EFFECTIVE rate from the income lines, NOT assumptions.taxRate of 0.2580, which is near the Dutch statutory rate and overstates tax by roughly 650 per year on FY2024 EBIT. Rule: hold the FY2024 implied rate flat. The climb is consistent with a 15 percent global minimum floor phasing in; if it continues toward statutory, value falls. Case-independent, so one path across all three cases by design.",
+          "other_op_assets_scaling_pct_revenue": "PROVISIONAL, rule-based, not researched. Rule: base = the FY2024 observed scaling remainder of 17.31 percent (4,892.5 on revenue 28,262.9), held flat, i.e. no assumed improvement from the base year the engine starts from. Cases span by the single observed year-on-year move of 3.45pp (FY2023 was 13.86 percent: 4,892.5 becomes 3,820.5 on revenue 27,557.7). Bull is the low ratio (less capital consumed, higher FOCF), bear the high. LIMIT: two observations only. FY2020-22 component detail would settle whether 13.86 to 17.31 is a range or a trend. Revise before stamping."
+        }
+      }
+    },
+    "triggers": [
+      {
+        "id": "bookings",
+        "observable": "Quarterly net system bookings",
+        "threshold": null,
+        "direction": null,
+        "flipsTo": null,
+        "playbook": null,
+        "resolutions": []
+      },
+      {
+        "id": "china_mix",
+        "observable": "China as a share of system sales",
+        "threshold": null,
+        "direction": null,
+        "flipsTo": null,
+        "playbook": null,
+        "resolutions": []
+      },
+      {
+        "id": "highna_ship",
+        "observable": "High-NA systems shipped per period",
+        "threshold": null,
+        "direction": null,
+        "flipsTo": null,
+        "playbook": null,
+        "resolutions": []
+      },
+      {
+        "id": "memory_capex",
+        "observable": "HBM/DRAM capex announcements",
+        "threshold": null,
+        "direction": null,
+        "flipsTo": null,
+        "playbook": null,
+        "resolutions": []
+      },
+      {
+        "id": "semi_wfe",
+        "observable": "SEMI WFE spend forecast revisions",
+        "threshold": null,
+        "direction": null,
+        "flipsTo": null,
+        "playbook": null,
+        "resolutions": []
+      }
+    ],
+    "_note_triggers": "Nulls here are reported as unarmed but do not block a run. Each armed trigger needs a threshold, a direction, the case it flips to, and a playbook. Resolutions accumulate over time and are the calibration loop.",
+    "_openItems": [
+      "C5 wacc across cases",
+      "C6 discounting timing",
+      "T1 statutory 25.80 vs implied effective 13.7-18.6; the forward tax_rate driver is free of this, slices 1-4 are not",
+      "E1 costOfSales must be depreciation-free",
+      "E2 projected block does not drive interest or tax lines",
+      "E3 operatingCash is total cash, not an operating subset",
+      "E4 FY2024 reclassification inside otherCurrentAssets: current finance receivables 1,379.2 -> 82.6 and current tax assets 1,001.2 -> 283.6. Both feed OWC and are part of the O3 swing",
+      "O2 anchor paths on FY2022-FY2024, not FY2020",
+      "O4 note 26 loans receivable grew 56.8 percent on revenue up 2.5 percent and is 56 percent of the FY2024 otherOperatingAssets step. Read the note before stamping",
+      "O5 the scaling remainder k rests on two observations (13.86 FY2023, 17.31 FY2024). Not settled",
+      "O1 RESOLVED v0.5 tight split. O3 RESOLVED v0.6 by filling owc at the three-year mean.",
+      "O6 the tornado swaps one driver's path from bear or bull into an otherwise-base world. Once paths embed operating leverage that combination is internally incoherent: a base-revenue world with bear gross margin does not exist. Useful as a sensitivity ranking, not as a scenario.",
+      "O7 bear = base = bull on all six anchored drivers, so their tornado span is ZERO by construction. The football field spans on revenue-tree variation alone until spreads are sourced.",
+      "O8 terminalGrowth is NOT in the tornado. Only case drivers and the WACC band are swung. Terminal growth is usually among the most sensitive inputs in a five-year explicit DCF and its sensitivity is currently invisible. Add it to the tornado or swing it by hand.",
+      "O9 terminal-value dominance, an acceptance test that can only run once the revenue tree is filled. Five explicit years at WACC 0.10 and g 0.02 will put most of EV in the terminal value (the synthetic fixture ran 77-80 percent). If terminalSharePct exceeds roughly 0.75, switch terminalMethod to fade_then_gordon with fadeYears set, or lengthen the explicit horizon. Both are already supported by the engine.",
+      "O10 the WACC band is the only remaining non-revenue gap and needs a completed /collect run (STATE.md estimates 1-2 USD uninterrupted). Rotate the API key first: it hit a transcript."
+    ]
+  }
+}

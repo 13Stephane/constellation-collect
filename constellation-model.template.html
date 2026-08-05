@@ -1,0 +1,372 @@
+<!doctype html>
+<!-- Constellation model — single-file render of the 4 slices (injected DATA).
+     Build: inject a schema-v2 JSON into the #constellation-data block (see build-viewer.py).
+     Falls back to each slice's own ASML SAMPLE when no data is injected. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Constellation model</title>
+<script crossorigin src="https://unpkg.com/react@18.3.1/umd/react.development.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/@babel/standalone@7.25.6/babel.min.js"></script>
+<style>html,body{margin:0;background:rgb(25,60,63)}</style>
+<script>
+// surface any load/runtime error into the page instead of rendering blank
+window.addEventListener("error", function (e) {
+  var r = document.getElementById("root");
+  var msg = (e && (e.message || e.error)) || e;
+  var stack = (e && e.error && e.error.stack) || "";
+  if (r && !window.__rendered) {
+    r.innerHTML = '<pre style="color:#e0a; white-space:pre-wrap; font:12px ui-monospace,Menlo,monospace; padding:24px; max-width:900px; margin:0 auto;">Viewer error:\n' +
+      String(msg).replace(/</g, "&lt;") + "\n\n" + String(stack).replace(/</g, "&lt;") + "</pre>";
+  }
+});
+</script>
+</head>
+<body>
+<div id="root">loading…</div>
+
+<!-- the local build step replaces the contents of this block with the agent's schema-v2 JSON -->
+<script id="constellation-data" type="application/json">
+null
+</script>
+
+<script type="text/babel" data-presets="react">
+/** @jsxRuntime classic */
+/** @jsx React.createElement */
+const { useState, useMemo } = React;
+
+let DATA = null;
+try {
+  const raw = document.getElementById("constellation-data").textContent.trim();
+  const p = JSON.parse(raw);
+  if (p && p.income && p.balance && p.years) DATA = p;
+} catch (e) { /* fall back to sample */ }
+
+/* ============================ SLICE 1 — STATEMENTS ============================ */
+const Slice1 = (() => {
+  const C = { bg: "rgb(25,60,63)", ink: "rgb(244,240,233)", dim: "rgba(244,240,233,0.55)", faint: "rgba(244,240,233,0.30)", line: "rgba(244,240,233,0.13)", panel: "rgba(244,240,233,0.035)", gold: "rgb(198,165,83)", goldDim: "rgba(198,165,83,0.4)", edit: "rgba(198,165,83,0.9)", comp: "rgba(244,240,233,0.5)", red: "rgb(200,120,100)" };
+  const mono = "'IBM Plex Mono', ui-monospace, Menlo, monospace";
+  const serif = "Georgia, 'Times New Roman', serif";
+  const SAMPLE = { schemaVersion: 2, company: "ASML Holding NV", unit: "EUR millions", years: [2020, 2021, 2022, 2023, 2024], income: { revenue: [13978.5, 18611, 21173.4, 27558.5, 28262.9], costOfSales: [6873.6, 8505.6, 10119.2, 12989.3, 13268.7], depreciation: [475.2, 454.6, 580.3, 733.2, 913.3], sga: [2578.2, 2900.7, 3973.2, 4793.7, 5058.3], interestIncome: [8.4, 10, 16.2, 193.9, 182.4], interestExpense: [43.3, 54.6, 60.8, 152.7, 162.6], incomeTaxes: [551.5, 1021.4, 969.9, 1435.8, 1680.6] }, balance: { operatingCash: [6049.4, 6951.8, 7268.3, 7004.7, 12735.9], otherCurrentAssets: [9880.6, 11238.4, 15796.6, 17389.2, 18001.5], ppe: [2470.3, 2982.7, 3944.2, 5493.2, 6846.8], otherOperatingAssets: [8867.1, 9058.1, 9291.3, 10070.4, 11005.4], accountsPayable: [1377.9, 2116.3, 2565.2, 2347.3, 3500.4], otherNonInterestLiab: [5210.2, 9672.6, 14672.2, 13927.3, 15540.7], longTermDebt: [6813.9, 8301.5, 10252.2, 10230.5, 11071.7], equity: [13865.4, 10140.6, 8810.8, 13452.4, 18476.8] }, assumptions: { taxRate: 0.258, wacc: 0.1 }, sharesOutstanding: [416.514034, 402.601613, 394.589411, 393.421721, 393.28372], labels: { costOfSales: "Production costs (ex. D&A)", depreciation: "Depreciation & amortisation", sga: "R&D, sales, admin., other op. expenses (ex. D&A)" } };
+  const fmt = (v) => v == null || isNaN(v) ? "—" : Math.round(v).toLocaleString();
+
+  function App() {
+    const [data, setData] = useState(DATA || SAMPLE);
+    const [edit, setEdit] = useState(null);
+    const [draft, setDraft] = useState("");
+    const yrs = (data && Array.isArray(data.years)) ? data.years : [];
+    const inc = (data && data.income) ? data.income : {};
+    const bal = (data && data.balance) ? data.balance : {};
+    const lab = (data && data.labels) || {};
+    const cell = (obj, key, i) => { const arr = obj && obj[key]; return Array.isArray(arr) && typeof arr[i] === "number" ? arr[i] : 0; };
+    const comp = useMemo(() => {
+      const n = yrs.length, z = () => Array(n).fill(0);
+      const gp = z(), ebitda = z(), ebit = z(), ibt = z(), ni = z(), totOpex = z();
+      for (let i = 0; i < n; i++) { gp[i] = cell(inc, "revenue", i) - cell(inc, "costOfSales", i); totOpex[i] = cell(inc, "sga", i) + cell(inc, "depreciation", i); ebitda[i] = gp[i] - cell(inc, "sga", i); ebit[i] = ebitda[i] - cell(inc, "depreciation", i); ibt[i] = ebit[i] + cell(inc, "interestIncome", i) - cell(inc, "interestExpense", i); ni[i] = ibt[i] - cell(inc, "incomeTaxes", i); }
+      const tca = z(), ta = z(), tncl = z(), tle = z(), chk = z();
+      for (let i = 0; i < n; i++) { tca[i] = cell(bal, "operatingCash", i) + cell(bal, "otherCurrentAssets", i); ta[i] = tca[i] + cell(bal, "ppe", i) + cell(bal, "otherOperatingAssets", i); tncl[i] = cell(bal, "accountsPayable", i) + cell(bal, "otherNonInterestLiab", i); tle[i] = tncl[i] + cell(bal, "longTermDebt", i) + cell(bal, "equity", i); chk[i] = ta[i] - tle[i]; }
+      return { gp, ebitda, ebit, ibt, ni, totOpex, tca, ta, tncl, tle, chk };
+    }, [data]);
+    const startEdit = (section, key, i, val) => { setEdit({ section, key, i }); setDraft(String(val)); };
+    const commitEdit = () => { if (!edit) return; const v = parseFloat(draft.replace(/,/g, "")); if (!isNaN(v)) { setData(d => { const nd = JSON.parse(JSON.stringify(d)); nd[edit.section][edit.key][edit.i] = v; return nd; }); } setEdit(null); };
+    const EditRow = ({ section, field: k, label, bold }) => (
+      <tr>
+        <td style={{ ...tdLabel, fontWeight: bold ? 700 : 400 }}>{label}</td>
+        {yrs.map((_, i) => { const editing = edit && edit.section === section && edit.key === k && edit.i === i; return (
+          <td key={i} style={tdNum} onClick={() => startEdit(section, k, i, cell(data[section] || {}, k, i))}>
+            {editing ? (<input autoFocus value={draft} onChange={e => setDraft(e.target.value)} onBlur={commitEdit} onKeyDown={e => { if (e.key === "Enter") commitEdit(); if (e.key === "Escape") setEdit(null); }} style={inputStyle} />) : (<span style={{ color: C.edit, borderBottom: `1px dashed ${C.goldDim}`, cursor: "text" }}>{fmt(cell(data[section] || {}, k, i))}</span>)}
+          </td>); })}
+      </tr>);
+    const CompRow = ({ vals, label, bold, highlight }) => (
+      <tr style={highlight ? { background: "rgba(198,165,83,0.06)" } : {}}>
+        <td style={{ ...tdLabel, fontStyle: "italic", fontWeight: bold ? 700 : 400, color: bold ? C.ink : C.comp }}>{label}</td>
+        {vals.map((v, i) => (<td key={i} style={{ ...tdNum, fontStyle: "italic", color: bold ? C.ink : C.comp }}>{fmt(v)}</td>))}
+      </tr>);
+    return (
+      <div style={{ maxWidth: 1000, margin: "0 auto" }}>
+        <div style={{ fontFamily: mono, fontSize: 10, letterSpacing: "0.2em", color: C.dim, textTransform: "uppercase", marginBottom: 6 }}>Constellation · financial model · slice 1 of 4 (statements)</div>
+        <h1 style={{ fontFamily: serif, fontSize: 26, fontWeight: 400, margin: 0, color: C.ink }}>{data.company} <span style={{ color: C.dim, fontSize: 15 }}>· {data.unit}</span></h1>
+        <div style={{ fontFamily: mono, fontSize: 10, color: C.faint, margin: "6px 0 4px" }}><span style={{ color: C.edit }}>gold dashed</span> = editable input · <span style={{ fontStyle: "italic", color: C.comp }}>italic</span> = computed</div>
+        <SectionTitle>Income statement</SectionTitle>
+        <div style={tableWrap}><table style={tableStyle}>
+          <thead><tr><th style={thLabel}></th>{yrs.map(y => <th key={y} style={thYear}>{y}</th>)}</tr></thead>
+          <tbody>
+            <EditRow section="income" key="revenue" field="revenue" label="Revenue (Net sales)" />
+            <EditRow section="income" key="costOfSales" field="costOfSales" label={lab.costOfSales || "Cost of sales"} />
+            <CompRow vals={comp.gp} label="Gross profit" />
+            <EditRow section="income" key="depreciation" field="depreciation" label={lab.depreciation || "Depreciation"} />
+            <EditRow section="income" key="sga" field="sga" label={lab.sga || "SG&A"} />
+            <CompRow vals={comp.totOpex} label="Total operating expense" />
+            <CompRow vals={comp.ebitda} label="EBITDA" highlight />
+            <CompRow vals={comp.ebit} label="EBIT (income before interest & taxes)" bold />
+            <EditRow section="income" key="interestIncome" field="interestIncome" label="Interest income" />
+            <EditRow section="income" key="interestExpense" field="interestExpense" label="Interest expense" />
+            <CompRow vals={comp.ibt} label="Income before taxes" />
+            <EditRow section="income" key="incomeTaxes" field="incomeTaxes" label="Income taxes" />
+            <CompRow vals={comp.ni} label="Net income" bold />
+          </tbody></table></div>
+        <SectionTitle>Balance sheet</SectionTitle>
+        <div style={tableWrap}><table style={tableStyle}>
+          <thead><tr><th style={thLabel}></th>{yrs.map(y => <th key={y} style={thYear}>{y}</th>)}</tr></thead>
+          <tbody>
+            <SubHead cols={yrs.length}>Current assets</SubHead>
+            <EditRow section="balance" key="operatingCash" field="operatingCash" label="Operating cash" />
+            <EditRow section="balance" key="otherCurrentAssets" field="otherCurrentAssets" label="Other current operational assets" />
+            <CompRow vals={comp.tca} label="Total current assets" />
+            <EditRow section="balance" key="ppe" field="ppe" label="Property, plant & equipment, net" />
+            <EditRow section="balance" key="otherOperatingAssets" field="otherOperatingAssets" label="R&D / other operating assets, net" />
+            <CompRow vals={comp.ta} label="Total assets" bold />
+            <SubHead cols={yrs.length}>Current liabilities (non-interest)</SubHead>
+            <EditRow section="balance" key="accountsPayable" field="accountsPayable" label="Accounts payable & accrued (non-interest)" />
+            <EditRow section="balance" key="otherNonInterestLiab" field="otherNonInterestLiab" label="Other non-interest current liabilities" />
+            <CompRow vals={comp.tncl} label="Total non-interest current liabilities" />
+            <EditRow section="balance" key="longTermDebt" field="longTermDebt" label="Short & long term debt (interest paying)" />
+            <EditRow section="balance" key="equity" field="equity" label="Total stockholders equity" />
+            <CompRow vals={comp.tle} label="Total liabilities & equity" bold />
+            <CompRow vals={comp.chk} label="Balance check (assets − L&E)" />
+          </tbody></table></div>
+        <div style={{ display: "flex", gap: 30, flexWrap: "wrap", marginTop: 18, fontFamily: mono, fontSize: 11, color: C.dim }}>
+          <div><span style={{ color: C.gold }}>Shares (m), latest:</span> {Array.isArray(data.sharesOutstanding) && data.sharesOutstanding.length ? Number(data.sharesOutstanding[yrs.length - 1] || 0).toFixed(1) : "—"}</div>
+          <div><span style={{ color: C.gold }}>Tax rate:</span> {(((data.assumptions || {}).taxRate || 0) * 100).toFixed(1)}%</div>
+          <div><span style={{ color: C.gold }}>WACC:</span> {(((data.assumptions || {}).wacc || 0) * 100).toFixed(1)}%</div>
+        </div>
+      </div>);
+  }
+  const tableWrap = { overflowX: "auto", border: "1px solid rgba(244,240,233,0.13)", borderRadius: 3, marginBottom: 26 };
+  const tableStyle = { width: "100%", borderCollapse: "collapse", minWidth: 680 };
+  const thLabel = { textAlign: "left", padding: "10px 14px", borderBottom: "1px solid rgba(244,240,233,0.13)", position: "sticky", left: 0, background: "rgb(25,60,63)" };
+  const thYear = { textAlign: "right", padding: "10px 14px", borderBottom: "1px solid rgba(244,240,233,0.13)", fontFamily: mono, fontSize: 11, color: "rgba(244,240,233,0.55)" };
+  const tdLabel = { textAlign: "left", padding: "8px 14px", borderBottom: "1px solid rgba(244,240,233,0.08)", fontFamily: serif, fontSize: 13, color: "rgb(244,240,233)", position: "sticky", left: 0, background: "rgb(25,60,63)", whiteSpace: "nowrap" };
+  const tdNum = { textAlign: "right", padding: "8px 14px", borderBottom: "1px solid rgba(244,240,233,0.08)", fontFamily: mono, fontSize: 12.5, color: "rgb(244,240,233)", cursor: "pointer", whiteSpace: "nowrap" };
+  const inputStyle = { width: 90, fontFamily: mono, fontSize: 12.5, color: "rgb(244,240,233)", background: "rgba(0,0,0,0.3)", border: "1px solid rgb(198,165,83)", borderRadius: 2, padding: "2px 6px", textAlign: "right", outline: "none" };
+  function SectionTitle({ children }) { return <div style={{ fontFamily: mono, fontSize: 11, letterSpacing: "0.16em", textTransform: "uppercase", color: "rgb(198,165,83)", margin: "8px 0 10px" }}>{children}</div>; }
+  function SubHead({ children, cols }) { return <tr><td colSpan={cols + 1} style={{ padding: "10px 14px 4px", fontFamily: mono, fontSize: 9.5, letterSpacing: "0.14em", textTransform: "uppercase", color: "rgb(198,165,83)", background: "rgb(25,60,63)" }}>{children}</td></tr>; }
+  return App;
+})();
+
+/* ============================ SLICE 2 — PERFORMANCE ============================ */
+const Slice2 = (() => {
+  const C = { bg: "rgb(25,60,63)", ink: "rgb(244,240,233)", dim: "rgba(244,240,233,0.55)", faint: "rgba(244,240,233,0.30)", line: "rgba(244,240,233,0.13)", panel: "rgba(244,240,233,0.035)", gold: "rgb(198,165,83)", goldDim: "rgba(198,165,83,0.4)", edit: "rgba(198,165,83,0.9)", comp: "rgba(244,240,233,0.5)", green: "rgb(120,180,140)", red: "rgb(200,120,100)", blue: "rgb(130,160,200)" };
+  const mono = "'IBM Plex Mono', ui-monospace, Menlo, monospace";
+  const serif = "Georgia, 'Times New Roman', serif";
+  const SAMPLE = Slice1.SAMPLE || null;
+  const f0 = v => v == null || isNaN(v) ? "—" : Math.round(v).toLocaleString();
+  const pct = v => v == null || isNaN(v) ? "—" : (v * 100).toFixed(1) + "%";
+  const x2 = v => v == null || isNaN(v) ? "—" : v.toFixed(2) + "x";
+  const FALLBACK = { schemaVersion: 2, company: "ASML Holding NV", unit: "EUR millions", years: [2020, 2021, 2022, 2023, 2024], income: { revenue: [13978.5, 18611, 21173.4, 27558.5, 28262.9], costOfSales: [6873.6, 8505.6, 10119.2, 12989.3, 13268.7], depreciation: [475.2, 454.6, 580.3, 733.2, 913.3], sga: [2578.2, 2900.7, 3973.2, 4793.7, 5058.3], interestIncome: [8.4, 10, 16.2, 193.9, 182.4], interestExpense: [43.3, 54.6, 60.8, 152.7, 162.6], incomeTaxes: [551.5, 1021.4, 969.9, 1435.8, 1680.6] }, balance: { operatingCash: [6049.4, 6951.8, 7268.3, 7004.7, 12735.9], otherCurrentAssets: [9880.6, 11238.4, 15796.6, 17389.2, 18001.5], ppe: [2470.3, 2982.7, 3944.2, 5493.2, 6846.8], otherOperatingAssets: [8867.1, 9058.1, 9291.3, 10070.4, 11005.4], accountsPayable: [1377.9, 2116.3, 2565.2, 2347.3, 3500.4], otherNonInterestLiab: [5210.2, 9672.6, 14672.2, 13927.3, 15540.7], longTermDebt: [6813.9, 8301.5, 10252.2, 10230.5, 11071.7], equity: [13865.4, 10140.6, 8810.8, 13452.4, 18476.8] }, assumptions: { taxRate: 0.258, wacc: 0.1 }, sharesOutstanding: [416.514034, 402.601613, 394.589411, 393.421721, 393.28372], labels: {} };
+  function App() {
+    const [data] = useState(DATA || FALLBACK);
+    const [showStmt, setShowStmt] = useState(false);
+    const yrs = data.years, inc = data.income, bal = data.balance;
+    const tr = data.assumptions.taxRate, wacc = data.assumptions.wacc;
+    const m = useMemo(() => {
+      const n = yrs.length, z = () => Array(n).fill(null);
+      const ebit = z(), noplat = z(), owc = z(), ppeOther = z(), ic = z(), icFin = z();
+      for (let i = 0; i < n; i++) { ebit[i] = inc.revenue[i] - inc.costOfSales[i] - inc.sga[i] - inc.depreciation[i]; noplat[i] = ebit[i] * (1 - tr); owc[i] = (bal.operatingCash[i] + bal.otherCurrentAssets[i]) - (bal.accountsPayable[i] + bal.otherNonInterestLiab[i]); ppeOther[i] = bal.ppe[i] + bal.otherOperatingAssets[i]; ic[i] = owc[i] + ppeOther[i]; icFin[i] = bal.equity[i] + bal.longTermDebt[i]; }
+      const grossOCF = z(), dWC = z(), capexIncl = z(), dOther = z(), totInv = z(), focf = z();
+      for (let i = 0; i < n; i++) { grossOCF[i] = noplat[i] + inc.depreciation[i]; if (i === 0) { dWC[i] = 0; capexIncl[i] = 0; dOther[i] = 0; totInv[i] = 0; focf[i] = grossOCF[i]; continue; } dWC[i] = owc[i] - owc[i - 1]; capexIncl[i] = (bal.ppe[i] - bal.ppe[i - 1]) + inc.depreciation[i]; dOther[i] = bal.otherOperatingAssets[i] - bal.otherOperatingAssets[i - 1]; totInv[i] = dWC[i] + capexIncl[i] + dOther[i]; focf[i] = grossOCF[i] - dWC[i] - capexIncl[i] - dOther[i]; }
+      const roic = z(), spread = z(), eva = z(), ebitMargin = z(), capTurn = z();
+      for (let i = 1; i < n; i++) { roic[i] = noplat[i] / ic[i - 1]; spread[i] = roic[i] - wacc; eva[i] = spread[i] * ic[i - 1]; ebitMargin[i] = ebit[i] / inc.revenue[i]; capTurn[i] = inc.revenue[i] / ic[i - 1]; }
+      return { ebit, noplat, owc, ppeOther, ic, icFin, grossOCF, dWC, capexIncl, dOther, totInv, focf, roic, spread, eva, ebitMargin, capTurn };
+    }, [data]);
+    const Row = ({ label, vals, fmt = f0, color, bold, sub, first0 }) => (
+      <tr style={bold ? { background: "rgba(198,165,83,0.06)" } : {}}>
+        <td style={{ ...tdLabel, fontWeight: bold ? 700 : 400, color: sub ? C.dim : C.ink, paddingLeft: sub ? 26 : 14 }}>{label}</td>
+        {vals.map((v, i) => (<td key={i} style={{ ...tdNum, color: color ? color(v, i) : C.ink }}>{i === 0 && first0 ? "—" : fmt(v)}</td>))}
+      </tr>);
+    const green = v => v > 0 ? C.green : v < 0 ? C.red : C.dim;
+    return (
+      <div style={{ maxWidth: 1000, margin: "0 auto" }}>
+        <div style={{ fontFamily: mono, fontSize: 10, letterSpacing: "0.2em", color: C.dim, textTransform: "uppercase", marginBottom: 6 }}>Constellation · financial model · slice 2 of 4 (performance)</div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: 10 }}>
+          <h1 style={{ fontFamily: serif, fontSize: 26, fontWeight: 400, margin: 0, color: C.ink }}>{data.company} <span style={{ color: C.dim, fontSize: 15 }}>· {data.unit}</span></h1>
+          <button onClick={() => setShowStmt(s => !s)} style={btnGhost}>{showStmt ? "hide inputs" : "show inputs"}</button>
+        </div>
+        <div style={{ fontFamily: mono, fontSize: 10, color: C.faint, margin: "6px 0 16px" }}>tax {(tr * 100).toFixed(1)}% · WACC {(wacc * 100).toFixed(1)}% · ROIC on prior-year invested capital</div>
+        {showStmt && (<div style={{ ...tableWrap, marginBottom: 26 }}><table style={tableStyle}>
+          <thead><tr><th style={thLabel}>Inputs</th>{yrs.map(y => <th key={y} style={thYear}>{y}</th>)}</tr></thead>
+          <tbody><Row label="Revenue" vals={inc.revenue} /><Row label="EBIT (computed)" vals={m.ebit} bold /><Row label="Operating working capital" vals={m.owc} sub /><Row label="PP&E + other op. assets" vals={m.ppeOther} sub /></tbody></table></div>)}
+        <Step n="1" title="Invested capital" note="Operating working capital = current assets − non-interest current liabilities. Financing side = equity + interest-bearing debt." />
+        <div style={tableWrap}><table style={tableStyle}><thead><tr><th style={thLabel}></th>{yrs.map(y => <th key={y} style={thYear}>{y}</th>)}</tr></thead><tbody>
+          <Row label="Operating working capital" vals={m.owc} /><Row label="PP&E + other operating assets" vals={m.ppeOther} /><Row label="Invested capital (assets side)" vals={m.ic} bold /><Row label="Equity + interest-bearing debt" vals={m.icFin} /><Row label="Check (finance − assets)" vals={m.ic.map((v, i) => m.icFin[i] - v)} color={() => C.dim} />
+        </tbody></table></div>
+        <Step n="2" title="Free operating cash flow" note="NOPLAT = EBIT × (1 − tax). FOCF = NOPLAT + depreciation − ΔWC − capex − ΔOther. First year has no baseline." />
+        <div style={tableWrap}><table style={tableStyle}><thead><tr><th style={thLabel}></th>{yrs.map(y => <th key={y} style={thYear}>{y}</th>)}</tr></thead><tbody>
+          <Row label="EBIT" vals={m.ebit} /><Row label={`× (1 − ${(tr * 100).toFixed(1)}%) = NOPLAT`} vals={m.noplat} /><Row label="+ Depreciation" vals={inc.depreciation} /><Row label="Gross operating cash flow" vals={m.grossOCF} bold /><Row label="Δ Operating working capital" vals={m.dWC} first0 color={green} /><Row label="Δ Net PP&E (capex incl. dep)" vals={m.capexIncl} first0 /><Row label="Δ Other operating assets" vals={m.dOther} first0 color={green} /><Row label="Total operating (dis)investment" vals={m.totInv} first0 /><Row label="Free operating cash flow" vals={m.focf} bold color={green} />
+        </tbody></table></div>
+        <Step n="3" title="Return on invested capital" note="ROIC = NOPLAT / prior-year invested capital. The spread vs WACC shows whether the business earns its cost of capital." />
+        <div style={tableWrap}><table style={tableStyle}><thead><tr><th style={thLabel}></th>{yrs.map(y => <th key={y} style={thYear}>{y}</th>)}</tr></thead><tbody>
+          <Row label="NOPLAT" vals={m.noplat} /><Row label="Invested capital (prior year)" vals={yrs.map((_, i) => i === 0 ? null : m.ic[i - 1])} first0 /><Row label="ROIC" vals={m.roic} fmt={pct} first0 color={(v) => v > wacc ? C.green : C.red} /><Row label="WACC" vals={yrs.map((_, i) => i === 0 ? null : wacc)} fmt={pct} first0 color={() => C.dim} /><Row label="Spread (ROIC − WACC)" vals={m.spread} fmt={pct} first0 color={green} bold />
+        </tbody></table></div>
+        <div style={{ fontFamily: mono, fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: C.gold, margin: "4px 0 8px" }}>DuPont · ROIC = EBIT margin × capital turnover × (1 − tax)</div>
+        <div style={tableWrap}><table style={tableStyle}><thead><tr><th style={thLabel}></th>{yrs.map(y => <th key={y} style={thYear}>{y}</th>)}</tr></thead><tbody>
+          <Row label="EBIT margin (EBIT / sales)" vals={m.ebitMargin} fmt={pct} first0 color={() => C.green} /><Row label="Capital turnover (sales / IC)" vals={m.capTurn} fmt={x2} first0 color={() => C.gold} /><Row label="(1 − tax)" vals={yrs.map((_, i) => i === 0 ? null : 1 - tr)} fmt={x2} first0 color={() => C.dim} /><Row label="= ROIC (product)" vals={m.roic} fmt={pct} first0 bold color={() => C.blue} />
+        </tbody></table></div>
+        <Step n="4" title="Economic profit (EVA)" note="EVA = (ROIC − WACC) × invested capital. Positive EVA means value created above the cost of capital." />
+        <div style={tableWrap}><table style={tableStyle}><thead><tr><th style={thLabel}></th>{yrs.map(y => <th key={y} style={thYear}>{y}</th>)}</tr></thead><tbody>
+          <Row label="Spread" vals={m.spread} fmt={pct} first0 color={green} /><Row label="× Invested capital (prior year)" vals={yrs.map((_, i) => i === 0 ? null : m.ic[i - 1])} first0 /><Row label="Economic profit (EVA)" vals={m.eva} first0 bold color={green} />
+        </tbody></table></div>
+      </div>);
+  }
+  const tableWrap = { overflowX: "auto", border: "1px solid rgba(244,240,233,0.13)", borderRadius: 3, marginBottom: 22 };
+  const tableStyle = { width: "100%", borderCollapse: "collapse", minWidth: 680 };
+  const thLabel = { textAlign: "left", padding: "10px 14px", borderBottom: "1px solid rgba(244,240,233,0.13)", position: "sticky", left: 0, background: "rgb(25,60,63)", fontFamily: mono, fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(244,240,233,0.4)" };
+  const thYear = { textAlign: "right", padding: "10px 14px", borderBottom: "1px solid rgba(244,240,233,0.13)", fontFamily: mono, fontSize: 11, color: "rgba(244,240,233,0.55)" };
+  const tdLabel = { textAlign: "left", padding: "8px 14px", borderBottom: "1px solid rgba(244,240,233,0.08)", fontFamily: serif, fontSize: 13, color: "rgb(244,240,233)", position: "sticky", left: 0, background: "rgb(25,60,63)", whiteSpace: "nowrap" };
+  const tdNum = { textAlign: "right", padding: "8px 14px", borderBottom: "1px solid rgba(244,240,233,0.08)", fontFamily: mono, fontSize: 12.5, whiteSpace: "nowrap" };
+  const btnGhost = { fontFamily: mono, fontSize: 9.5, letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(244,240,233,0.55)", background: "transparent", border: "1px solid rgba(244,240,233,0.13)", padding: "5px 11px", borderRadius: 2, cursor: "pointer" };
+  function Step({ n, title, note }) { return (<div style={{ marginBottom: 8 }}><div style={{ fontFamily: serif, fontSize: 17, color: C.ink }}><span style={{ color: C.gold, fontFamily: mono, fontSize: 12 }}>Step {n} </span>{title}</div><div style={{ fontFamily: serif, fontSize: 12, color: C.dim, margin: "3px 0 8px", lineHeight: 1.5 }}>{note}</div></div>); }
+  return App;
+})();
+
+/* ============================ SLICE 3 — HEALTH ============================ */
+const Slice3 = (() => {
+  const C = { bg: "rgb(25,60,63)", ink: "rgb(244,240,233)", dim: "rgba(244,240,233,0.55)", faint: "rgba(244,240,233,0.30)", line: "rgba(244,240,233,0.13)", panel: "rgba(244,240,233,0.035)", gold: "rgb(198,165,83)", green: "rgb(120,180,140)", red: "rgb(200,120,100)", blue: "rgb(130,160,200)" };
+  const mono = "'IBM Plex Mono', ui-monospace, Menlo, monospace";
+  const serif = "Georgia, 'Times New Roman', serif";
+  const x2 = v => v == null || isNaN(v) ? "—" : v.toFixed(2) + "x";
+  const pct2 = v => v == null || isNaN(v) ? "—" : (v * 100).toFixed(2) + "%";
+  const FALLBACK = Slice2 && null;
+  const SMP = { schemaVersion: 2, company: "ASML Holding NV", unit: "EUR millions", years: [2020, 2021, 2022, 2023, 2024], income: { revenue: [13978.5, 18611, 21173.4, 27558.5, 28262.9], costOfSales: [6873.6, 8505.6, 10119.2, 12989.3, 13268.7], depreciation: [475.2, 454.6, 580.3, 733.2, 913.3], sga: [2578.2, 2900.7, 3973.2, 4793.7, 5058.3], interestIncome: [8.4, 10, 16.2, 193.9, 182.4], interestExpense: [43.3, 54.6, 60.8, 152.7, 162.6], incomeTaxes: [551.5, 1021.4, 969.9, 1435.8, 1680.6] }, balance: { operatingCash: [6049.4, 6951.8, 7268.3, 7004.7, 12735.9], otherCurrentAssets: [9880.6, 11238.4, 15796.6, 17389.2, 18001.5], ppe: [2470.3, 2982.7, 3944.2, 5493.2, 6846.8], otherOperatingAssets: [8867.1, 9058.1, 9291.3, 10070.4, 11005.4], accountsPayable: [1377.9, 2116.3, 2565.2, 2347.3, 3500.4], otherNonInterestLiab: [5210.2, 9672.6, 14672.2, 13927.3, 15540.7], longTermDebt: [6813.9, 8301.5, 10252.2, 10230.5, 11071.7], equity: [13865.4, 10140.6, 8810.8, 13452.4, 18476.8] }, assumptions: { taxRate: 0.258, wacc: 0.1 }, sharesOutstanding: [416.514034, 402.601613, 394.589411, 393.421721, 393.28372], labels: {} };
+  function Spark({ vals, years, fmt, good = "up", height = 150 }) {
+    const w = 100, pad = 8; const nums = vals.map(v => v == null || isNaN(v) ? null : v); const valid = nums.filter(v => v != null);
+    const max = Math.max(...valid, 0), min = Math.min(...valid, 0); const range = max - min || 1;
+    const pts = nums.map((v, i) => { if (v == null) return null; const x = pad + (i / (years.length - 1)) * (w - 2 * pad); const y = pad + (1 - (v - min) / range) * (height - 2 * pad - 20); return { x, y, v, i }; }).filter(Boolean);
+    const path = pts.map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`).join(" "); const last = pts[pts.length - 1];
+    const trendUp = pts.length > 1 && pts[pts.length - 1].v >= pts[0].v; const color = good === "up" ? (trendUp ? C.green : C.red) : (trendUp ? C.red : C.green);
+    return (<svg viewBox={`0 0 ${w} ${height}`} style={{ width: "100%", height }}><path d={path} fill="none" stroke={color} strokeWidth="1.2" />{pts.map((p, i) => <circle key={i} cx={p.x} cy={p.y} r="1.6" fill={color} />)}{last && <text x={last.x} y={last.y - 4} fontSize="6" fill={C.ink} textAnchor="end" fontFamily={mono}>{fmt(last.v)}</text>}{pts.map((p, i) => <text key={"y" + i} x={p.x} y={height - 4} fontSize="5.5" fill={C.faint} textAnchor="middle" fontFamily={mono}>{String(years[p.i]).slice(2)}</text>)}</svg>);
+  }
+  function App() {
+    const [data] = useState(DATA || SMP);
+    const yrs = data.years, inc = data.income, bal = data.balance;
+    const m = useMemo(() => {
+      const n = yrs.length, z = () => Array(n).fill(null); const ebit = z(), ebitda = z(), intCov = z(), debtEbitda = z(), costDebt = z(), debtEq = z();
+      for (let i = 0; i < n; i++) { ebitda[i] = inc.revenue[i] - inc.costOfSales[i] - inc.sga[i]; ebit[i] = ebitda[i] - inc.depreciation[i]; intCov[i] = inc.interestExpense[i] ? ebit[i] / inc.interestExpense[i] : 0; debtEbitda[i] = ebitda[i] ? bal.longTermDebt[i] / ebitda[i] : null; costDebt[i] = bal.longTermDebt[i] ? inc.interestExpense[i] / bal.longTermDebt[i] : null; debtEq[i] = bal.equity[i] ? bal.longTermDebt[i] / bal.equity[i] : null; }
+      return { ebit, ebitda, intCov, debtEbitda, costDebt, debtEq };
+    }, [data]);
+    const Row = ({ label, vals, fmt, color }) => (<tr><td style={tdLabel}>{label}</td>{vals.map((v, i) => <td key={i} style={{ ...tdNum, color: color ? color(v) : C.ink }}>{fmt(v)}</td>)}</tr>);
+    const covColor = v => v == null ? C.dim : v >= 8 ? C.green : v >= 3 ? C.gold : C.red;
+    const deColor = v => v == null ? C.dim : v <= 2 ? C.green : v <= 3.5 ? C.gold : C.red;
+    return (
+      <div style={{ maxWidth: 1000, margin: "0 auto" }}>
+        <div style={{ fontFamily: mono, fontSize: 10, letterSpacing: "0.2em", color: C.dim, textTransform: "uppercase", marginBottom: 6 }}>Constellation · financial model · slice 3 of 4 (health)</div>
+        <h1 style={{ fontFamily: serif, fontSize: 26, fontWeight: 400, margin: 0, color: C.ink }}>{data.company} <span style={{ color: C.dim, fontSize: 15 }}>· {data.unit}</span></h1>
+        <div style={{ fontFamily: serif, fontSize: 13, color: C.dim, margin: "6px 0 18px", lineHeight: 1.5 }}>Solvency under stress. Interest coverage tells you how many times EBIT covers the interest bill; debt / EBITDA how many years of cash flow would repay the debt.</div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 24 }}>
+          <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 3, padding: "14px 16px" }}><div style={{ fontFamily: serif, fontSize: 14, color: C.ink, marginBottom: 4 }}>Interest coverage (EBIT / interest)</div><Spark vals={m.intCov} years={yrs} fmt={x2} good="up" /></div>
+          <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 3, padding: "14px 16px" }}><div style={{ fontFamily: serif, fontSize: 14, color: C.ink, marginBottom: 4 }}>Debt / EBITDA</div><Spark vals={m.debtEbitda} years={yrs} fmt={x2} good="down" /></div>
+        </div>
+        <div style={{ fontFamily: mono, fontSize: 11, letterSpacing: "0.16em", textTransform: "uppercase", color: C.gold, margin: "4px 0 10px" }}>Debt ratios</div>
+        <div style={tableWrap}><table style={tableStyle}><thead><tr><th style={thLabel}></th>{yrs.map(y => <th key={y} style={thYear}>{y}</th>)}</tr></thead><tbody>
+          <Row label="Interest coverage (EBIT / interest)" vals={m.intCov} fmt={x2} color={covColor} /><Row label="Debt / EBITDA" vals={m.debtEbitda} fmt={x2} color={deColor} /><Row label="Cost of debt (interest / debt)" vals={m.costDebt} fmt={pct2} color={() => C.ink} /><Row label="Debt / Equity" vals={m.debtEq} fmt={x2} color={() => C.ink} />
+        </tbody></table></div>
+        <div style={{ fontFamily: serif, fontSize: 12, color: C.dim, marginTop: 4, lineHeight: 1.5 }}>Color thresholds are illustrative solvency bands (coverage: green ≥8x, amber ≥3x; debt/EBITDA: green ≤2x, amber ≤3.5x).</div>
+      </div>);
+  }
+  const tableWrap = { overflowX: "auto", border: "1px solid rgba(244,240,233,0.13)", borderRadius: 3, marginBottom: 16 };
+  const tableStyle = { width: "100%", borderCollapse: "collapse", minWidth: 620 };
+  const thLabel = { textAlign: "left", padding: "10px 14px", borderBottom: "1px solid rgba(244,240,233,0.13)", position: "sticky", left: 0, background: "rgb(25,60,63)" };
+  const thYear = { textAlign: "right", padding: "10px 14px", borderBottom: "1px solid rgba(244,240,233,0.13)", fontFamily: mono, fontSize: 11, color: "rgba(244,240,233,0.55)" };
+  const tdLabel = { textAlign: "left", padding: "9px 14px", borderBottom: "1px solid rgba(244,240,233,0.08)", fontFamily: serif, fontSize: 13, color: "rgb(244,240,233)", position: "sticky", left: 0, background: "rgb(25,60,63)", whiteSpace: "nowrap" };
+  const tdNum = { textAlign: "right", padding: "9px 14px", borderBottom: "1px solid rgba(244,240,233,0.08)", fontFamily: mono, fontSize: 12.5, whiteSpace: "nowrap" };
+  return App;
+})();
+
+/* ============================ SLICE 4 — VALUATION ============================ */
+const Slice4 = (() => {
+  const C = { bg: "rgb(25,60,63)", ink: "rgb(244,240,233)", dim: "rgba(244,240,233,0.55)", faint: "rgba(244,240,233,0.30)", line: "rgba(244,240,233,0.13)", panel: "rgba(244,240,233,0.035)", gold: "rgb(198,165,83)", goldFill: "rgba(198,165,83,0.22)", goldMid: "rgb(198,165,83)", green: "rgb(120,180,140)", red: "rgb(200,120,100)", blue: "rgb(130,160,200)" };
+  const mono = "'IBM Plex Mono', ui-monospace, Menlo, monospace";
+  const serif = "Georgia, 'Times New Roman', serif";
+  const fk = v => v == null || isNaN(v) ? "—" : Math.round(v).toLocaleString();
+  const SMP = { schemaVersion: 2, company: "ASML Holding NV", unit: "EUR millions", years: [2020, 2021, 2022, 2023, 2024], income: { revenue: [13978.5, 18611, 21173.4, 27558.5, 28262.9], costOfSales: [6873.6, 8505.6, 10119.2, 12989.3, 13268.7], depreciation: [475.2, 454.6, 580.3, 733.2, 913.3], sga: [2578.2, 2900.7, 3973.2, 4793.7, 5058.3], interestIncome: [8.4, 10, 16.2, 193.9, 182.4], interestExpense: [43.3, 54.6, 60.8, 152.7, 162.6], incomeTaxes: [551.5, 1021.4, 969.9, 1435.8, 1680.6] }, balance: { operatingCash: [6049.4, 6951.8, 7268.3, 7004.7, 12735.9], otherCurrentAssets: [9880.6, 11238.4, 15796.6, 17389.2, 18001.5], ppe: [2470.3, 2982.7, 3944.2, 5493.2, 6846.8], otherOperatingAssets: [8867.1, 9058.1, 9291.3, 10070.4, 11005.4], accountsPayable: [1377.9, 2116.3, 2565.2, 2347.3, 3500.4], otherNonInterestLiab: [5210.2, 9672.6, 14672.2, 13927.3, 15540.7], longTermDebt: [6813.9, 8301.5, 10252.2, 10230.5, 11071.7], equity: [13865.4, 10140.6, 8810.8, 13452.4, 18476.8] }, assumptions: { taxRate: 0.258, wacc: 0.1 }, sharesOutstanding: [416.514034, 402.601613, 394.589411, 393.421721, 393.28372], valuationMultiples: { industry: "tech-saas", evRevenue: [4, 12], evEbitda: [15, 30], evEbit: [20, 40], pe: [25, 50], growth: [0.025, 0.04] }, labels: {} };
+  function App() {
+    const [data] = useState(DATA || SMP);
+    const [view, setView] = useState("ev");
+    const yrs = data.years, inc = data.income, bal = data.balance;
+    const vm = data.valuationMultiples || SMP.valuationMultiples, tr = data.assumptions.taxRate, wacc = data.assumptions.wacc;
+    const i = yrs.length - 1;
+    const model = useMemo(() => {
+      const rev = inc.revenue[i], cos = inc.costOfSales[i], dep = inc.depreciation[i], sga = inc.sga[i];
+      const ii = inc.interestIncome[i], ie = inc.interestExpense[i], tax = inc.incomeTaxes[i];
+      const ebitda = rev - cos - sga, ebit = ebitda - dep, ni = ebit + ii - ie - tax, noplat = ebit * (1 - tr);
+      const netDebt = bal.longTermDebt[i] - bal.operatingCash[i]; const bookEquity = bal.equity[i];
+      const owc = k => (bal.operatingCash[k] + bal.otherCurrentAssets[k]) - (bal.accountsPayable[k] + bal.otherNonInterestLiab[k]);
+      const ic = k => owc(k) + bal.ppe[k] + bal.otherOperatingAssets[k]; const icNow = ic(i), icPrev = ic(i - 1);
+      const evaNow = (noplat / icPrev - wacc) * icPrev; const g = vm.growth;
+      const gordon = gg => noplat * (1 + gg) / (wacc - gg); const evaEV = gg => icNow + evaNow * (1 + gg) / (wacc - gg);
+      const rows = [
+        { name: "Invested capital", sub: "asset floor", lo: icNow, hi: icNow, point: true },
+        { name: "EV / Revenue", sub: `${vm.evRevenue[0]}x – ${vm.evRevenue[1]}x`, lo: vm.evRevenue[0] * rev, hi: vm.evRevenue[1] * rev },
+        { name: "EV / EBITDA", sub: `${vm.evEbitda[0]}x – ${vm.evEbitda[1]}x`, lo: vm.evEbitda[0] * ebitda, hi: vm.evEbitda[1] * ebitda },
+        { name: "EV / EBIT", sub: `${vm.evEbit[0]}x – ${vm.evEbit[1]}x`, lo: vm.evEbit[0] * ebit, hi: vm.evEbit[1] * ebit },
+        { name: "DCF — Gordon", sub: `g ${(g[0] * 100).toFixed(0)}% – ${(g[1] * 100).toFixed(0)}%`, lo: Math.min(gordon(g[0]), gordon(g[1])), hi: Math.max(gordon(g[0]), gordon(g[1])) },
+        { name: "EVA-based EV", sub: `g ${(g[0] * 100).toFixed(0)}% – ${(g[1] * 100).toFixed(0)}%`, lo: Math.min(evaEV(g[0]), evaEV(g[1])), hi: Math.max(evaEV(g[0]), evaEV(g[1])) },
+        { name: "P / E", sub: `${vm.pe[0]}x – ${vm.pe[1]}x`, lo: vm.pe[0] * ni + netDebt, hi: vm.pe[1] * ni + netDebt, equityBridged: true },
+        { name: "Book equity", sub: "balance-sheet basis", lo: bookEquity + netDebt, hi: bookEquity + netDebt, point: true, equityBridged: true },
+      ];
+      const dcfHeadline = gordon(0.025);
+      return { rows, netDebt, shares: data.sharesOutstanding[i], dcfHeadline, ebitda, ebit, ni, noplat, rev };
+    }, [data]);
+    const toView = (evVal) => { if (view === "ev") return evVal; const equity = evVal - model.netDebt; if (view === "equity") return equity; return equity / model.shares; };
+    const unitLabel = view === "share" ? `${data.unit.split(" ")[0]} / share` : `${data.unit} (${view === "ev" ? "enterprise" : "equity"} value)`;
+    const displayRows = model.rows.map(r => ({ ...r, dlo: toView(r.lo), dhi: toView(r.hi) }));
+    const allVals = displayRows.flatMap(r => [r.dlo, r.dhi]).filter(v => isFinite(v));
+    const axisMin = Math.min(0, ...allVals), axisMax = Math.max(...allVals); const range = axisMax - axisMin || 1; const xp = v => ((v - axisMin) / range) * 100;
+    return (
+      <div style={{ maxWidth: 1000, margin: "0 auto" }}>
+        <div style={{ fontFamily: mono, fontSize: 10, letterSpacing: "0.2em", color: C.dim, textTransform: "uppercase", marginBottom: 6 }}>Constellation · financial model · slice 4 of 4 (valuation)</div>
+        <h1 style={{ fontFamily: serif, fontSize: 26, fontWeight: 400, margin: 0, color: C.ink }}>{data.company} <span style={{ color: C.dim, fontSize: 15 }}>· {data.unit}</span></h1>
+        <div style={{ display: "flex", gap: 30, flexWrap: "wrap", margin: "14px 0 6px", alignItems: "baseline" }}>
+          <div><div style={{ fontFamily: mono, fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: C.gold }}>DCF (Gordon, g=2.5%)</div><div style={{ fontFamily: serif, fontSize: 30, color: C.ink }}>{fk(model.dcfHeadline)}</div><div style={{ fontFamily: serif, fontSize: 12, color: C.dim }}>NOPLAT × (1 + g) / (WACC − g)</div></div>
+          <div><div style={{ fontFamily: mono, fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: C.gold }}>Net debt (debt − cash)</div><div style={{ fontFamily: serif, fontSize: 30, color: model.netDebt < 0 ? C.green : C.ink }}>{fk(model.netDebt)}</div><div style={{ fontFamily: serif, fontSize: 12, color: C.dim }}>{model.netDebt < 0 ? "net cash: reduces EV→equity gap" : "bridges equity → EV"}</div></div>
+        </div>
+        <div style={{ display: "flex", gap: 6, margin: "18px 0 6px" }}>{[["ev", "Enterprise value"], ["equity", "Equity value"], ["share", "Share price"]].map(([k, l]) => (<button key={k} onClick={() => setView(k)} style={{ fontFamily: mono, fontSize: 10, letterSpacing: "0.08em", color: view === k ? C.bg : C.dim, background: view === k ? C.gold : "transparent", border: `1px solid ${view === k ? C.gold : C.line}`, padding: "6px 13px", borderRadius: 2, cursor: "pointer" }}>{l}</button>))}</div>
+        <div style={{ fontFamily: serif, fontSize: 12, color: C.dim, marginBottom: 14 }}>Football field — implied value from eight methods. Where the bars overlap is where value 'wants to land'. Based on {yrs[i]}.</div>
+        <div style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 3, padding: "18px 16px 8px" }}>
+          {displayRows.map((r, k) => { const lo = Math.min(r.dlo, r.dhi), hi = Math.max(r.dlo, r.dhi); const left = xp(lo), width = Math.max(xp(hi) - xp(lo), 0.4); const mid = (lo + hi) / 2; return (
+            <div key={k} style={{ display: "grid", gridTemplateColumns: "150px 1fr", gap: 10, alignItems: "center", marginBottom: 12 }}>
+              <div style={{ textAlign: "right" }}><div style={{ fontFamily: serif, fontSize: 13, color: C.ink, fontWeight: 600 }}>{r.name}</div><div style={{ fontFamily: mono, fontSize: 9, color: C.dim }}>{r.sub}</div></div>
+              <div style={{ position: "relative", height: 26 }}><div style={{ position: "absolute", left: 0, right: 0, top: 12, height: 1, background: C.line }} />
+                {r.point ? (<div style={{ position: "absolute", left: `${left}%`, top: 6, transform: "translateX(-50%)", display: "flex", alignItems: "center", gap: 6 }}><div style={{ width: 10, height: 10, borderRadius: 5, background: C.gold }} /><span style={{ fontFamily: mono, fontSize: 10, color: C.ink, whiteSpace: "nowrap" }}>{fk(r.dlo)}</span></div>) : (<><div style={{ position: "absolute", left: `${left}%`, width: `${width}%`, top: 4, height: 18, background: C.goldFill, border: `1px solid ${C.goldMid}`, borderRadius: 2 }} /><div style={{ position: "absolute", left: `${xp(mid)}%`, top: 8, transform: "translateX(-50%)", width: 8, height: 8, borderRadius: 4, background: C.gold }} /><span style={{ position: "absolute", left: `${left}%`, top: 4, transform: "translate(-102%,2px)", fontFamily: mono, fontSize: 9.5, color: C.dim, whiteSpace: "nowrap" }}>{fk(lo)}</span><span style={{ position: "absolute", left: `${xp(hi)}%`, top: 4, transform: "translate(6%,2px)", fontFamily: mono, fontSize: 9.5, color: C.dim, whiteSpace: "nowrap" }}>{fk(hi)}</span></>)}
+              </div>
+            </div>); })}
+          <div style={{ gridColumn: "2", marginLeft: 160, marginTop: 4, borderTop: `1px solid ${C.line}`, paddingTop: 4, display: "flex", justifyContent: "space-between", fontFamily: mono, fontSize: 9, color: C.faint }}><span>{fk(axisMin)}</span><span>{fk((axisMin + axisMax) / 2)}</span><span>{fk(axisMax)}</span></div>
+          <div style={{ textAlign: "center", fontFamily: serif, fontSize: 11, color: C.faint, fontStyle: "italic", marginTop: 2 }}>{unitLabel}</div>
+        </div>
+        <div style={{ fontFamily: serif, fontSize: 12, color: C.dim, marginTop: 12, lineHeight: 1.5 }}>Equity methods bridge to EV as <span style={{ color: C.gold }}>EV = equity value + net debt</span>, net debt = interest-bearing debt − operating cash.</div>
+      </div>);
+  }
+  return App;
+})();
+
+/* ============================ SHELL ============================ */
+function Shell() {
+  const [tab, setTab] = useState(1);
+  const tabs = [[1, "Statements", Slice1], [2, "Performance", Slice2], [3, "Health", Slice3], [4, "Valuation", Slice4]];
+  const Cur = tabs.find(t => t[0] === tab)[2];
+  const co = (DATA && DATA.company) || "ASML Holding NV";
+  const injected = !!DATA;
+  return (
+    <div style={{ minHeight: "100vh", background: "rgb(25,60,63)", padding: "22px 18px 60px", fontFamily: "Georgia, serif" }}>
+      <div style={{ maxWidth: 1000, margin: "0 auto 14px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+        <div style={{ fontFamily: "'IBM Plex Mono', ui-monospace, Menlo, monospace", fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", color: injected ? "rgb(120,180,140)" : "rgba(244,240,233,0.35)" }}>
+          {injected ? `● data injected · ${co}` : "○ no data injected · showing ASML sample"}
+        </div>
+        <div style={{ display: "flex", gap: 6 }}>
+          {tabs.map(([n, label]) => (<button key={n} onClick={() => setTab(n)} style={{ fontFamily: "'IBM Plex Mono', ui-monospace, Menlo, monospace", fontSize: 10, letterSpacing: "0.08em", color: tab === n ? "rgb(25,60,63)" : "rgba(244,240,233,0.6)", background: tab === n ? "rgb(198,165,83)" : "transparent", border: `1px solid ${tab === n ? "rgb(198,165,83)" : "rgba(244,240,233,0.13)"}`, padding: "6px 13px", borderRadius: 2, cursor: "pointer" }}>{label}</button>))}
+        </div>
+      </div>
+      <Cur />
+      <div style={{ maxWidth: 1000, margin: "26px auto 0", fontFamily: "'IBM Plex Mono', ui-monospace, Menlo, monospace", fontSize: 9, color: "rgba(244,240,233,0.30)", letterSpacing: "0.08em", borderTop: "1px solid rgba(244,240,233,0.13)", paddingTop: 10 }}>
+        S. GUERRAZ, CFA, MBA · CONSTELLATION MODEL · STATEMENTS · PERFORMANCE · HEALTH · VALUATION · EDITS ON THE STATEMENTS TAB RECOMPUTE THE MODEL
+      </div>
+    </div>);
+}
+document.getElementById("root").textContent = "";
+ReactDOM.createRoot(document.getElementById("root")).render(<Shell />);
+window.__rendered = true;
+</script>
+</body>
+</html>

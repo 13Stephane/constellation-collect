@@ -1,0 +1,8 @@
+{
+  "name": "constellation-collect-env",
+  "config": {
+    "type": "cloud",
+    "networking": {"type": "unrestricted"},
+    "packages": {"pip": ["pandas", "numpy", "openpyxl"], "npm": []}
+  }
+}

@@ -1,0 +1,100 @@
+{
+  "meta": {
+    "founder": "Stéphane Guerraz",
+    "company": "Constellation",
+    "problem": "A financial-analysis tool for individual European listed stocks. The front-end already exists (4-slice React model that loads a schema-v2 JSON). The missing piece is /collect: an agent that turns a ticker into a provenance-stamped schema-v2 dataset the model can render. First name: ASML.",
+    "created": "2026-07-22",
+    "skill_version": "0.1"
+  },
+  "agent": {
+    "name": "constellation-collect",
+    "model": "claude-opus-4-8",
+    "model_rationale": "Newest Opus-class — deep, multi-step financial reasoning (line-item mapping to a fixed schema, balance-check enforcement, CAPM WACC construction, provenance). Quality first; an on-demand run costs cents.",
+    "version": null,
+    "system_summary": "Given a European listed ticker, web-fetches the last 5 fiscal years, maps every figure to Constellation's schema-v2 contract (balance checks to zero), constructs the W1 Market WACC (CAPM point + band) to replace the placeholder, sets arena valuation-multiple bands, and emits <TICKER>_schema-v2.json + <TICKER>_valuation.xlsx + sources.json to /mnt/session/outputs/. Follows the constellation-valuation house-method skill on every run.",
+    "never_dos": [
+      "Never emit a schema-v2 JSON that fails validation or whose balance check does not reach zero",
+      "Never blend the three WACC objects (W1 market / W2 imputed / W3 regulated); for a listed name compute only W1",
+      "Never state a number without a source URL and a date",
+      "Never present WACC as a single figure — always a point plus a band",
+      "Never claim the workbook recomputes from formulas — it is a snapshot (values + provenance + integrity block)",
+      "Analysis and drafting only: never place trades, contact anyone, or take any external action"
+    ]
+  },
+  "outcome": {
+    "description": "Produce a Constellation schema-v2 valuation dataset for the given European listed ticker: provenance-stamped statements that balance to zero, a constructed W1 WACC band, and arena multiple bands — as <TICKER>_schema-v2.json + <TICKER>_valuation.xlsx + sources.json, loadable unchanged into the 4-slice front-end.",
+    "rubric_criteria": [
+      "Valid schema-v2: output JSON has the exact keys (years; income{revenue,costOfSales,depreciation,sga,interestIncome,interestExpense,incomeTaxes}; balance{operatingCash,otherCurrentAssets,ppe,otherOperatingAssets,accountsPayable,otherNonInterestLiab,longTermDebt,equity}; assumptions{taxRate,wacc}; sharesOutstanding; valuationMultiples; labels), and the balance sheet checks to zero every year within rounding",
+      "Three-WACC discipline: only W1 (Market WACC) is computed; CAPM parameters (rf, ERP, beta, cost of debt, tax, weights) are each a stated field with source URL + date",
+      "WACC is a band, not a number: reported as point + band (rf and ERP at edges); the point is written to assumptions.wacc; the ROIC−WACC spread is judged against the band",
+      "Provenance on every input: each schema-v2 figure carries a source URL + as-of date in sources.json; load-bearing numbers show a cross-check",
+      "Locked conventions reproduced: NOPLAT = EBIT×(1−tax); ROIC on prior-year invested capital; capex-incl = ΔnetPPE + D&A; net debt = interest-bearing debt − operating cash; invested-capital assets side = financing side — the workbook's computed panels match these",
+      "Deliverables complete + honesty block: schema-v2 JSON + snapshot .xlsx (values + provenance + integrity block) + sources.json, with the CAPM-on-single-name-beta / claims-are-relative / web-weaker-than-filings caveats stated; no formula-recompute claim"
+    ],
+    "max_iterations": 3
+  },
+  "tools": {
+    "toolset": "agent_toolset_20260401",
+    "enabled": ["bash", "read", "write", "edit", "glob", "grep", "web_search", "web_fetch"],
+    "disabled": [],
+    "permission_overrides": [],
+    "custom_tools": []
+  },
+  "connections": {
+    "mcp_servers": [],
+    "vault_credentials": [],
+    "github": null,
+    "notes": "v0 uses public web only (networking on). Next direction: a fundamentals data API / filings source + vault credential for stronger S0 provenance and cleaner extraction."
+  },
+  "skills": [
+    {"type": "anthropic", "skill_id": "xlsx", "purpose": "Build the .xlsx snapshot workbook"},
+    {"type": "custom", "skill_id": "PENDING-UPLOAD", "name": "constellation-valuation", "version": "latest", "purpose": "House method: schema-v2 contract + locked accounting conventions + W1 CAPM/band construction + provenance rule + honesty block + deliverable spec"}
+  ],
+  "memory": {"stores": []},
+  "environment": {
+    "name": "constellation-collect-env",
+    "type": "cloud",
+    "networking": "unrestricted",
+    "allowed_hosts": [],
+    "packages": {"pip": ["pandas", "numpy", "openpyxl"]}
+  },
+  "schedule": {
+    "mode": "on_demand",
+    "cron": null,
+    "timezone": null,
+    "human": "On-demand, per ticker. Scheduled watchlist refresh is a Next direction.",
+    "kickoff": "user.define_outcome (task + rubric above), triggered per ticker"
+  },
+  "front_end": {
+    "exists": true,
+    "what": "Constellation 4-slice React model (statements · performance · health · valuation football-field), loads schema-v2 JSON via paste/upload",
+    "source_slices": ["constellation_model_slice1.jsx", "constellation_model_slice2.jsx", "constellation_model_slice3.jsx", "constellation_model_slice4.jsx"],
+    "v0_autoload": "Local pipeline injects the agent's schema-v2 JSON into a single-file render of the 4 slices (constellation-model.template.html → outputs/<TICKER>_model.html), which opens straight to the model — no manual paste.",
+    "schema_v2_keys": "schemaVersion, company, unit, years[], income{7}, balance{8}, assumptions{taxRate,wacc}, sharesOutstanding[], valuationMultiples{industry,evRevenue,evEbitda,evEbit,pe,growth}, labels{}"
+  },
+  "evals": {
+    "cases": [
+      {"name": "case-01", "ticker": "ASML", "input": "evals/case-01/input.txt", "expected": "evals/case-01/expected.json (founder's hand-verified ASML SAMPLE from the slices)", "last_verdict": null}
+    ],
+    "notes": "Case 1 golden = the ASML SAMPLE embedded in the front-end slices. Statement inputs + sharesOutstanding + taxRate are the extraction targets (must match within tolerance). assumptions.wacc (0.1) and valuationMultiples (tech-saas) are PLACEHOLDERS the agent must improve — graded on defensibility + provenance, not equality. Held-back regression set = further European names (AIR.PA, SAP, …) added as their expecteds land. Re-run before promoting any new agent version."
+  },
+  "defaults_applied": {
+    "iteration_bound": "Outcome stops after 3 grade-and-improve cycles",
+    "write_actions": "None in v0 — analysis and drafting only"
+  },
+  "interface": {
+    "who": "Stéphane (own research); later customer-facing via the front-end",
+    "how": "Agent emits schema-v2 JSON + xlsx + sources to /mnt/session/outputs/; local pipeline downloads to ./my-agent/outputs/ and injects the JSON into the 4-slice viewer (auto-load, no paste). Console for run history."
+  },
+  "next_directions": [
+    {"version": "v1", "what": "Forward scenario module (5y projection: bear/base/bull) — the headline v1", "why_deferred": "builds on v0's clean balanced base + constructed W1 WACC; additive S2 layer, not a rewrite", "how": "drivers registry (ASML: EUV/High-NA units×ASP, DUV, Installed Base Management service; gross-margin path; R&D/SG&A intensity; capex; working capital incl. customer prepayments) + scenarios block on schema-v3; each driver a sourced point+range anchored to ASML Investor-Day 2030; 5y explicit-forecast DCF per scenario -> value range; tornado (revenue CAGR + gross margin usually dominate); armed triggers w/ playbooks (bookings, China % sales, High-NA shipments, HBM/DRAM capex, SEMI WFE); 5th 'Projection' front-end slice; extend constellation-valuation skill with driver-registry + scenario-construction section"},
+    {"version": "v1", "what": "Interactive auto-trigger: front-end 'type a ticker → run' that calls the agent and live-loads the result", "why_deferred": "needs a backend that holds the API key — out of scope for a keyless v0; v0 auto-load injects the JSON into a static render", "how": "Small backend calls POST /v1/sessions + user.define_outcome (or a deployment /run); front-end polls the session, downloads the Files-API JSON, setData() into the slices"},
+    {"version": "v1", "what": "Swap web-fetch for a fundamentals data API / filings source (stronger S0 provenance)", "why_deferred": "needs a credential (data provider or filing source) not on hand in this session", "how": "Add the provider MCP server or an environment_variable vault credential; tighten networking to the provider hosts; keep source+date per field"},
+    {"version": "v1", "what": "Full relational arena beta (peer unlever/relever + peer overlay; conserved EV/GP position)", "why_deferred": "out of scope for v0 — single-name stated beta first; needs a peer data pack", "how": "Extend the skill with the §2 arena-beta construction; add a peer set to the kickoff; render peer overlay in the workbook"},
+    {"version": "v2", "what": "Scheduled watchlist refresh", "why_deferred": "chose on-demand for v0; scheduling is a clean later add", "how": "POST /v1/deployments with cron + timezone + the kickoff as initial_events (relative dates only); manual -X POST run to verify before trusting the cron"},
+    {"version": "v2", "what": "Formula-emitting recompute workbook (Constellation v0.3)", "why_deferred": "v0 is snapshot-grade by design", "how": "xlsx skill emitting live formulas + named ranges so inputs recompute; acceptance-test against the snapshot"},
+    {"version": "v2", "what": "Memory store / calibration export (arena priors, decision log)", "why_deferred": "out of scope for v0; matches the central calibration store in the plan", "how": "Attach a memory_store resource (read_write) mounted at /mnt/memory/; accumulate per-ticker reads and scored outcomes across runs"},
+    {"version": "always", "what": "Re-run evals/ before promoting any new agent version", "why_deferred": "process habit, not a build task", "how": "Run evals/run-evals.sh against the new pinned version; promote only when verdicts hold"}
+  ],
+  "ids": {}
+}

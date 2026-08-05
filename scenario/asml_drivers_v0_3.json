@@ -1,0 +1,324 @@
+{
+  "_file": "asml_drivers_v0_3.json",
+  "_purpose": "Constellation Track B, steps B2 and B4. schema-v3 overlay for ASML. Successor to v0.2. Adds drivers.cashPolicy, which closes open item X1: operating cash sits in OWC, excess cash nets against debt, every euro counted once. Structure is complete; every forward value is null by design. Nothing here is inferred.",
+  "_fillOrder": "1) scenarios.discount from the W1 band produced by the /collect run. 2) scenarios.netDebt. 3) the three case path blocks. 4) sources for each. 5) triggers.",
+  "drivers": {
+    "arena": "semiconductor-capital-equipment",
+    "registryVersion": "0.3",
+    "horizonYears": 5,
+    "baseYearSource": "model.years[-1] (the engine reads it from the schema-v2 block; do not restate it here)",
+    "unitNote": "All currency drivers are in model.unit. ASP drivers are model.unit per system, so units x ASP lands in model.unit directly.",
+    "revenueModel": {
+      "type": "components",
+      "terms": [
+        {
+          "id": "euv",
+          "kind": "units_x_asp",
+          "units": "euv_units",
+          "asp": "euv_asp"
+        },
+        {
+          "id": "highna",
+          "kind": "units_x_asp",
+          "units": "highna_units",
+          "asp": "highna_asp"
+        },
+        {
+          "id": "duv",
+          "kind": "units_x_asp",
+          "units": "duv_units",
+          "asp": "duv_asp"
+        },
+        {
+          "id": "ibm",
+          "kind": "direct",
+          "value": "ibm_revenue"
+        }
+      ],
+      "_note": "Installed Base Management (service plus upgrades) enters as a direct revenue line, not a unit tree. Metrology/inspection is folded into duv unless split out in a later registry version; if the schema-v2 revenue line includes it, the duv term will absorb the residual and the fit should be checked against the base year."
+    },
+    "depreciationModel": {
+      "kind": "pct_prior_ppe",
+      "driver": "dep_pct_prior_ppe",
+      "_alternatives": "explicit | pct_revenue"
+    },
+    "definitions": [
+      {
+        "id": "euv_units",
+        "appliesTo": "revenue",
+        "unit": "systems",
+        "label": "EUV (0.33 NA) systems recognised"
+      },
+      {
+        "id": "euv_asp",
+        "appliesTo": "revenue",
+        "unit": "model.unit/sys",
+        "label": "EUV average selling price"
+      },
+      {
+        "id": "highna_units",
+        "appliesTo": "revenue",
+        "unit": "systems",
+        "label": "High-NA EUV systems recognised"
+      },
+      {
+        "id": "highna_asp",
+        "appliesTo": "revenue",
+        "unit": "model.unit/sys",
+        "label": "High-NA average selling price"
+      },
+      {
+        "id": "duv_units",
+        "appliesTo": "revenue",
+        "unit": "systems",
+        "label": "DUV systems recognised"
+      },
+      {
+        "id": "duv_asp",
+        "appliesTo": "revenue",
+        "unit": "model.unit/sys",
+        "label": "DUV average selling price"
+      },
+      {
+        "id": "ibm_revenue",
+        "appliesTo": "revenue",
+        "unit": "model.unit",
+        "label": "Installed Base Management revenue (service and upgrades)"
+      },
+      {
+        "id": "gross_margin_pct",
+        "appliesTo": "margin",
+        "unit": "fraction",
+        "label": "Gross margin on the costOfSales line. House GP = revenue - costOfSales, depreciation stated separately (SKILL section 2). See extraction rule E1"
+      },
+      {
+        "id": "opex_pct_revenue",
+        "appliesTo": "margin",
+        "unit": "fraction",
+        "label": "R&D plus SG&A as a share of revenue, mapped to the sga line. sga is the only line between GP and EBITDA (SKILL section 2)"
+      },
+      {
+        "id": "dep_pct_prior_ppe",
+        "appliesTo": "capital",
+        "unit": "fraction",
+        "label": "Depreciation as a share of prior-year PPE"
+      },
+      {
+        "id": "capex_incl_pct_revenue",
+        "appliesTo": "capital",
+        "unit": "fraction",
+        "label": "Capex-incl as a share of revenue. House capex is delta(net ppe) plus depreciation, i.e. gross capex (SKILL section 2)"
+      },
+      {
+        "id": "owc_pct_revenue",
+        "appliesTo": "capital",
+        "unit": "fraction",
+        "label": "Operating working capital as a share of revenue. OWC = (operatingCash + otherCurrentAssets) - (accountsPayable + otherNonInterestLiab). Can be negative: customer prepayments sit in otherNonInterestLiab"
+      },
+      {
+        "id": "tax_rate",
+        "appliesTo": "margin",
+        "unit": "fraction",
+        "label": "Effective tax rate applied to EBIT for NOPLAT"
+      },
+      {
+        "id": "other_op_assets_pct_revenue",
+        "appliesTo": "capital",
+        "unit": "fraction",
+        "label": "Other operating assets as a share of revenue. Enters FOCF through delta(otherOperatingAssets) and invested capital"
+      }
+    ],
+    "cashPolicy": {
+      "operatingCashPctRevenue": 0.0,
+      "source": "default: all cash treated as excess, pending an operating/excess split from /collect (open item E3)",
+      "_note": "Operating cash = revenue * operatingCashPctRevenue. It sits inside OWC and therefore inside invested capital. The remainder is excess cash and is netted against longTermDebt in the valuation bridge. At 0.0 the bridge is arithmetically identical to SKILL section 2 (netDebt = longTermDebt - operatingCash), so no per-share number moves; only invested capital, ROIC and EVA change. This is the resolution of open item X1."
+    }
+  },
+  "scenarios": {
+    "method": "explicit-forecast-dcf",
+    "_supersedes": "the single-year Gordon in front-end slice 4",
+    "discount": {
+      "waccLow": null,
+      "waccMid": null,
+      "waccHigh": null,
+      "terminalGrowth": null,
+      "terminalMethod": "gordon",
+      "fadeYears": 0,
+      "midYearDiscounting": false,
+      "waccByCase": {},
+      "source": null,
+      "_note_waccByCase": "Empty means the W1 mid band is held constant across bear/base/bull and WACC is swung only in the tornado. To couple the rate to the case instead, set {\"bear\":\"waccHigh\",\"base\":\"waccMid\",\"bull\":\"waccLow\"} and record the reason (unresolved convention C5).",
+      "_note_terminal": "Set terminalMethod to fade_then_gordon and fadeYears > 0 to fade the final explicit growth rate down to terminalGrowth before capitalising."
+    },
+    "netDebt": {
+      "value": null,
+      "asOf": null,
+      "source": null,
+      "_note": "OPTIONAL OVERRIDE. Leave value null and the engine derives net debt as longTermDebt minus excess cash, where excess cash follows drivers.cashPolicy. Nulls here do not block."
+    },
+    "cases": {
+      "bear": {
+        "narrative": "WFE downcycle, China revenue share bites, High-NA adoption slips right.",
+        "paths": {
+          "euv_units": null,
+          "euv_asp": null,
+          "highna_units": null,
+          "highna_asp": null,
+          "duv_units": null,
+          "duv_asp": null,
+          "ibm_revenue": null,
+          "gross_margin_pct": null,
+          "opex_pct_revenue": null,
+          "dep_pct_prior_ppe": null,
+          "capex_incl_pct_revenue": null,
+          "owc_pct_revenue": null,
+          "tax_rate": null,
+          "other_op_assets_pct_revenue": null
+        },
+        "sources": {
+          "euv_units": null,
+          "euv_asp": null,
+          "highna_units": null,
+          "highna_asp": null,
+          "duv_units": null,
+          "duv_asp": null,
+          "ibm_revenue": null,
+          "gross_margin_pct": null,
+          "opex_pct_revenue": null,
+          "dep_pct_prior_ppe": null,
+          "capex_incl_pct_revenue": null,
+          "owc_pct_revenue": null,
+          "tax_rate": null,
+          "other_op_assets_pct_revenue": null
+        }
+      },
+      "base": {
+        "narrative": "AI logic demand holds, steady EUV, High-NA ramps 2026-28, Installed Base Management compounds.",
+        "paths": {
+          "euv_units": null,
+          "euv_asp": null,
+          "highna_units": null,
+          "highna_asp": null,
+          "duv_units": null,
+          "duv_asp": null,
+          "ibm_revenue": null,
+          "gross_margin_pct": null,
+          "opex_pct_revenue": null,
+          "dep_pct_prior_ppe": null,
+          "capex_incl_pct_revenue": null,
+          "owc_pct_revenue": null,
+          "tax_rate": null,
+          "other_op_assets_pct_revenue": null
+        },
+        "sources": {
+          "euv_units": null,
+          "euv_asp": null,
+          "highna_units": null,
+          "highna_asp": null,
+          "duv_units": null,
+          "duv_asp": null,
+          "ibm_revenue": null,
+          "gross_margin_pct": null,
+          "opex_pct_revenue": null,
+          "dep_pct_prior_ppe": null,
+          "capex_incl_pct_revenue": null,
+          "owc_pct_revenue": null,
+          "tax_rate": null,
+          "other_op_assets_pct_revenue": null
+        }
+      },
+      "bull": {
+        "narrative": "Broad capex supercycle, memory recovery, faster High-NA adoption.",
+        "paths": {
+          "euv_units": null,
+          "euv_asp": null,
+          "highna_units": null,
+          "highna_asp": null,
+          "duv_units": null,
+          "duv_asp": null,
+          "ibm_revenue": null,
+          "gross_margin_pct": null,
+          "opex_pct_revenue": null,
+          "dep_pct_prior_ppe": null,
+          "capex_incl_pct_revenue": null,
+          "owc_pct_revenue": null,
+          "tax_rate": null,
+          "other_op_assets_pct_revenue": null
+        },
+        "sources": {
+          "euv_units": null,
+          "euv_asp": null,
+          "highna_units": null,
+          "highna_asp": null,
+          "duv_units": null,
+          "duv_asp": null,
+          "ibm_revenue": null,
+          "gross_margin_pct": null,
+          "opex_pct_revenue": null,
+          "dep_pct_prior_ppe": null,
+          "capex_incl_pct_revenue": null,
+          "owc_pct_revenue": null,
+          "tax_rate": null,
+          "other_op_assets_pct_revenue": null
+        }
+      }
+    },
+    "triggers": [
+      {
+        "id": "bookings",
+        "observable": "Quarterly net system bookings",
+        "threshold": null,
+        "direction": null,
+        "flipsTo": null,
+        "playbook": null,
+        "resolutions": []
+      },
+      {
+        "id": "china_mix",
+        "observable": "China as a share of system sales",
+        "threshold": null,
+        "direction": null,
+        "flipsTo": null,
+        "playbook": null,
+        "resolutions": []
+      },
+      {
+        "id": "highna_ship",
+        "observable": "High-NA systems shipped per period",
+        "threshold": null,
+        "direction": null,
+        "flipsTo": null,
+        "playbook": null,
+        "resolutions": []
+      },
+      {
+        "id": "memory_capex",
+        "observable": "HBM/DRAM capex announcements",
+        "threshold": null,
+        "direction": null,
+        "flipsTo": null,
+        "playbook": null,
+        "resolutions": []
+      },
+      {
+        "id": "semi_wfe",
+        "observable": "SEMI WFE spend forecast revisions",
+        "threshold": null,
+        "direction": null,
+        "flipsTo": null,
+        "playbook": null,
+        "resolutions": []
+      }
+    ],
+    "_note_triggers": "Nulls here are reported as unarmed but do not block a run. Each armed trigger needs a threshold, a direction, the case it flips to, and a playbook. Resolutions accumulate over time and are the calibration loop.",
+    "_openItems": [
+      "C5 wacc across cases",
+      "C6 discounting timing",
+      "E1 costOfSales must be depreciation-free",
+      "E2 projected block does not drive interest or tax lines",
+      "E3 operatingCash in the golden file is total cash, not an operating subset",
+      "O1 otherOperatingAssets undecomposed and material",
+      "O2 anchor paths on FY2022-FY2024, not FY2020"
+    ]
+  }
+}

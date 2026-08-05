@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 2,
+  "company": "ASML Holding NV",
+  "unit": "EUR millions",
+  "years": [2020, 2021, 2022, 2023, 2024],
+  "income": {
+    "revenue": [13978.5, 18611, 21173.4, 27558.5, 28262.9],
+    "costOfSales": [6873.6, 8505.6, 10119.2, 12989.3, 13268.7],
+    "depreciation": [475.2, 454.6, 580.3, 733.2, 913.3],
+    "sga": [2578.2, 2900.7, 3973.2, 4793.7, 5058.3],
+    "interestIncome": [8.4, 10, 16.2, 193.9, 182.4],
+    "interestExpense": [43.3, 54.6, 60.8, 152.7, 162.6],
+    "incomeTaxes": [551.5, 1021.4, 969.9, 1435.8, 1680.6]
+  },
+  "balance": {
+    "operatingCash": [6049.4, 6951.8, 7268.3, 7004.7, 12735.9],
+    "otherCurrentAssets": [9880.6, 11238.4, 15796.6, 17389.2, 18001.5],
+    "ppe": [2470.3, 2982.7, 3944.2, 5493.2, 6846.8],
+    "otherOperatingAssets": [8867.1, 9058.1, 9291.3, 10070.4, 11005.4],
+    "accountsPayable": [1377.9, 2116.3, 2565.2, 2347.3, 3500.4],
+    "otherNonInterestLiab": [5210.2, 9672.6, 14672.2, 13927.3, 15540.7],
+    "longTermDebt": [6813.9, 8301.5, 10252.2, 10230.5, 11071.7],
+    "equity": [13865.4, 10140.6, 8810.8, 13452.4, 18476.8]
+  },
+  "assumptions": {"taxRate": 0.258, "wacc": 0.1},
+  "sharesOutstanding": [416.514034, 402.601613, 394.589411, 393.421721, 393.28372],
+  "valuationMultiples": {"industry": "tech-saas", "evRevenue": [4, 12], "evEbitda": [15, 30], "evEbit": [20, 40], "pe": [25, 50], "growth": [0.025, 0.04]},
+  "labels": {
+    "costOfSales": "Production costs (ex. D&A)",
+    "depreciation": "Depreciation & amortisation",
+    "sga": "R&D, sales, admin., other op. expenses (ex. D&A)"
+  }
+}
