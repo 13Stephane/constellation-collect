@@ -1,0 +1,938 @@
+<!doctype html>
+<!-- Constellation console. Served by serve_console.py, which injects state and
+     proxies chat to the configured provider. The page never holds an API key. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Constellation console</title>
+<style>
+  :root {
+    --ground:#0F2426; --surface:#17383B; --raised:#1D4145; --rule:#2B5054;
+    --ink:#F4F0E9; --ink-soft:#AFC3C0; --ink-faint:#7E9895;
+    --brass:#C6A553; --brass-bg:#2B3B33;
+    --pass:#8FCE9A; --block:#E0A3A3; --wait:#C6A553;
+    --serif: Georgia, "Iowan Old Style", "Times New Roman", serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin:0; background:var(--ground); color:var(--ink);
+    font: 14px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    display:grid; grid-template-columns: minmax(0,1fr) 420px;
+  }
+  @media (max-width: 980px) { body { grid-template-columns: 1fr; } #chat { border-left:none; border-top:1px solid var(--rule); } }
+
+  /* ---- left: the numbers ---- */
+  main { overflow-y:auto; padding:26px 30px 60px; }
+  h1 { font-family:var(--serif); font-size:22px; font-weight:600; margin:0; }
+  h2 { font-family:var(--serif); font-size:16px; font-weight:600; margin:0 0 12px; }
+  .eyebrow { font-family:var(--mono); font-size:10.5px; letter-spacing:.14em;
+             text-transform:uppercase; color:var(--ink-faint); }
+  .sub { color:var(--ink-soft); margin:8px 0 0; font-size:13.5px; }
+  header { border-bottom:2px solid var(--brass); padding-bottom:16px; }
+
+  .chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:12px; }
+  .chip { font-family:var(--mono); font-size:10.5px; padding:3px 9px; border-radius:3px;
+          border:1px solid var(--rule); color:var(--ink-soft); }
+  .chip.pass{ color:var(--pass); border-color:transparent; background:#1E3B2C; }
+  .chip.block{ color:var(--block); border-color:transparent; background:#3B2325; }
+  .chip.wait{ color:var(--wait); border-color:transparent; background:#33301F; }
+
+  nav { display:flex; gap:2px; margin:22px 0 18px; flex-wrap:wrap; }
+  nav button {
+    font-family:var(--mono); font-size:11px; letter-spacing:.08em; text-transform:uppercase;
+    background:transparent; color:var(--ink-faint); border:1px solid var(--rule);
+    padding:7px 13px; cursor:pointer; border-radius:3px;
+  }
+  nav button:hover { color:var(--ink); border-color:var(--brass); }
+  nav button[aria-selected="true"] { color:var(--ground); background:var(--brass);
+                                     border-color:var(--brass); font-weight:600; }
+  nav button:focus-visible, .ask button:focus-visible, textarea:focus-visible {
+    outline:2px solid var(--brass); outline-offset:2px; }
+
+  .scroll { overflow-x:auto; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th { text-align:left; font-family:var(--mono); font-size:10px; letter-spacing:.1em;
+       text-transform:uppercase; color:var(--ink-faint); font-weight:500;
+       padding:0 10px 7px 0; border-bottom:1px solid var(--rule); white-space:nowrap; }
+  td { padding:7px 10px 7px 0; border-bottom:1px solid rgba(43,80,84,.5);
+       font-variant-numeric: tabular-nums; white-space:nowrap; }
+  td:first-child, th:first-child { white-space:normal; min-width:190px; }
+  td.n { text-align:right; }
+  tr.tot td { font-weight:600; border-top:1px solid var(--rule); }
+
+  .panel { background:var(--surface); border:1px solid var(--rule); border-radius:4px;
+           padding:16px 18px; margin-bottom:16px; }
+  .kv { display:grid; grid-template-columns:auto 1fr; gap:6px 16px; font-size:13px; }
+  .kv dt { color:var(--ink-faint); font-family:var(--mono); font-size:11px;
+           letter-spacing:.06em; text-transform:uppercase; }
+  .kv dd { margin:0; font-variant-numeric:tabular-nums; }
+  .note { color:var(--ink-soft); font-size:12.5px; line-height:1.6; margin:10px 0 0; }
+  .conv { border-left:2px solid var(--brass); padding:8px 0 8px 12px; margin:12px 0;
+          font-size:12.5px; color:var(--ink-soft); }
+  .conv b { color:var(--brass); font-family:var(--mono); font-size:11px; }
+  .bar { height:6px; background:var(--brass-bg); border-radius:3px; overflow:hidden; min-width:80px; }
+  .bar i { display:block; height:100%; background:var(--brass); }
+  .empty { color:var(--ink-faint); font-style:italic; font-size:13px; }
+
+  /* ---- right: the conversation ---- */
+  #chat { border-left:1px solid var(--rule); background:var(--surface);
+          display:flex; flex-direction:column; height:100vh; position:sticky; top:0; }
+  #chat header { padding:16px 18px; border-bottom:1px solid var(--rule); border-bottom-width:1px; }
+  #log { flex:1; overflow-y:auto; padding:16px 18px; display:flex; flex-direction:column; gap:14px; }
+  .msg { font-size:13.5px; line-height:1.6; }
+  .msg .who { font-family:var(--mono); font-size:10px; letter-spacing:.12em;
+              text-transform:uppercase; color:var(--ink-faint); display:block; margin-bottom:5px; }
+  .msg.you .body { background:var(--raised); padding:9px 12px; border-radius:4px; }
+  .msg.err .body { color:var(--block); font-family:var(--mono); font-size:12px;
+                   background:#3B2325; padding:10px 12px; border-radius:4px; white-space:pre-wrap; }
+  .msg .body { white-space:pre-wrap; }
+  .msg .body table { margin:8px 0; }
+  .seed { display:flex; flex-wrap:wrap; gap:6px; padding:0 18px 12px; }
+  .seed button { font-size:11.5px; text-align:left; background:transparent; color:var(--ink-soft);
+                 border:1px solid var(--rule); padding:6px 10px; border-radius:3px; cursor:pointer; }
+  .seed button:hover { border-color:var(--brass); color:var(--ink); }
+  .ask { border-top:1px solid var(--rule); padding:12px 18px 16px; display:flex; gap:8px; align-items:flex-end; }
+  textarea { flex:1; resize:none; background:var(--ground); color:var(--ink);
+             border:1px solid var(--rule); border-radius:4px; padding:9px 11px;
+             font:inherit; font-size:13.5px; min-height:40px; max-height:160px; }
+  .ask button { background:var(--brass); color:var(--ground); border:none; border-radius:4px;
+                padding:10px 16px; font-weight:600; cursor:pointer; font-size:13px; }
+  .ask button:disabled { opacity:.45; cursor:default; }
+  .dots::after { content:"·"; animation: d 1.2s steps(3,end) infinite; }
+  @keyframes d { 0%{content:"·"} 33%{content:"· ·"} 66%{content:"· · ·"} }
+  @media (prefers-reduced-motion: reduce) { .dots::after { animation:none; content:"· · ·" } }
+  .c-bear { color:var(--block); } .c-base { color:var(--brass); } .c-bull { color:var(--pass); }
+  .porter { display:grid; grid-template-columns:1fr 1.2fr 1fr; gap:8px; margin-top:6px; }
+  .pbox { border:1px solid var(--rule); border-radius:4px; padding:10px 12px; font-size:12px;
+          line-height:1.5; color:var(--ink-soft); }
+  .pbox b { display:block; font-family:var(--mono); font-size:10px; letter-spacing:.1em;
+            text-transform:uppercase; margin-bottom:5px; color:var(--ink-faint); }
+  .pbox.sup { border-color:var(--pass); }  .pbox.opp { border-color:var(--block); }
+  .pbox.none { border-style:dashed; opacity:.65; }
+  .flow { display:flex; align-items:stretch; gap:0; flex-wrap:wrap; margin-top:6px; }
+  .fnode { flex:1; min-width:150px; border:1px solid var(--rule); border-radius:4px;
+           padding:10px 12px; font-size:12px; line-height:1.5; color:var(--ink-soft); }
+  .fnode b { display:block; font-size:12.5px; color:var(--ink); margin-bottom:4px; font-family:var(--serif); }
+  .farrow { display:flex; flex-direction:column; justify-content:center; padding:0 8px;
+            color:var(--brass); font-size:16px; text-align:center; }
+  .farrow small { font-size:9.5px; color:var(--ink-faint); font-family:var(--mono); max-width:96px; }
+  .status-chip { font-family:var(--mono); font-size:10px; letter-spacing:.08em; padding:2px 8px;
+                 border-radius:3px; text-transform:uppercase; margin-left:8px; }
+  .st-open { background:#33301F; color:var(--wait); }
+  .st-decided { background:#1E3B2C; color:var(--pass); }
+</style>
+</head>
+<body>
+
+<main>
+  <header>
+    <div class="eyebrow">Constellation · console</div>
+    <h1 id="firm">—</h1>
+    <p class="sub" id="strap">—</p>
+    <div class="chips" id="chips"></div>
+  </header>
+
+  <nav id="tabs" role="tablist"></nav>
+  <div id="view"></div>
+</main>
+
+<aside id="chat">
+  <header>
+    <div class="eyebrow">Conversation</div>
+    <div class="sub" id="provider" style="margin-top:6px">—</div>
+  </header>
+  <div id="log"></div>
+  <div class="seed" id="seed"></div>
+  <form class="ask" id="ask">
+    <textarea id="q" rows="1" placeholder="Ask about these numbers…" aria-label="Ask about these numbers"></textarea>
+    <button type="submit" id="send">Ask</button>
+  </form>
+</aside>
+
+<script>
+const STATE = {"golden": {"schemaVersion": 3, "company": "RUBRIK, INC.", "unit": "USD millions", "years": [2025, 2026], "income": {"revenue": [886.5, 1316.2], "costOfSales": [265.7, 261.9], "depreciation": [28.9, 37.1], "sga": [1724.5, 1378.6], "interestIncome": [25.4, 52.2], "interestExpense": [41.3, 17.2], "incomeTaxes": [6.4, 22.4]}, "balance": {"operatingCash": [186.3, 380.2], "otherCurrentAssets": [891.3, 1843.4], "ppe": [53.2, 83.8], "otherOperatingAssets": [292.1, 459.1], "accountsPayable": [10.4, 15.3], "otherNonInterestLiab": [1643.9, 2140.0], "longTermDebt": [322.3, 1130.7], "equity": [-553.7, -519.6]}, "assumptions": {"taxRate": 0.21, "wacc": null}, "sharesOutstanding": [0.0, 0.0], "labels": {"costOfSales": "Cost of revenue (as reported \u2014 see E1 stance)"}, "_collect": {"source": "SEC EDGAR companyfacts (XBRL)", "cik": "0001943896", "fetched_at": "2026-08-13T20:00:47+00:00", "tag_map": {"revenue": "RevenueFromContractWithCustomerExcludingAssessedTax", "costOfSales": "CostOfRevenue", "depreciation": "DepreciationDepletionAndAmortization", "pretax": "IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest", "incomeTaxes": "IncomeTaxExpenseBenefit", "interestExpense": "InterestExpenseDebt", "interestIncome": "InvestmentIncomeInterest", "netIncome": "NetIncomeLoss", "cash": "CashAndCashEquivalentsAtCarryingValue", "assetsCurrent": "AssetsCurrent", "assets": "Assets", "ppe": "PropertyPlantAndEquipmentNet", "accountsPayable": "AccountsPayableCurrent", "liabilities": "Liabilities", "equity": "StockholdersEquity", "debtNoncurrent": "LongTermDebtNoncurrent", "longTermDebt": "CURATOR-SUPPLIED"}, "stances": ["E1: costOfSales is as reported and may include production depreciation (unlike the depreciation-free ASML reference basis); sga is the residual keeping EBIT exact, so EBIT/NOPLAT and derived cash flows are exact while the gross-margin level is not cross-basis comparable.", "E3: operatingCash carries the total cash balance; no operating/excess split exists in XBRL.", "E4: no reported cash flow statement emitted; the identity-derived one ties by construction on this mapping.", "T1: assumptions.taxRate = 0.2100 is CURATOR-SUPPLIED (--tax-rate), not extracted. The latest fiscal year's effective rate is -0.0685, unusable as a NOPLAT rate. The basis for the supplied rate is the curator's to record here.", "assumptions.wacc = null: valuation input, never extracted.", "C1: longTermDebt is CURATOR-SUPPLIED, read off the filing by hand because no annual 10-K XBRL fact exists for it. Source: Rubrik consolidated balance sheets, in USD (filings state thousands), from the FY2026 10-K, accession 0001943896-26-000013 (filed 2026-03-19), which carries both columns: 'Convertible senior notes, net' 1,130,721 at 2026-01-31 and 0 at 2025-01-31; 'Debt, noncurrent' 0 at 2026-01-31 and 322,341 at 2025-01-31. No current-portion debt line appears in either column. WHY THIS IS SUPPLIED RATHER THAN EXTRACTED: Rubrik replaced its term loan with convertible senior notes during FY2026, and the notes sit under us-gaap:ConvertibleLongTermNotesPayable, which this map's debt candidates do not carry. The extractor would otherwise have carried FY2025's 322.3 forward and understated FY2026 net debt by 808.4 million on a company whose total assets are 2,766.5. A reviewer should contest the exclusion of operating-lease liabilities, which stay inside otherNonInterestLiab here, consistent with the ASML and NVDA goldens.. Every other line on this file is extracted; this one is transcribed, so it carries transcription risk the XBRL lines do not."], "missing_optional": ["interestExpense: primary tag InterestExpenseDebt is debt interest ONLY and excludes finance-lease and other interest; it wins here because no broader annual tag reaches the latest fiscal year for this filer; the line is a floor, not a total, recorded", "debtNoncurrent: no fact at 2026-01-31, carried forward, recorded", "debtCurrent: absent under {LongTermDebtCurrent, DebtCurrent, ShortTermBorrowings}; carried as 0, recorded", "shares: absent under {CommonStockSharesOutstanding}; carried as 0, recorded"]}}, "scenarioSet": null, "lensRegister": null, "concordance": null, "conventionsLog": {"schema_version": "conventions_log_v0_1", "subject": {"firm": "RUBRIK, INC.", "ticker": null}, "provenance": {"product_name": "conventions_log", "object_id": "collect_0001943896", "schema_version": "conventions_log_v0_1"}, "_discipline": "Seeded by collect_statements.py with the stances the extraction took. Only the curator moves a convention to decided.", "conventions": [{"id": "E1", "title": "Cost-of-sales basis", "owner": "collect_extraction", "status": "open", "interim_default": "E1: costOfSales is as reported and may include production depreciation (unlike the depreciation-free ASML reference basis); sga is the residual keeping EBIT exact, so EBIT/NOPLAT and derived cash flows are exact while the gross-margin level is not cross-basis comparable.", "resolution_path": null, "resolution": null, "decided_on": null}, {"id": "E3", "title": "Operating vs excess cash", "owner": "collect_extraction", "status": "open", "interim_default": "E3: operatingCash carries the total cash balance; no operating/excess split exists in XBRL.", "resolution_path": null, "resolution": null, "decided_on": null}, {"id": "E4", "title": "No reported cash flow statement", "owner": "collect_extraction", "status": "open", "interim_default": "E4: no reported cash flow statement emitted; the identity-derived one ties by construction on this mapping.", "resolution_path": null, "resolution": null, "decided_on": null}, {"id": "T1", "title": "Tax basis: statutory vs effective", "owner": "curator", "status": "decided", "interim_default": "T1: assumptions.taxRate = 0.2100 is CURATOR-SUPPLIED (--tax-rate), not extracted. The latest fiscal year's effective rate is -0.0685, unusable as a NOPLAT rate. The basis for the supplied rate is the curator's to record here.", "resolution_path": "Curator decision of 13 Aug 2026, taken because the extraction gate refused: FY2026 tax expense of 22.4 on a pre-tax loss of -326.5 gives an effective rate of -6.85%, outside schema v3's [0,1] and meaningless as a NOPLAT rate.", "resolution": "0.21, the US federal statutory rate, as the marginal rate a profitable Rubrik would pay. NOT a cash rate: Rubrik carries substantial NOL carryforwards and a full valuation allowance, so cash taxes stay near zero until the deficit unwinds. That timing belongs in the valuation layer, not in this field. A reviewer contesting this should contest the omission of state tax (a federal+state blend nearer 25%) and the point at which NOLs stop shielding.", "decided_on": "2026-08-13"}, {"id": "V0", "title": "WACC unset", "owner": "collect_extraction", "status": "open", "interim_default": "assumptions.wacc = null: valuation input, never extracted.", "resolution_path": null, "resolution": null, "decided_on": null}, {"id": "C1", "title": "Hand-transcribed statement line", "owner": "collect_extraction", "status": "open", "interim_default": "C1: longTermDebt is CURATOR-SUPPLIED, read off the filing by hand because no annual 10-K XBRL fact exists for it. Source: Rubrik consolidated balance sheets, in USD (filings state thousands), from the FY2026 10-K, accession 0001943896-26-000013 (filed 2026-03-19), which carries both columns: 'Convertible senior notes, net' 1,130,721 at 2026-01-31 and 0 at 2025-01-31; 'Debt, noncurrent' 0 at 2026-01-31 and 322,341 at 2025-01-31. No current-portion debt line appears in either column. WHY THIS IS SUPPLIED RATHER THAN EXTRACTED: Rubrik replaced its term loan with convertible senior notes during FY2026, and the notes sit under us-gaap:ConvertibleLongTermNotesPayable, which this map's debt candidates do not carry. The extractor would otherwise have carried FY2025's 322.3 forward and understated FY2026 net debt by 808.4 million on a company whose total assets are 2,766.5. A reviewer should contest the exclusion of operating-lease liabilities, which stay inside otherNonInterestLiab here, consistent with the ASML and NVDA goldens.. Every other line on this file is extracted; this one is transcribed, so it carries transcription risk the XBRL lines do not.", "resolution_path": null, "resolution": null, "decided_on": null}]}, "deriveConfig": null, "manifest": [{"role": "golden file (statements, cases, computed)", "file": "rbrk_golden_source.json", "sha256": "49e40db081610b3c15f973addd42161642caf217a3db87b683ca3b8455be6448"}, {"role": "Track B drivers (derivation input)", "file": "rbrk_drivers.json", "sha256": null}, {"role": "threat register", "file": "rbrk_threats.json", "sha256": null}, {"role": "derivation config (readings, lambda)", "file": "rbrk_config.json", "sha256": null}, {"role": "lens register", "file": "rbrk_lens_register.json", "sha256": null}, {"role": "conventions log", "file": "conventions_log.json", "sha256": "8955717bb38518c481262003f964dd24f88d592aa2f10fcaec443cdc5a5853a2"}, {"role": "fade atlas table", "file": "atlas.csv", "sha256": "74518c7911a5115d55f6839719b15810059f2c642a5655ca3bbfcab5fe649ad3"}], "provider": {"name": "none", "model": "static export", "ready": false, "keyEnv": null}, "static": true, "exportedAt": "2026-08-13"};
+const G = STATE.golden, S = STATE.scenarioSet, P = STATE.provider;
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const fmt = (v, d=0) => v === null || v === undefined || v === "" ? "—"
+  : Number(v).toLocaleString(undefined, {minimumFractionDigits:d, maximumFractionDigits:d});
+const pct = (v, d=2) => v === null || v === undefined ? "—" : (v*100).toFixed(d) + "%";
+
+/* ---------- header ---------- */
+const comp = (G.scenarios && G.scenarios.computed) || {};
+$("firm").textContent = G.company;
+$("strap").textContent = `${G.unit} · engine ${comp.engineVersion || "—"} · computed ${comp.computedAt || "—"}`;
+const chips = [["block","SPEC DRAFT · NOT STAMPED"]];
+if (S) chips.push(["wait", "SCENARIO SET " + S._path.split("/").pop()]);
+else chips.push(["wait","NO SCENARIO SET YET"]);
+chips.push(["", `${((G.drivers||{}).definitions||[]).length} DRIVERS`]);
+const uc = (comp.unresolvedConventions || (G.scenarios && G.scenarios._openItems)) || [];
+if (uc.length) chips.push(["block", `${uc.length} UNRESOLVED CONVENTIONS`]);
+$("chips").innerHTML = chips.map(([c,t]) => `<span class="chip ${c}">${esc(t)}</span>`).join("");
+
+/* ---------- tables ---------- */
+const DRIVER_UNIT = Object.fromEntries(
+  ((G.drivers && G.drivers.definitions) || []).map(d => [d.id, d.unit || ""]));
+function driverVal(id, v) {
+  if (v === null || v === undefined || isNaN(v)) return "—";
+  const u = DRIVER_UNIT[id] || "";
+  if (u === "fraction") return (v * 100).toFixed(2) + "%";
+  if (u === "systems")  return fmt(v, 0);
+  return fmt(v, 2);                       // model.unit and model.unit/sys
+}
+const unitNote = (id) => ({ "fraction": "%", "systems": "systems",
+  "model.unit/sys": (G.unit || "") + " / system" }[DRIVER_UNIT[id]] || G.unit || "");
+
+const humanise = (k) => k.replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+                          .replace(/^./, c => c.toUpperCase());
+function rows(obj, labels) {
+  return Object.entries(obj).map(([k, v]) => {
+    const cells = v.map(x => `<td class="n">${fmt(x)}</td>`).join("");
+    return `<tr><td>${esc((labels && labels[k]) || humanise(k))}</td>${cells}</tr>`;
+  }).join("");
+}
+function yearHead(years) {
+  return `<tr><th></th>${years.map(y => `<th style="text-align:right">${y}</th>`).join("")}</tr>`;
+}
+
+const CASE_ORDER = ["bear", "base", "bull"];
+const caseCls = (c) => ({bear:"c-bear", base:"c-base", bull:"c-bull"}[c] || "");
+const CASES = (G.scenarios && G.scenarios.cases) || {};
+const PATHS0 = Object.keys(CASES).length ? CASES[Object.keys(CASES)[0]].paths : {};
+const divergingIds = Object.keys(PATHS0).filter(id =>
+  new Set(Object.values(CASES).map(c => JSON.stringify(c.paths[id]))).size > 1);
+const flatIds = Object.keys(PATHS0).filter(id => !divergingIds.includes(id));
+const TORNADO = (() => {
+  const t = comp.tornado; if (!t) return {};
+  const list = Array.isArray(t) ? t : Object.entries(t).map(([k,v]) => ({driver:k, span:v}));
+  return Object.fromEntries(list.map(r => [r.driver || r.id, Number(r.span ?? r.evSpan ?? 0)]));
+})();
+const REG = STATE.lensRegister;
+const RE = Object.fromEntries(((REG && REG.entries) || []).map(e => [e.entry_id, e]));
+const eref = (id) => RE[id]
+  ? `<span style="font-family:var(--mono);font-size:10px;color:${RE[id].direction==="supports_thesis"?"var(--pass)":"var(--block)"}">${id} · ${RE[id].direction==="supports_thesis"?"S":"O"}${RE[id].mass} · ${RE[id].status}</span>`
+  : "";
+
+function valueCurveSVG() {
+  const tiers = [["duv_dry_asp","Dry DUV"],["arfi_asp","ArFi"],["euv_asp","EUV 0.33"],["highna_asp","High-NA 0.55"]];
+  const vals = tiers.map(([id]) => PATHS0[id] ? PATHS0[id][0] : null);
+  if (vals.some(v => v === null)) return "";
+  const W=560,H=210,L=52,B=30,T=16,R=14, ymax=280;
+  const x=(i)=>L+i*(W-L-R)/(tiers.length-1), y=(v)=>T+(H-T-B)*(1-v/ymax);
+  const pts = vals.map((v,i)=>`${x(i)},${y(v)}`).join(" ");
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Offer curve: ASP by product tier" style="max-width:100%">
+    ${[0,70,140,210,280].map(g=>`<line x1="${L}" y1="${y(g)}" x2="${W-R}" y2="${y(g)}" stroke="var(--rule)" stroke-width="0.5"/>
+      <text x="${L-6}" y="${y(g)+3.5}" text-anchor="end" font-size="9" fill="var(--ink-faint)" font-family="monospace">${g}</text>`).join("")}
+    <text x="${L}" y="${T-6}" font-size="9" fill="var(--ink-faint)" font-family="monospace">EUR m / system</text>
+    <polyline points="${pts}" fill="none" stroke="var(--brass)" stroke-width="2"/>
+    ${vals.map((v,i)=>`<circle cx="${x(i)}" cy="${y(v)}" r="4" fill="var(--brass)"/>
+      <text x="${x(i)}" y="${y(v)-9}" text-anchor="middle" font-size="10.5" fill="var(--ink)" font-family="monospace">${v}</text>
+      <text x="${x(i)}" y="${H-9}" text-anchor="middle" font-size="10" fill="var(--ink-soft)">${tiers[i][1]}</text>`).join("")}
+  </svg>`;
+}
+
+function highnaBarsSVG() {
+  if (!CASES.bear || !CASES.bear.paths.highna_units) return "";
+  const W=560,H=150,L=52,B=26,T=16, ymax=40;
+  const vals = CASE_ORDER.map(c => CASES[c].paths.highna_units.slice(-1)[0]);
+  const cols = {bear:"var(--block)", base:"var(--brass)", bull:"var(--pass)"};
+  const bw=90, gap=(W-L-30-3*bw)/2;
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="High-NA terminal shipments by case" style="max-width:100%">
+    ${[0,10,20,30,40].map(g=>{const gy=T+(H-T-B)*(1-g/ymax);return `<line x1="${L}" y1="${gy}" x2="${W-14}" y2="${gy}" stroke="var(--rule)" stroke-width="0.5"/>
+      <text x="${L-6}" y="${gy+3.5}" text-anchor="end" font-size="9" fill="var(--ink-faint)" font-family="monospace">${g}</text>`}).join("")}
+    <text x="${L}" y="${T-6}" font-size="9" fill="var(--ink-faint)" font-family="monospace">systems shipped, FY2029 cumulative</text>
+    ${vals.map((v,i)=>{const bx=L+18+i*(bw+gap), bh=(H-T-B)*v/ymax;
+      return `<rect x="${bx}" y="${H-B-bh}" width="${bw}" height="${bh}" fill="${cols[CASE_ORDER[i]]}" opacity="0.85" rx="2"/>
+      <text x="${bx+bw/2}" y="${H-B-bh-6}" text-anchor="middle" font-size="11" fill="var(--ink)" font-family="monospace">${v}</text>
+      <text x="${bx+bw/2}" y="${H-8}" text-anchor="middle" font-size="10.5" fill="${cols[CASE_ORDER[i]]}">${CASE_ORDER[i]}</text>`}).join("")}
+  </svg>`;
+}
+
+function derivedCF() {
+  // Cash flow by IDENTITY from the two statements: every balance line is used
+  // exactly once, so the total ties to the change in cash by construction.
+  // Not the reported statement — that is absent from schema v3 (convention E4).
+  const inc = G.income, bal = G.balance, ys = G.years;
+  const ni = ys.map((_, t) => inc.revenue[t] - inc.costOfSales[t] - inc.depreciation[t]
+    - inc.sga[t] + inc.interestIncome[t] - inc.interestExpense[t] - inc.incomeTaxes[t]);
+  const d = (arr, t) => arr[t] - arr[t - 1];
+  const rows = [];
+  const push = (label, fn, cls) => rows.push({label, vals: ys.slice(1).map((_, i) => fn(i + 1)), cls});
+  push("Net income", t => ni[t]);
+  push("+ Depreciation & amortisation", t => inc.depreciation[t]);
+  push("− Δ other current operating assets", t => -d(bal.otherCurrentAssets, t));
+  push("+ Δ accounts payable & accrued", t => d(bal.accountsPayable, t));
+  push("+ Δ other non-interest liabilities (incl. prepayments)", t => d(bal.otherNonInterestLiab, t));
+  push("Cash from operations", t => ni[t] + inc.depreciation[t] - d(bal.otherCurrentAssets, t)
+    + d(bal.accountsPayable, t) + d(bal.otherNonInterestLiab, t), "tot");
+  push("− Capex incl. (Δ net PPE + depreciation)", t => -(d(bal.ppe, t) + inc.depreciation[t]));
+  push("− Δ R&D / other operating assets, net", t => -d(bal.otherOperatingAssets, t));
+  push("Cash from investing", t => -(d(bal.ppe, t) + inc.depreciation[t]) - d(bal.otherOperatingAssets, t), "tot");
+  push("Δ interest-bearing debt", t => d(bal.longTermDebt, t));
+  push("Net shareholder flows (Δ equity − net income)", t => d(bal.equity, t) - ni[t]);
+  push("Cash from financing", t => d(bal.longTermDebt, t) + d(bal.equity, t) - ni[t], "tot");
+  const dcash = t => ni[t] + inc.depreciation[t] - d(bal.otherCurrentAssets, t)
+    + d(bal.accountsPayable, t) + d(bal.otherNonInterestLiab, t)
+    - (d(bal.ppe, t) + inc.depreciation[t]) - d(bal.otherOperatingAssets, t)
+    + d(bal.longTermDebt, t) + d(bal.equity, t) - ni[t];
+  push("Δ cash (derived)", dcash, "tot");
+  push("Check: derived Δ cash − reported Δ cash", t => dcash(t) - d(bal.operatingCash, t));
+  return rows;
+}
+
+function cfPanel() {
+    const rows = derivedCF();
+    return `<div class="panel"><h2>Statement of cash flows · derived by identity</h2>
+      <p class="note" style="color:var(--wait)">Schema v3 carries no reported cash flow statement
+      (open convention E4). This one is derived from the income statement and balance-sheet
+      deltas: every balance line is used exactly once, so it ties to the change in cash by
+      construction — the check row is the proof. What deltas cannot recover: the
+      buyback/dividend split (shown net) and any non-cash reclassifications.</p>
+      <div class="scroll"><table>
+      <thead><tr><th></th>${G.years.slice(1).map(y => `<th style="text-align:right">${y}</th>`).join("")}</tr></thead>
+      <tbody>${rows.map(r => `<tr${r.cls ? ` class="${r.cls}"` : ""}><td>${esc(r.label)}</td>
+        ${r.vals.map(v => `<td class="n">${fmt(v)}</td>`).join("")}</tr>`).join("")}
+      </tbody></table></div>
+      <p class="note">Readable directly: FY2021's 9,982 from operations against 9,409 returned to
+      shareholders is the buyback era; the prepayment line (+4,463 in FY2021) is the customer
+      funding the fragility lens flags.</p></div>`;
+  }
+
+const TABS = {
+  "Reading": () => {
+    if (!G.company.startsWith("ASML"))
+      return `<div class="panel"><h2>No reading yet for ${esc(G.company)}</h2>
+        <p class="note">Commentary is written per company from its recorded findings — the
+        lens register, the conventions log, the concordance report and the derived scenario
+        set. None of those layers exists for this subject yet; the Statements tab (with the
+        identity-derived cash flows) is the extraction, and everything else is curation
+        still to do. Nothing generic is shown in its place.</p></div>`;
+    const S_ = STATE.scenarioSet;
+    const go = (tab, txt) => `<button onclick="show('${tab}')" style="font-size:11px;padding:3px 9px;margin-left:6px">${txt} →</button>`;
+    return `<div class="panel"><h2>The company, as this model holds it</h2>
+      <p class="note">ASML is the world's only manufacturer of EUV lithography systems, selling
+      into a customer base so concentrated that two buyers take 38% of net sales, through a supply
+      chain that runs on a single optics source, funded in part by its own customers' prepayments.
+      Revenue ran 13,979 to 28,263 (EUR millions) over FY2020–24. The engine's base case values it
+      at 330.53 per share on a 284–380 bear–bull range, with 73.4% of enterprise value sitting in
+      the terminal — this is a valuation carried mostly by what happens after the five explicit
+      years.</p>
+      <p class="note" style="color:var(--wait)">Commentary, not data: every claim below links to
+      its evidence on this page, and the probabilities cited are DRAFT and unstamped.</p></div>
+
+      <div class="panel"><h2>Main findings</h2>
+      <div class="conv"><b>1 · Value hangs on High-NA adoption</b><br>
+        One assumption dominates: cumulative High-NA shipments by FY2029 span 8 / 20 / 36 across
+        the cases, the widest value swing of any driver (EV span 16,301). Your read puts 25% on
+        the slip. ${go("Scenarios","assumptions")}</div>
+      <div class="conv"><b>2 · The moat is genuinely contested where it matters</b><br>
+        The margin-fade branch carries real disagreement: Zeiss single-source against the
+        installed-base annuity, r = 0.29 — the only branch where opposition and support both
+        showed up. ${go("Lenses","disagreement")}</div>
+      <div class="conv"><b>3 · The moat does not live in blended gross margin</b><br>
+        Fetched peer margins: AMAT 48.67%, Lam 50.47%, KLA 61.30% — mean 53.48% against ASML's
+        54.17% anchor. KLA's margin is higher than ASML's. The advantage lives in ROIC and EUV
+        pricing, not blended GM; the fade branch as mapped is nearly toothless and is flagged for
+        remap at review. ${go("Derived scenarios","the branch")}</div>
+      <div class="conv"><b>4 · The bear case keeps the customers' money</b><br>
+        OWC is −2.15% of revenue in every case: customers fund the operating cycle (~775m at
+        FY2026 base revenue) and the bear case assumes that funding survives the downturn it
+        models. Routed to the engine as convention O3; the number stays wrong on the face until
+        the engine re-runs. ${go("Conventions","O3")}</div>
+      <div class="conv"><b>5 · Customer concentration is rising fast</b><br>
+        Largest customer went from 16.6% to 23.9% of net sales in one year; two customers take
+        38.0%. Unit paths inherit the capex decisions of two boards. ${go("Lenses","fragility")}</div>
+      <div class="conv"><b>6 · A tax convention understates the engine's own profitability</b><br>
+        Striking NOPLAT at the statutory 25.8% against effective rates of 13.7–18.6% understates
+        FY2024 NOPLAT by roughly 650, near 10% — open convention T1, affecting slices 1–4.
+        ${go("Conventions","T1")}</div>
+      <div class="conv"><b>7 · The derived probability set holds together</b><br>
+        Three sourced branches railed to 17.08 / 23.08 / 20.08%, base case 39.76%, inside the
+        atlas envelope with 5.4pp headroom. In aggregate your reads sit almost exactly on the
+        cause-agnostic base rate — the judgment is in the allocation, not the level.
+        ${go("Derived scenarios","the set")}</div>
+      <div class="conv"><b>8 · What the analysis says it does not know</b><br>
+        Porter's entrants and substitutes boxes are empty, one lens claim lands on drivers no
+        branch perturbs, five conventions are open, and the whole overlay carries no demonstrated
+        forecast skill. The gaps are drawn, not filled. ${go("Method","validation")}</div>
+      </div>`;
+  },
+
+  "Statements": () => `
+    <div class="panel"><h2>Income statement</h2><div class="scroll"><table>
+      <thead>${yearHead(G.years)}</thead><tbody>${rows(G.income, G.labels)}</tbody></table></div></div>
+    <div class="panel"><h2>Balance sheet</h2><div class="scroll"><table>
+      <thead>${yearHead(G.years)}</thead><tbody>${rows(G.balance, G.labels)}</tbody></table></div>
+      <p class="note">Tax rate ${pct(G.assumptions.taxRate)} · WACC ${pct(G.assumptions.wacc)}
+      · shares ${fmt(G.sharesOutstanding[G.sharesOutstanding.length-1],1)}m</p></div>` + cfPanel(),
+
+  "Scenarios": () => {
+    let out = "";
+    // 1. The assumptions that separate the cases, BEFORE any computed effect.
+    if (divergingIds.length) {
+      const rows = divergingIds
+        .map(id => ({id, span: TORNADO[id] || 0}))
+        .sort((a,b) => b.span - a.span);
+      out += `<div class="panel"><h2>What separates the cases</h2>
+        <p class="note">The assumptions, before their effect on any total. Only these
+        ${rows.length} drivers differ across bear, base and bull; the other
+        ${flatIds.length} are held identical in every case by construction (see Drivers).
+        Values are FY2029 terminal; EV span is each driver swung bear-to-bull alone.</p>
+        <div class="scroll"><table>
+        <thead><tr><th>Driver</th><th style="text-align:right">unit</th>
+        <th style="text-align:right" class="c-bear">bear</th>
+        <th style="text-align:right" class="c-base">base</th>
+        <th style="text-align:right" class="c-bull">bull</th>
+        <th style="text-align:right">EV span</th></tr></thead><tbody>
+        ${rows.map(({id, span}) => `<tr><td>${esc(id)}</td>
+          <td class="n" style="color:var(--ink-faint);font-size:11.5px">${esc(unitNote(id))}</td>
+          ${CASE_ORDER.map(c => `<td class="n ${caseCls(c)}">${driverVal(id, CASES[c].paths[id].slice(-1)[0])}</td>`).join("")}
+          <td class="n">${span ? fmt(span) : "—"}</td></tr>`).join("")}
+        </tbody></table></div></div>`;
+    }
+    // 2. The narratives that motivate them.
+    out += `<div class="panel"><h2>Case narratives</h2>` +
+      CASE_ORDER.filter(k => CASES[k]).map(k =>
+        `<div class="conv" style="border-color:${{bear:"var(--block)",base:"var(--brass)",bull:"var(--pass)"}[k]}">
+         <b class="${caseCls(k)}">${esc(k)}</b><br>${esc(CASES[k].narrative||"")}</div>`).join("") + `</div>`;
+    // 3. Only now the computed effect.
+    const ff = comp.footballField;
+    if (ff) {
+      const band = (lo, base, hi, label, unit, dp) => {
+        const span = hi - lo || 1;
+        const cols = {Bear:"var(--block)", Base:"var(--brass)", Bull:"var(--pass)"};
+        const row = (name, v) => `<tr><td style="color:${cols[name]}">${name}</td>
+          <td class="n">${fmt(v, dp)}</td>
+          <td style="width:170px"><div class="bar" style="position:relative"><i style="position:absolute;left:${
+            ((v - lo) / span * 100).toFixed(1)}%;transform:translateX(-50%);width:3px;height:100%;background:${cols[name]}"></i></div></td></tr>`;
+        return `<div class="panel"><h2>${label}</h2><div class="scroll"><table>
+          <thead><tr><th>Case</th><th style="text-align:right">${unit}</th>
+          <th style="text-align:right">bear → bull</th></tr></thead><tbody>
+          ${row("Bear", lo)}${row("Base", base)}${row("Bull", hi)}
+          <tr><td style="color:var(--ink-faint);font-size:11px">axis</td><td></td>
+          <td style="font-family:var(--mono);font-size:10px;color:var(--ink-faint)">
+          <span style="float:left">${fmt(lo, dp)}</span><span style="float:right">${fmt(hi, dp)} ${esc(unit)}</span></td></tr>
+          <tr class="tot"><td>Spread</td><td class="n">${fmt(hi - lo, dp)}</td>
+          <td class="n">${((hi - lo) / base * 100).toFixed(1)}% of base</td></tr>
+          </tbody></table></div></div>`;
+      };
+      if (typeof ff.perShareBase === "number")
+        out += band(ff.perShareLow, ff.perShareBase, ff.perShareHigh,
+                    "Effect · value per share", "EUR / share", 2);
+      if (typeof ff.evBase === "number")
+        out += band(ff.evLow, ff.evBase, ff.evHigh,
+                    "Effect · enterprise value", ff.unit || G.unit, 0);
+    }
+    const clean = Object.entries(TORNADO).map(([d,v]) => ({d, s:v}))
+      .filter(r => r.s > 0).sort((a,b) => b.s - a.s);
+    if (clean.length) {
+      const max = clean[0].s;
+      out += `<div class="panel"><h2>Sensitivity · EV span by driver</h2><div class="scroll"><table>
+        <thead><tr><th>Driver</th><th style="text-align:right">EV span (${esc(G.unit)})</th><th></th></tr></thead><tbody>
+        ${clean.map(r => `<tr><td>${esc(r.d)}</td><td class="n">${fmt(r.s)}</td>
+          <td style="width:140px"><div class="bar"><i style="width:${(r.s/max*100).toFixed(1)}%"></i></div></td></tr>`).join("")}
+        </tbody></table></div>
+        <p class="note">Each driver swung bear to bull, every other driver held at base.</p></div>`;
+    }
+    return out;
+  },
+
+  "Drivers": () => {
+    const defs = ((G.drivers || {}).definitions) || [];
+    const anch = (G.drivers || {}).anchors || {};
+    if (!Object.keys(PATHS0).length && defs.length) {
+      return `<div class="panel"><h2>Driver registry · ${esc((G.drivers.registryVersion) || "skeleton")}</h2>
+        <p class="note">Definitions and anchors exist; the three case paths and narratives are
+        the analyst work still to do, and Scenarios stays empty until the valuation engine runs
+        on them. Every anchor carries its basis and source below — read the cautions before
+        building paths on top of them.</p>
+        <div class="scroll"><table>
+        <thead><tr><th>Driver</th><th style="text-align:right">unit</th>
+        <th style="text-align:right">anchor</th><th>basis · source</th></tr></thead><tbody>
+        ${defs.map(d => { const a = anch[d.id] || {};
+          return `<tr><td>${esc(d.id)}<br><span style="color:var(--ink-faint);font-size:11px">${esc(d.label)}</span></td>
+          <td class="n" style="color:var(--ink-faint);font-size:11.5px">${esc(unitNote(d.id))}</td>
+          <td class="n">${a.value !== undefined ? driverVal(d.id, a.value) : "—"}</td>
+          <td style="white-space:normal;font-size:11.5px;color:var(--ink-soft);min-width:220px">${esc(a.basis || "")}${a.source ? ` · <i>${esc(a.source)}</i>` : ""}</td></tr>`; }).join("")}
+        </tbody></table></div>
+        ${G.drivers._skeleton ? `<p class="note" style="color:var(--wait)">${esc(G.drivers._skeleton)}</p>` : ""}</div>`;
+    }
+    const table = (ids, withCases) => `<div class="scroll"><table>
+      <thead><tr><th>Driver</th><th style="text-align:right">unit</th>
+      <th style="text-align:right">anchor</th>
+      ${withCases ? CASE_ORDER.map(c => `<th style="text-align:right" class="${caseCls(c)}">${c} FY2029</th>`).join("") : ""}
+      </tr></thead><tbody>
+      ${ids.map(id => `<tr><td>${esc(id)}</td>
+        <td class="n" style="color:var(--ink-faint);font-size:11.5px">${esc(unitNote(id))}</td>
+        <td class="n">${driverVal(id, PATHS0[id][0])}</td>
+        ${withCases ? CASE_ORDER.map(c => `<td class="n ${caseCls(c)}">${driverVal(id, CASES[c].paths[id].slice(-1)[0])}</td>`).join("") : ""}
+        </tr>`).join("")}
+      </tbody></table></div>`;
+    return `<div class="panel"><h2>Drivers that diverge across cases (${divergingIds.length})</h2>
+      ${table(divergingIds, true)}
+      <p class="note">Anchor is base-case year one. Every driver carries a value, a source and a
+      stated rule in the golden file; the engine refuses to compute otherwise.</p></div>
+      <div class="panel"><h2>Drivers held identical in every case (${flatIds.length})</h2>
+      ${table(flatIds, false)}
+      <p class="note" style="color:var(--wait)">Zero scenario span here is by construction, not
+      evidence: no disagreement has been admitted on these drivers. The fragility scan treats
+      each as a candidate claim — owc_pct_revenue already carries one (LR-ASML-F01).</p></div>`;
+  },
+
+  "Derived scenarios": () => {
+    if (!S) return `<div class="panel"><h2>No scenario set yet</h2>
+      <p class="note">The threat register is still being curated, so no branch probabilities exist.
+      Running <code>scenario_derive.py</code> today refuses at input completeness and lists exactly
+      which curator fields are missing. Nothing here is estimated in the meantime.</p></div>`;
+    const co = S.coherence, sm = S.sector_map;
+    return `<div class="panel"><h2>How to read this table</h2>
+      <dl class="kv">
+      <dt>locus</dt><dd>WHERE the threat acts. <span class="c-bull">firm</span>: hits ASML's
+        position inside its sector — admitted. <span class="c-base">mixed</span>: admitted with a
+        note naming the firm-specific part. <span class="c-bear">sector</span>: hits everyone at
+        once, demeans away in the sector-relative frame the atlas measures — excluded, never
+        scored.</dd>
+      <dt>analyst</dt><dd>The curator's evidence-graded probability that the threat bites within
+        the ${S.horizon_years}-year horizon. Pure judgment, documented with tiered sources.</dd>
+      <dt>base</dt><dd>The empirical prior. No panel of threat-materialisation rates exists yet,
+        so each branch draws the atlas erosion envelope split equally — the rate at which
+        advantages in this sector die of ALL causes, divided across the named ones. Flagged *.</dd>
+      <dt>railed</dt><dd>λ·base + (1−λ)·analyst, λ = ${S.lambda}. The blend that stops one
+        strong opinion from outrunning the sector's history: the analyst read is pulled
+        ${(S.lambda*100).toFixed(0)}% of the way toward the base rate before it reaches the
+        face.</dd>
+      </dl></div>
+      <div class="panel"><h2>Probability set</h2><div class="scroll"><table>
+      <thead><tr><th>Branch</th><th>Locus</th><th style="text-align:right">Analyst</th>
+      <th style="text-align:right">Base</th><th style="text-align:right">Railed</th></tr></thead><tbody>
+      ${S.branches.map(b => `<tr><td>${esc(b.branch_id)} · ${esc(b.source.label)}</td>
+        <td>${esc(b.source.locus || "not recorded")}</td><td class="n">${pct(b.p_analyst)}</td>
+        <td class="n">${pct(b.p_base)}${b.default_prior_used ? " *" : ""}</td>
+        <td class="n"><b>${pct(b.p_railed)}</b></td></tr>`).join("")}
+      <tr class="tot"><td>Base case · ${esc(S.base_case.definition)}</td><td></td><td></td><td></td>
+        <td class="n">${pct(S.base_case.p)}</td></tr>
+      </tbody></table></div>
+      <p class="note">* drawn from the shared cause-agnostic prior, not a threat-specific reference class.</p></div>
+      <div class="panel"><h2>Coherence — why these three checks</h2>
+      <p class="note"><b>Envelope.</b> The atlas says an advantage in this sector survives a year
+      with probability ${(sm.hold*100).toFixed(0)}%, so over ${S.horizon_years} years the chance
+      it erodes from ANY cause is 1 − ${sm.hold}^${S.horizon_years} = ${pct(co.erosion_envelope)}.
+      Every named threat is a subset of "the advantage erodes", so the named probabilities must
+      fit inside that ceiling plus a 5pp tolerance. It is the one empirical rail against
+      overclaiming threats.</p>
+      <p class="note"><b>Conservation.</b> The base case is defined as the residual — no recorded
+      threat bites — so base + branches must return to 100.00% within ±2pp. A breach means a
+      probability was edited without its complement.</p>
+      <p class="note"><b>Prior sum vs your reads.</b> Σ analyst reads = 60.00% against Σ base =
+      ${pct(co.erosion_envelope)}: in aggregate the curator sits on the cause-agnostic rate, and
+      the information is in the allocation across threats, not in the level.</p>
+      <dl class="kv">
+        <dt>Prior sum</dt><dd>${pct(co.prior_sum)}</dd>
+        <dt>Erosion envelope</dt><dd>${pct(co.erosion_envelope)} (1 − ${sm.hold}^${S.horizon_years})</dd>
+        <dt>Envelope</dt><dd>${esc(co.envelope_status)}</dd>
+        <dt>Atlas cell</dt><dd>${esc(sm.atlas_sector)} · φ ${sm.phi} · n ${sm.n} · ${esc(sm.grade)} grade</dd>
+        <dt>λ</dt><dd>${S.lambda} on the base rate</dd>
+      </dl></div>
+      ${S.excluded_threats.length ? `<div class="panel"><h2>Excluded</h2>${
+        S.excluded_threats.map(e => `<div class="conv"><b>${esc(e.reason)}</b><br>${esc(e.label)}</div>`).join("")
+      }</div>` : ""}`;
+  },
+
+  "Lenses": () => {
+    const C = STATE.concordance, R = STATE.lensRegister;
+    if (!R) return `<div class="panel"><p class="empty">No lens register yet.</p></div>`;
+    const side = (e) => e.direction === "supports_thesis"
+      ? `<span style="color:var(--pass)">S${e.mass}</span>`
+      : `<span style="color:var(--block)">O${e.mass}</span>`;
+    let out = "";
+
+    // ---- generic lens idioms: rendered from the register, any subject -------
+    const byLens = (l) => R.entries.filter(e => e.lens === l);
+    const driversOf = (es) => [...new Set(es.flatMap(e => e.drivers || []))];
+    const claimCard = (e) => `<div class="conv" style="border-color:${
+      e.direction === "supports_thesis" ? "var(--pass)" : "var(--block)"}">
+      <b>${eref(e.entry_id)}${e.locus === "mixed" ? " · mixed locus" : ""}</b><br>
+      ${esc(e.claim)}${e.locus_note ? `<br><span style="color:var(--ink-faint)">Locus: ${esc(e.locus_note)}</span>` : ""}</div>`;
+    const spanOf = (d) => TORNADO[d] || 0;
+
+    // Fragility as a load path: one node per claim, ordered by the EV span of the
+    // driver it lands on, so the heaviest dependence reads first.
+    const frag = byLens("fragility");
+    if (frag.length) {
+      const ordered = [...frag].sort((a, b) =>
+        Math.max(...(b.drivers || []).map(spanOf), 0) - Math.max(...(a.drivers || []).map(spanOf), 0));
+      out += `<div class="panel"><h2>Fragility · the load path</h2>
+        <div class="flow">
+          ${ordered.map((e, k) => `${k ? `<div class="farrow">→<small>${
+            esc((e.drivers || [])[0] || "")}</small></div>` : ""}
+            <div class="fnode" style="border-color:var(--block)">
+            <b>${esc(e.entry_id.split("-").pop())}</b>${esc(e.claim.split(":")[0].slice(0, 120))}
+            <br>${eref(e.entry_id)}</div>`).join("")}
+        </div>
+        <p class="note">${frag.length} recorded dependence${frag.length > 1 ? "s" : ""}, ordered by
+        the EV span of the driver each lands on. Every node is a claim with a citation; none is
+        an inference.</p></div>`;
+    }
+
+    // Porter as the five boxes. Unclaimed forces are drawn dashed: a coverage gap
+    // made visible rather than filled.
+    const FORCES = [["supplier", "Supplier power"], ["buyer", "Buyer power"],
+                    ["rivalry", "Rivalry"], ["entrants", "New entrants"],
+                    ["substitutes", "Substitutes"]];
+    const porter = byLens("porter");
+    const forceHit = (key) => porter.concat(frag).filter(e =>
+      new RegExp(key === "entrants" ? "entrant|new entry"
+               : key === "substitutes" ? "substitut|alternative"
+               : key === "supplier" ? "suppl|vendor|foundr|source"
+               : key === "buyer" ? "buyer|customer|concentrat"
+               : "rival|competitor|monopol|only manufacturer|share", "i").test(e.claim));
+    const pbox = (key, label, col, row) => {
+      const hits = forceHit(key);
+      const sup = hits.some(e => e.direction === "supports_thesis");
+      return `<div class="pbox ${hits.length ? (sup ? "sup" : "opp") : "none"}"
+        style="grid-column:${col};grid-row:${row}"><b>${label}</b>${
+        hits.length ? hits.map(e => `${esc(e.claim.slice(0, 150))} ${eref(e.entry_id)}`).join("<br>")
+                    : "no claim registered"}</div>`;
+    };
+    out += `<div class="panel"><h2>Porter · five forces, firm-relative reading only</h2>
+      <div class="porter">
+        ${pbox("entrants", "New entrants", 2, 1)}
+        ${pbox("supplier", "Supplier power", 1, 2)}
+        ${pbox("rivalry", "Rivalry", 2, 2)}
+        ${pbox("buyer", "Buyer power", 3, 2)}
+        ${pbox("substitutes", "Substitutes", 2, 3)}
+      </div>
+      <p class="note">Forces are matched to registered claims by mechanism, so a box fills only
+      when a cited claim speaks to it. Dashed boxes are coverage gaps, visible rather than filled.
+      Sector-level five-forces content demeans away in the closed-set frame; only firm-located
+      readings are admitted.</p></div>`;
+
+    // Teece as the appropriability chain, with the atlas regime in the middle.
+    const teece = byLens("teece");
+    if (teece.length) {
+      const sm = S ? S.sector_map : null;
+      out += `<div class="panel"><h2>Teece · who keeps the value from the innovation</h2>
+        <div class="flow">
+          <div class="fnode"><b>Innovation</b>${esc(G.company)}, arena
+            ${esc((G.drivers || {}).arena || "unmapped")}.</div>
+          <div class="farrow">→<small>appropriability</small></div>
+          <div class="fnode"><b>Regime check</b>${sm
+            ? `Sector fade φ ${sm.phi}, top-tercile hold ${(sm.hold * 100).toFixed(0)}%/yr — the
+               empirical rate at which such advantages decay (atlas, ${esc(sm.grade)} grade).`
+            : `No atlas sector mapped yet: the persistence rate this claim should be scored
+               against is not on file. Mapping happens in the derivation config.`}</div>
+          <div class="farrow">→<small>complementary assets</small></div>
+          <div class="fnode" style="border-color:var(--pass)"><b>Complementary asset</b>
+            ${esc(teece[0].claim.split(":")[0].slice(0, 160))}<br>${eref(teece[0].entry_id)}</div>
+        </div>
+        <p class="note">Teece is the one lens the calibration loop can eventually score: it claims
+        persistence, and the fade atlas measures persistence.</p></div>`;
+    }
+
+    // Capital recovery: the claimed driver plotted across the three cases.
+    const cap = byLens("capital_recovery");
+    if (cap.length) {
+      const d = (cap[0].drivers || [])[0];
+      const havePaths = d && CASES.bear && CASES.bear.paths[d];
+      out += `<div class="panel"><h2>Capital recovery · commitment vs adoption</h2>
+        ${havePaths ? `<div class="scroll"><table>
+          <thead><tr><th>${esc(d)}</th>${CASE_ORDER.map(c =>
+            `<th style="text-align:right" class="${caseCls(c)}">${c} FY${G.years[G.years.length-1] + (G.drivers.horizonYears || 5)}</th>`).join("")}
+            <th style="text-align:right">EV span</th></tr></thead><tbody>
+          <tr><td>${esc(unitNote(d))}</td>${CASE_ORDER.map(c =>
+            `<td class="n ${caseCls(c)}">${driverVal(d, CASES[c].paths[d].slice(-1)[0])}</td>`).join("")}
+            <td class="n">${spanOf(d) ? fmt(spanOf(d)) : "—"}</td></tr>
+          </tbody></table></div>` : ""}
+        ${cap.map(claimCard).join("")}</div>`;
+    }
+
+    // Value curve: the ladder across whichever drivers the claim names.
+    const vc = byLens("value_curve");
+    if (vc.length) {
+      const ids = driversOf(vc).filter(id => PATHS0[id] !== undefined);
+      out += `<div class="panel"><h2>Value curve · price/margin ladder (strategy canvas pending)</h2>
+        ${ids.length ? `<div class="scroll"><table>
+          <thead><tr><th>Driver named by the claim</th><th style="text-align:right">unit</th>
+          <th style="text-align:right">anchor</th></tr></thead><tbody>
+          ${ids.sort((a,b) => (PATHS0[b][0]||0) - (PATHS0[a][0]||0)).map(id =>
+            `<tr><td>${esc(id)}</td>
+             <td class="n" style="color:var(--ink-faint);font-size:11.5px">${esc(unitNote(id))}</td>
+             <td class="n">${driverVal(id, PATHS0[id][0])}</td></tr>`).join("")}
+          </tbody></table></div>` : ""}
+        ${vc.map(claimCard).join("")}
+        <p class="note">This is level evidence from the firm's own drivers, not a Blue Ocean
+        strategy canvas: a canvas plots firm vs industry across the factors buyers weigh and needs
+        competitor factor scoring the model does not carry. Open item, stated rather than drawn.</p></div>`;
+    }
+
+    // Without a threat register there are no branches to land on: show the
+    // entries ungrouped rather than crashing or pretending concordance exists.
+    if (!C) {
+      const side = (e) => e.direction === "supports_thesis"
+        ? `<span style="color:var(--pass)">S${e.mass}</span>`
+        : `<span style="color:var(--block)">O${e.mass}</span>`;
+      const drafts = R.entries.filter(e => e.status === "draft").length;
+      return out + `<div class="panel"><h2>Lens claims — ungrouped</h2>
+        <p class="note">No threat register exists for this subject yet, so no branch
+        mapping and no concordance r can be computed. Claims are shown ungrouped.
+        ${drafts ? `<b style="color:var(--wait)">${drafts} of ${R.entries.length}
+        entries are draft: proposals awaiting curator sign-off, not citable.</b>` : ""}</p>
+        ${R.entries.map(e => `<div class="conv"><b>${side(e)} · ${esc(e.entry_id)} ·
+          ${esc(e.lens)} · ${esc(e.locus)} locus · tier ${e.provenance_tier} ·
+          ${esc(e.status)}</b><br>${esc(e.claim)}</div>`).join("")}</div>`;
+    }
+
+    out += `<div class="panel"><h2>Disagreement engine</h2>
+      <p class="note">Each lens makes a claim about a driver, never about a return and never a
+      probability. Supporting mass S and opposing mass O per branch give r = min(S,O)/(S+O),
+      the same contestedness the calibration ledger rails on.
+      ${C.drafts ? `<b style="color:var(--wait)">${C.drafts} of ${C.total} entries are draft:
+      proposals awaiting curator sign-off, not citable.</b>` : ""}</p></div>`;
+    for (const b of C.branches) {
+      const rTxt = b.r === null ? "no claims land here — uncontested by omission"
+        : `S = ${b.S} · O = ${b.O} · r = ${b.r.toFixed(2)}
+           ${Math.min(b.S,b.O)===0 ? "(one-sided: opposition or support missing, not resolved)"
+             : b.r < 0.15 ? "(clean)" : b.r < 0.30 ? "(mixed)" : "(contested)"}`;
+      out += `<div class="panel"><h2>${esc(b.branch_id)}</h2>
+        <p class="note" style="margin:0 0 8px">${esc(b.label)}</p>
+        <p class="note" style="margin:0 0 10px;font-family:var(--mono);font-size:12px">${rTxt}</p>
+        ${b.entries.map(e => `<div class="conv"><b>${side(e)} · ${esc(e.entry_id)} ·
+          ${esc(e.lens)} · tier ${e.tier} · ${esc(e.status)}</b><br>${esc(e.claim)}</div>`).join("")
+        || '<p class="empty">no lens claims attached</p>'}</div>`;
+    }
+    if (C.unmatched.length) {
+      out += `<div class="panel"><h2>Unmatched claims — coverage findings</h2>
+        <p class="note">These land on drivers no active branch perturbs. They contest the
+        scenario set's coverage, not a branch's probability: either a threat is missing
+        from the register, or the claim needs an explicit target branch.</p>
+        ${C.unmatched.map(e => `<div class="conv"><b>${esc(e.entry_id)} · ${esc(e.lens)} ·
+          lands on ${esc(e.drivers.join(", "))}</b><br>${esc(e.claim)}</div>`).join("")}</div>`;
+    }
+    return out;
+  },
+
+  "Conventions": () => {
+    const log = STATE.conventionsLog;
+    const byId = Object.fromEntries(((log && log.conventions) || []).map(c => [c.id, c]));
+    const decided = Object.values(byId).filter(c => c.status === "decided").length;
+    let out = `<div class="panel"><h2>Conventions ledger</h2>
+      <p class="note">Each is a question the engine could not settle on its own, travelling with
+      the numbers it affects. Resolving one is a three-step loop: the chat may <b>draft</b> a
+      resolution, only the curator moves it to <b>decided</b> in the log, and no number on this
+      page changes until the owning engine <b>re-runs</b> — the valuation engine for model
+      conventions, scenario_derive.py for derivation conventions. This console computes nothing.
+      ${log ? `<b style="color:var(--pass)">${decided} decided</b> · <b style="color:var(--wait)">${Object.keys(byId).length - decided} open</b>` : ""}</p></div>`;
+    const items = uc.map(c => {
+      const t = typeof c === "string" ? c : (c.note || c.text || JSON.stringify(c));
+      const m = /^([A-Z]\d+)\s+([\s\S]*)$/.exec(t.trim());
+      return {id: m ? m[1] : (c.id || ""), text: m ? m[2] : t};
+    });
+    // The engine stamps its own list into computed; the log carries entries added
+    // afterwards (routings, new findings). Render the union, or later decisions
+    // stay invisible on the face.
+    const inEngine = new Set(items.map(x => x.id));
+    for (const c of Object.values(byId)) {
+      if (!inEngine.has(c.id)) items.push({id: c.id, text: c.interim_default || c.resolution || ""});
+    }
+    for (const it of items) {
+      const lg = byId[it.id];
+      const chip = lg ? `<span class="status-chip st-${lg.status}">${lg.status}</span>` : "";
+      out += `<div class="conv"><b>${esc(it.id)}</b>${chip}
+        ${lg && lg.title ? `<span style="color:var(--ink)"> ${esc(lg.title)}</span>` : ""}<br>
+        ${esc(it.text)}
+        ${lg && lg.resolution ? `<br><span style="color:var(--pass)">Resolution (${esc(lg.decided_on || "")}): ${esc(lg.resolution)}</span>` : ""}
+        ${lg && lg.status === "open" && lg.resolution_path ? `<br><span style="color:var(--wait)">To resolve: ${esc(lg.resolution_path)}</span>` : ""}
+        </div>`;
+    }
+    return out;
+  },
+
+  "Method": () => {
+    const cfg = STATE.deriveConfig, man = STATE.manifest || [];
+    let out = `<div class="panel"><h2>Three engines and a viewer</h2>
+      <p class="note">Every number on this page was computed somewhere specific, from inputs that
+      hash to specific values. Nothing is computed in the browser or in the chat.</p>
+      <div class="scroll"><table>
+      <thead><tr><th>Stage</th><th>Logic sits in</th><th>Inputs</th><th>Output</th><th>Re-run</th></tr></thead>
+      <tbody>
+      <tr><td>Extraction</td><td>/collect agent</td><td>filings, house conventions (E1, E3)</td>
+        <td>golden file, schema v3</td><td>re-extract; conventions log tracks open items</td></tr>
+      <tr><td>Valuation</td><td>valuation engine ${esc(comp.engineVersion||"")}</td>
+        <td>golden drivers + three pre-registered cases</td>
+        <td>scenarios.computed, ${esc(comp.computedAt||"")}</td>
+        <td>outside this console; page shows the stale block until then</td></tr>
+      <tr><td>Derivation</td><td>scenario_derive.py (local)</td>
+        <td>config + threats + drivers + atlas (+ contradictions)</td>
+        <td>scenario_set JSON + face, byte-deterministic, sha256 printed</td>
+        <td>local re-run; successor revisions only, never overwrite</td></tr>
+      <tr><td>Disagreement</td><td>lens_register.py (local)</td>
+        <td>lens register + threat register</td>
+        <td>S, O, r per branch; coverage findings</td>
+        <td>local re-run; r does not feed the rail without a declared reading</td></tr>
+      <tr><td>Display</td><td>this console</td><td>all of the above</td>
+        <td>this page + the chat digest</td><td>restart to pick up file changes</td></tr>
+      </tbody></table></div></div>`;
+    out += `<div class="panel"><h2>Input manifest · sha256</h2>
+      <p class="note">The reproducibility anchor: identical hashes mean an identical page. Quote a
+      hash prefix when citing a number from this console.</p>
+      <div class="scroll"><table>
+      <thead><tr><th>Role</th><th>File</th><th>sha256</th></tr></thead><tbody>
+      ${man.map(m => `<tr><td>${esc(m.role)}</td><td style="font-family:var(--mono);font-size:11.5px">${esc(m.file)}</td>
+        <td style="font-family:var(--mono);font-size:11px;color:${m.sha256?"var(--ink-soft)":"var(--block)"}">${m.sha256 ? esc(m.sha256.slice(0,16)) + "…" : "missing"}</td></tr>`).join("")}
+      </tbody></table></div></div>`;
+    if (cfg) {
+      out += `<div class="panel"><h2>Derivation readings in force</h2>
+        <p class="note">Six points the derivation spec leaves open, each a declared switch in the
+        config, never a generator default. Changing one produces a new revision beside the old.</p>
+        <dl class="kv">
+        ${Object.entries(cfg.readings || {}).sort().map(([k,v]) =>
+          `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("")}
+        <dt>lambda</dt><dd>${cfg.lambda} on the base rate</dd>
+        <dt>horizon</dt><dd>${cfg.horizon_years} years</dd>
+        <dt>atlas sector</dt><dd>${esc(cfg.atlas_sector)}</dd>
+        </dl>
+        ${cfg.lambda_basis ? `<p class="note" style="margin-top:12px"><b>λ basis on record.</b> ${esc(cfg.lambda_basis)}</p>` : ""}</div>`;
+    }
+    out += `<div class="panel"><h2>The equations that connect the drivers</h2>
+      <div class="scroll"><table><tbody>
+      <tr><td>Revenue</td><td style="font-family:var(--mono);font-size:12px">Σ (units × ASP) per system line + metrology + IBM</td></tr>
+      <tr><td>Gross profit</td><td style="font-family:var(--mono);font-size:12px">revenue × gross_margin_pct &nbsp;(house GM, depreciation-free — E1)</td></tr>
+      <tr><td>EBIT</td><td style="font-family:var(--mono);font-size:12px">GP − opex_pct_revenue × revenue − depreciation</td></tr>
+      <tr><td>NOPLAT</td><td style="font-family:var(--mono);font-size:12px">EBIT × (1 − tax_rate)</td></tr>
+      <tr><td>FOCF</td><td style="font-family:var(--mono);font-size:12px">NOPLAT + depreciation − capex_incl − Δ working capital</td></tr>
+      <tr><td>Value</td><td style="font-family:var(--mono);font-size:12px">Σ FOCF_t / (1+WACC)^t + Gordon terminal on FOCF₅ &nbsp;(WACC 10%, g 2%; terminal = 73.4% of EV)</td></tr>
+      <tr><td>Fade path</td><td style="font-family:var(--mono);font-size:12px">driver_t = sector_mean + (driver₀ − sector_mean) × φ^t &nbsp;·&nbsp; CAP ≈ 1/(1−φ)</td></tr>
+      <tr><td>Erosion envelope</td><td style="font-family:var(--mono);font-size:12px">1 − hold^H &nbsp;·&nbsp; Σ p_railed ≤ envelope + 0.05</td></tr>
+      <tr><td>Rail</td><td style="font-family:var(--mono);font-size:12px">p_railed = λ·p_base + (1−λ)·p_analyst &nbsp;=&nbsp; p_base + (p_analyst − p_base)(1 − λ·2r) at r → 0.5</td></tr>
+      <tr><td>Conservation</td><td style="font-family:var(--mono);font-size:12px">p_base_case + Σ p_railed = 1.00 ± 0.02</td></tr>
+      <tr><td>Concordance</td><td style="font-family:var(--mono);font-size:12px">r = min(S, O) / (S + O) over signed lens masses per branch</td></tr>
+      </tbody></table></div>
+      <p class="note">The rail identity in the ninth row is why §10.1 closed the way it did: the
+      scenario rail IS the calibration ledger's equation evaluated at maximum dispersion.</p></div>`;
+
+    out += `<div class="panel"><h2>Validation record — what each tool has actually earned</h2>
+      <div class="conv"><b>fade atlas</b><br>Module A live: 155 firms, 559 forward transitions,
+        2020–24, working grade — the φ and hold cells this page uses. Module B (exit hazard)
+        blocked on data: null on a curated large-cap panel (p = 0.80), by construction not by
+        failure of the idea. Module C (accruals) directional: Sloan's sign replicates, not
+        significant on this window (p = 0.18).</div>
+      <div class="conv"><b>position vs lenses (the discriminance harness)</b><br>Gap alone reaches
+        pseudo-R² 0.218; adding moat advantage or ROIC advantage adds nothing (p = 0.79 / 0.65).
+        Every candidate lens signal's Brier skill sat inside ±0.08 of zero across three test
+        years; a regularised six-signal scored −0.14, actively harmful.</div>
+      <div class="conv"><b>Teece artifact</b><br>Operationalised (scoring spec exists) and its
+        predictive contribution is the moat-advantage null above. Its standing here is therefore
+        claims-only — but it is the one lens whose claims the atlas can eventually score, because
+        both speak about persistence. First scoreable moment: branch resolutions, 2027–28.</div>
+      <div class="conv"><b>lens register / disagreement engine</b><br>No forecast claim at all, by
+        design: claims about drivers, r as computed contestedness. Validation is structural — 89
+        pytest cases pin the arithmetic, and the register is fully draft until signed.</div>
+      <div class="conv"><b>scenario_derive.py</b><br>89 tests, byte-deterministic output, all six
+        refusal gates demonstrated. What it does NOT yet have: a single resolved branch, so zero
+        calibration evidence. The first falsifiers resolve 2027-12-31.</div>
+      <div class="conv"><b>derived cash flows</b><br>Ties to the reported change in cash exactly,
+        by construction — an identity, not a model. The check row on the Cash flows tab is the
+        proof, per year.</div></div>`;
+
+    out += `<div class="panel"><h2>Status</h2>
+      <p class="note">scenario_derivation_spec_v0_1 is DRAFT with amendments A1–A3 recorded; no
+      scenario set is OTS-stamped or citable in client work until ratification. The lens register
+      is fully draft pending curator signing. The λ rail sits at the maximum-dispersion corner;
+      leaving it requires a declared reading consuming the computed r, not a tool side effect.</p></div>`;
+    return out;
+  },
+};
+
+const tabNames = Object.keys(TABS);
+$("tabs").innerHTML = tabNames.map((n,i) =>
+  `<button role="tab" aria-selected="${i===0}" data-t="${esc(n)}">${esc(n)}</button>`).join("");
+function show(name) {
+  $("view").innerHTML = TABS[name]();
+  [...$("tabs").children].forEach(b => b.setAttribute("aria-selected", b.dataset.t === name));
+}
+$("tabs").addEventListener("click", e => { if (e.target.dataset.t) show(e.target.dataset.t); });
+show(tabNames[0]);
+
+/* ---------- conversation ----------
+   In static export mode there is no proxy, so the pane explains where the
+   conversation lives instead of pretending to offer one. */
+if (STATE.static) {
+  document.getElementById("chat").innerHTML = `
+    <header><div class="eyebrow">Conversation</div>
+      <div class="sub" style="margin-top:6px">not available on the published page</div></header>
+    <div style="padding:18px">
+      <p class="note" style="margin-top:0">This is a static export. The live console runs a local
+      proxy so the conversation can read these numbers without an API key ever reaching the
+      browser — that proxy cannot exist on a static host, so the pane is inert here rather than
+      insecure.</p>
+      <p class="note">Everything else on this page is the same object the live console serves:
+      same inputs, same hashes, same refusals. To ask questions of the numbers, run the console
+      locally from the repository.</p>
+      <p class="note" style="font-family:var(--mono);font-size:11.5px;color:var(--ink-faint)">
+      exported ${esc(STATE.exportedAt || "")}</p>
+    </div>`;
+} else {
+$("provider").textContent = P.ready
+  ? `${P.name} · ${P.model}`
+  : `${P.name} · ${P.model} · ${P.keyEnv} not set`;
+
+const history = [];
+function bubble(role, text, cls) {
+  const d = document.createElement("div");
+  d.className = "msg " + (cls || (role === "user" ? "you" : "them"));
+  d.innerHTML = `<span class="who">${role === "user" ? "You" : (cls === "err" ? "Console" : P.name)}</span>
+                 <div class="body">${esc(text)}</div>`;
+  $("log").appendChild(d); $("log").scrollTop = $("log").scrollHeight;
+  return d;
+}
+
+const SEEDS = [
+  "Which driver moves enterprise value most, and by how much?",
+  "Walk me through how gross margin differs across the three cases.",
+  "Which numbers here are measured and which are analyst judgement?",
+  "Draft a resolution for convention T1, the tax basis question.",
+  S ? "Do the branch probabilities fit inside the erosion envelope?"
+    : "What is missing before a scenario set can be produced?",
+];
+$("seed").innerHTML = SEEDS.map(s => `<button type="button">${esc(s)}</button>`).join("");
+$("seed").addEventListener("click", e => {
+  if (e.target.tagName === "BUTTON") { $("q").value = e.target.textContent; $("ask").requestSubmit(); }
+});
+
+$("ask").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const q = $("q").value.trim();
+  if (!q) return;
+  $("q").value = ""; $("send").disabled = true;
+  $("seed").style.display = "none";
+  bubble("user", q);
+  history.push({role:"user", content:q});
+  const pending = bubble("assistant", "thinking");
+  pending.querySelector(".body").innerHTML = '<span class="dots"></span>';
+  try {
+    const r = await fetch("/api/chat", {
+      method:"POST", headers:{"content-type":"application/json"},
+      body: JSON.stringify({messages: history}),
+    });
+    const d = await r.json();
+    pending.remove();
+    if (d.error) { bubble("assistant", d.error, "err"); }
+    else { bubble("assistant", d.reply); history.push({role:"assistant", content:d.reply}); }
+  } catch (err) {
+    pending.remove();
+    bubble("assistant", "Could not reach the console proxy: " + err.message, "err");
+  } finally {
+    $("send").disabled = false; $("q").focus();
+  }
+});
+$("q").addEventListener("keydown", e => {
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("ask").requestSubmit(); }
+});
+}
+</script>
+</body>
+</html>
