@@ -1,0 +1,938 @@
+<!doctype html>
+<!-- Constellation console. Served by serve_console.py, which injects state and
+     proxies chat to the configured provider. The page never holds an API key. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Constellation console</title>
+<style>
+  :root {
+    --ground:#0F2426; --surface:#17383B; --raised:#1D4145; --rule:#2B5054;
+    --ink:#F4F0E9; --ink-soft:#AFC3C0; --ink-faint:#7E9895;
+    --brass:#C6A553; --brass-bg:#2B3B33;
+    --pass:#8FCE9A; --block:#E0A3A3; --wait:#C6A553;
+    --serif: Georgia, "Iowan Old Style", "Times New Roman", serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin:0; background:var(--ground); color:var(--ink);
+    font: 14px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    display:grid; grid-template-columns: minmax(0,1fr) 420px;
+  }
+  @media (max-width: 980px) { body { grid-template-columns: 1fr; } #chat { border-left:none; border-top:1px solid var(--rule); } }
+
+  /* ---- left: the numbers ---- */
+  main { overflow-y:auto; padding:26px 30px 60px; }
+  h1 { font-family:var(--serif); font-size:22px; font-weight:600; margin:0; }
+  h2 { font-family:var(--serif); font-size:16px; font-weight:600; margin:0 0 12px; }
+  .eyebrow { font-family:var(--mono); font-size:10.5px; letter-spacing:.14em;
+             text-transform:uppercase; color:var(--ink-faint); }
+  .sub { color:var(--ink-soft); margin:8px 0 0; font-size:13.5px; }
+  header { border-bottom:2px solid var(--brass); padding-bottom:16px; }
+
+  .chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:12px; }
+  .chip { font-family:var(--mono); font-size:10.5px; padding:3px 9px; border-radius:3px;
+          border:1px solid var(--rule); color:var(--ink-soft); }
+  .chip.pass{ color:var(--pass); border-color:transparent; background:#1E3B2C; }
+  .chip.block{ color:var(--block); border-color:transparent; background:#3B2325; }
+  .chip.wait{ color:var(--wait); border-color:transparent; background:#33301F; }
+
+  nav { display:flex; gap:2px; margin:22px 0 18px; flex-wrap:wrap; }
+  nav button {
+    font-family:var(--mono); font-size:11px; letter-spacing:.08em; text-transform:uppercase;
+    background:transparent; color:var(--ink-faint); border:1px solid var(--rule);
+    padding:7px 13px; cursor:pointer; border-radius:3px;
+  }
+  nav button:hover { color:var(--ink); border-color:var(--brass); }
+  nav button[aria-selected="true"] { color:var(--ground); background:var(--brass);
+                                     border-color:var(--brass); font-weight:600; }
+  nav button:focus-visible, .ask button:focus-visible, textarea:focus-visible {
+    outline:2px solid var(--brass); outline-offset:2px; }
+
+  .scroll { overflow-x:auto; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th { text-align:left; font-family:var(--mono); font-size:10px; letter-spacing:.1em;
+       text-transform:uppercase; color:var(--ink-faint); font-weight:500;
+       padding:0 10px 7px 0; border-bottom:1px solid var(--rule); white-space:nowrap; }
+  td { padding:7px 10px 7px 0; border-bottom:1px solid rgba(43,80,84,.5);
+       font-variant-numeric: tabular-nums; white-space:nowrap; }
+  td:first-child, th:first-child { white-space:normal; min-width:190px; }
+  td.n { text-align:right; }
+  tr.tot td { font-weight:600; border-top:1px solid var(--rule); }
+
+  .panel { background:var(--surface); border:1px solid var(--rule); border-radius:4px;
+           padding:16px 18px; margin-bottom:16px; }
+  .kv { display:grid; grid-template-columns:auto 1fr; gap:6px 16px; font-size:13px; }
+  .kv dt { color:var(--ink-faint); font-family:var(--mono); font-size:11px;
+           letter-spacing:.06em; text-transform:uppercase; }
+  .kv dd { margin:0; font-variant-numeric:tabular-nums; }
+  .note { color:var(--ink-soft); font-size:12.5px; line-height:1.6; margin:10px 0 0; }
+  .conv { border-left:2px solid var(--brass); padding:8px 0 8px 12px; margin:12px 0;
+          font-size:12.5px; color:var(--ink-soft); }
+  .conv b { color:var(--brass); font-family:var(--mono); font-size:11px; }
+  .bar { height:6px; background:var(--brass-bg); border-radius:3px; overflow:hidden; min-width:80px; }
+  .bar i { display:block; height:100%; background:var(--brass); }
+  .empty { color:var(--ink-faint); font-style:italic; font-size:13px; }
+
+  /* ---- right: the conversation ---- */
+  #chat { border-left:1px solid var(--rule); background:var(--surface);
+          display:flex; flex-direction:column; height:100vh; position:sticky; top:0; }
+  #chat header { padding:16px 18px; border-bottom:1px solid var(--rule); border-bottom-width:1px; }
+  #log { flex:1; overflow-y:auto; padding:16px 18px; display:flex; flex-direction:column; gap:14px; }
+  .msg { font-size:13.5px; line-height:1.6; }
+  .msg .who { font-family:var(--mono); font-size:10px; letter-spacing:.12em;
+              text-transform:uppercase; color:var(--ink-faint); display:block; margin-bottom:5px; }
+  .msg.you .body { background:var(--raised); padding:9px 12px; border-radius:4px; }
+  .msg.err .body { color:var(--block); font-family:var(--mono); font-size:12px;
+                   background:#3B2325; padding:10px 12px; border-radius:4px; white-space:pre-wrap; }
+  .msg .body { white-space:pre-wrap; }
+  .msg .body table { margin:8px 0; }
+  .seed { display:flex; flex-wrap:wrap; gap:6px; padding:0 18px 12px; }
+  .seed button { font-size:11.5px; text-align:left; background:transparent; color:var(--ink-soft);
+                 border:1px solid var(--rule); padding:6px 10px; border-radius:3px; cursor:pointer; }
+  .seed button:hover { border-color:var(--brass); color:var(--ink); }
+  .ask { border-top:1px solid var(--rule); padding:12px 18px 16px; display:flex; gap:8px; align-items:flex-end; }
+  textarea { flex:1; resize:none; background:var(--ground); color:var(--ink);
+             border:1px solid var(--rule); border-radius:4px; padding:9px 11px;
+             font:inherit; font-size:13.5px; min-height:40px; max-height:160px; }
+  .ask button { background:var(--brass); color:var(--ground); border:none; border-radius:4px;
+                padding:10px 16px; font-weight:600; cursor:pointer; font-size:13px; }
+  .ask button:disabled { opacity:.45; cursor:default; }
+  .dots::after { content:"·"; animation: d 1.2s steps(3,end) infinite; }
+  @keyframes d { 0%{content:"·"} 33%{content:"· ·"} 66%{content:"· · ·"} }
+  @media (prefers-reduced-motion: reduce) { .dots::after { animation:none; content:"· · ·" } }
+  .c-bear { color:var(--block); } .c-base { color:var(--brass); } .c-bull { color:var(--pass); }
+  .porter { display:grid; grid-template-columns:1fr 1.2fr 1fr; gap:8px; margin-top:6px; }
+  .pbox { border:1px solid var(--rule); border-radius:4px; padding:10px 12px; font-size:12px;
+          line-height:1.5; color:var(--ink-soft); }
+  .pbox b { display:block; font-family:var(--mono); font-size:10px; letter-spacing:.1em;
+            text-transform:uppercase; margin-bottom:5px; color:var(--ink-faint); }
+  .pbox.sup { border-color:var(--pass); }  .pbox.opp { border-color:var(--block); }
+  .pbox.none { border-style:dashed; opacity:.65; }
+  .flow { display:flex; align-items:stretch; gap:0; flex-wrap:wrap; margin-top:6px; }
+  .fnode { flex:1; min-width:150px; border:1px solid var(--rule); border-radius:4px;
+           padding:10px 12px; font-size:12px; line-height:1.5; color:var(--ink-soft); }
+  .fnode b { display:block; font-size:12.5px; color:var(--ink); margin-bottom:4px; font-family:var(--serif); }
+  .farrow { display:flex; flex-direction:column; justify-content:center; padding:0 8px;
+            color:var(--brass); font-size:16px; text-align:center; }
+  .farrow small { font-size:9.5px; color:var(--ink-faint); font-family:var(--mono); max-width:96px; }
+  .status-chip { font-family:var(--mono); font-size:10px; letter-spacing:.08em; padding:2px 8px;
+                 border-radius:3px; text-transform:uppercase; margin-left:8px; }
+  .st-open { background:#33301F; color:var(--wait); }
+  .st-decided { background:#1E3B2C; color:var(--pass); }
+</style>
+</head>
+<body>
+
+<main>
+  <header>
+    <div class="eyebrow">Constellation · console</div>
+    <h1 id="firm">—</h1>
+    <p class="sub" id="strap">—</p>
+    <div class="chips" id="chips"></div>
+  </header>
+
+  <nav id="tabs" role="tablist"></nav>
+  <div id="view"></div>
+</main>
+
+<aside id="chat">
+  <header>
+    <div class="eyebrow">Conversation</div>
+    <div class="sub" id="provider" style="margin-top:6px">—</div>
+  </header>
+  <div id="log"></div>
+  <div class="seed" id="seed"></div>
+  <form class="ask" id="ask">
+    <textarea id="q" rows="1" placeholder="Ask about these numbers…" aria-label="Ask about these numbers"></textarea>
+    <button type="submit" id="send">Ask</button>
+  </form>
+</aside>
+
+<script>
+const STATE = {"golden": {"schemaVersion": 3, "company": "NVIDIA CORP", "unit": "USD millions", "years": [2022, 2023, 2024, 2025, 2026], "income": {"revenue": [26914.0, 26974.0, 60922.0, 130497.0, 215938.0], "costOfSales": [9439.0, 11618.0, 16621.0, 32639.0, 62475.0], "depreciation": [1174.0, 1544.0, 1508.0, 1864.0, 2843.0], "sga": [6153.0, 9636.0, 9584.0, 13507.0, 11211.0], "interestIncome": [29.0, 267.0, 866.0, 1786.0, 2300.0], "interestExpense": [236.0, 262.0, 257.0, 247.0, 259.0], "incomeTaxes": [189.0, -187.0, 4058.0, 11146.0, 21383.0]}, "balance": {"operatingCash": [1990.0, 3389.0, 7280.0, 8589.0, 10605.0], "otherCurrentAssets": [26839.0, 19684.0, 37065.0, 71537.0, 115000.0], "ppe": [2778.0, 3807.0, 3914.0, 6283.0, 10383.0], "otherOperatingAssets": [12580.0, 14302.0, 17469.0, 25192.0, 70815.0], "accountsPayable": [1783.0, 1193.0, 2699.0, 6310.0, 9812.0], "otherNonInterestLiab": [4846.0, 5685.0, 9092.0, 17501.0, 30231.0], "longTermDebt": [10946.0, 12203.0, 10959.0, 8463.0, 9467.0], "equity": [26612.0, 22101.0, 42978.0, 79327.0, 157293.0]}, "assumptions": {"taxRate": 0.1512, "wacc": 0.12}, "sharesOutstanding": [2506.0, 2466.0, 24643.0, 24477.0, 24304.0], "labels": {"costOfSales": "Cost of revenue (as reported \u2014 see E1 stance)"}, "_collect": {"source": "SEC EDGAR companyfacts (XBRL)", "cik": "0001045810", "fetched_at": "2026-08-12T12:11:19+00:00", "tag_map": {"revenue": "Revenues", "costOfSales": "CostOfRevenue", "depreciation": "DepreciationDepletionAndAmortization", "pretax": "IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest", "incomeTaxes": "IncomeTaxExpenseBenefit", "interestExpense": "InterestExpenseNonoperating", "interestIncome": "InvestmentIncomeInterest", "netIncome": "NetIncomeLoss", "cash": "CashAndCashEquivalentsAtCarryingValue", "assetsCurrent": "AssetsCurrent", "assets": "Assets", "ppe": "PropertyPlantAndEquipmentNet", "accountsPayable": "AccountsPayableCurrent", "liabilities": "Liabilities", "equity": "StockholdersEquity", "debtNoncurrent": "LongTermDebt", "debtCurrent": "LongTermDebtCurrent", "shares": "CommonStockSharesOutstanding"}, "stances": ["E1: costOfSales is as reported and may include production depreciation (unlike the depreciation-free ASML reference basis); sga is the residual keeping EBIT exact, so EBIT/NOPLAT and derived cash flows are exact while the gross-margin level is not cross-basis comparable.", "E3: operatingCash carries the total cash balance; no operating/excess split exists in XBRL.", "E4: no reported cash flow statement emitted; the identity-derived one ties by construction on this mapping.", "T1: assumptions.taxRate = 0.1512 is the EFFECTIVE rate of the latest fiscal year (taxes/pretax); statutory-vs-effective stays open.", "assumptions.wacc = null: valuation input, never extracted."], "missing_optional": ["interestExpense: FY ending 2022-01-30 stitched from InterestExpense (primary tag InterestExpenseNonoperating); same concept, different tag vintage, recorded"]}, "drivers": {"arena": "ai-compute-systems", "registryVersion": "0.1-skeleton", "horizonYears": 5, "baseYearSource": "FY2026 actuals (model.years[-1]); revenue terms from the 10-K end-market note, ratios from the extraction", "unitNote": "Revenue terms in model.unit (USD millions); ratio drivers are fractions.", "revenueModel": {"type": "components", "terms": [{"id": "datacenter", "kind": "direct", "value": "datacenter_revenue"}, {"id": "gaming", "kind": "direct", "value": "gaming_revenue"}, {"id": "proviz", "kind": "direct", "value": "proviz_revenue"}, {"id": "auto", "kind": "direct", "value": "auto_revenue"}, {"id": "oem_other", "kind": "direct", "value": "oem_other_revenue"}], "_note": "No unit x ASP decomposition is disclosed for accelerators, so platform terms are direct. The note splits Data Center into Compute (162,361) and Networking (31,376); a two-term split is available when the cases warrant it."}, "definitions": [{"id": "datacenter_revenue", "appliesTo": "revenue", "unit": "model.unit", "label": "Data Center end-market revenue (Compute + Networking)"}, {"id": "gaming_revenue", "appliesTo": "revenue", "unit": "model.unit", "label": "Gaming end-market revenue"}, {"id": "proviz_revenue", "appliesTo": "revenue", "unit": "model.unit", "label": "Professional Visualization end-market revenue"}, {"id": "auto_revenue", "appliesTo": "revenue", "unit": "model.unit", "label": "Automotive end-market revenue"}, {"id": "oem_other_revenue", "appliesTo": "revenue", "unit": "model.unit", "label": "OEM and Other end-market revenue"}, {"id": "gross_margin_pct", "appliesTo": "margin", "unit": "fraction", "label": "Gross margin on as-reported cost of revenue (E1 stance: includes depreciation)"}, {"id": "opex_pct_revenue", "appliesTo": "margin", "unit": "fraction", "label": "Operating expense (residual sga per E1) as a share of revenue"}, {"id": "dep_pct_prior_ppe", "appliesTo": "capital", "unit": "fraction", "label": "D&A as a share of prior-year net PPE"}, {"id": "capex_incl_pct_revenue", "appliesTo": "capital", "unit": "fraction", "label": "Capex-incl (delta net PPE + D&A) as a share of revenue"}, {"id": "owc_pct_revenue", "appliesTo": "capital", "unit": "fraction", "label": "Operating working capital ex-cash as a share of revenue (E3 pending cash policy)"}, {"id": "tax_rate", "appliesTo": "margin", "unit": "fraction", "label": "Effective tax rate applied to EBIT for NOPLAT (T1 stance)"}, {"id": "other_op_assets_scaling_pct_revenue", "appliesTo": "capital", "unit": "fraction", "label": "Other operating assets as a share of revenue (single ratio; O1-style split open)"}], "anchors": {"datacenter_revenue": {"value": 193737.0, "basis": "FY2026 end-market revenue (Compute 162,361 + Networking 31,376)", "source": "FY2026 10-K, Notes, 'revenue by specialized markets' table (acc 0001045810-26-000021)"}, "gaming_revenue": {"value": 16042.0, "basis": "FY2026 end-market revenue; filing flags supply constraints as a Q1 FY2027 headwind", "source": "same note"}, "proviz_revenue": {"value": 3191.0, "basis": "FY2026 end-market revenue", "source": "same note"}, "auto_revenue": {"value": 2349.0, "basis": "FY2026 end-market revenue", "source": "same note"}, "oem_other_revenue": {"value": 619.0, "basis": "FY2026 end-market revenue", "source": "same note"}, "gross_margin_pct": {"value": 0.7107, "basis": "as-reported basis (E1: COGS includes depreciation); FY2026 includes a $4.5bn H20 excess inventory and purchase obligation charge", "source": "extraction (manifest sha) + FY2026 10-K MD&A"}, "opex_pct_revenue": {"value": 0.0519, "basis": "residual sga per E1 stance, keeps EBIT exact. CAUTION: the residual absorbs non-operating income not carried in the interest lines (investment gains), so 5.19% understates true reported operating expense \u2014 MD&A operating income of 130,387 implies opex near 10-11% of revenue. Re-anchor from the reported operating-expense line at case build; the residual stays only for the identity-exact historical block.", "source": "extraction"}, "dep_pct_prior_ppe": {"value": 0.4525, "basis": "FY2026 D&A over FY2025 net PPE", "source": "extraction"}, "capex_incl_pct_revenue": {"value": 0.0322, "basis": "house capex = delta net PPE + depreciation, over revenue", "source": "extraction"}, "owc_pct_revenue": {"value": 0.3471, "basis": "EX-CASH: (otherCurrentAssets - AP - otherNonInterestLiab)/revenue. operatingCash carries the total cash pile (E3), so cash is excluded pending a cash policy; sign and level differ from the ASML prepayment-funded case", "source": "extraction"}, "tax_rate": {"value": 0.1512, "basis": "effective rate of FY2026, per the T1 stance", "source": "extraction"}, "other_op_assets_scaling_pct_revenue": {"value": 0.3279, "basis": "single-ratio treatment; the ASML O1 refinement (non-scaling stock + scaling remainder) is an open improvement", "source": "extraction"}}, "_skeleton": "Registry 0.1-skeleton: definitions and FY2026 anchors only. Still to build, analyst work: three pre-registered cases (bear/base/bull) x five years x twelve drivers, with narratives and a source per path; then the valuation engine run that emits scenarios.computed.", "cashPolicy": {"operatingCashPctRevenue": 0.0, "source": "default: all cash treated as excess, pending an operating/excess split (open item E3); mirrors the ASML resolution of X1"}, "otherOpAssetsModel": {"kind": "pct_revenue", "_note": "v0.3 behaviour: otherOperatingAssets = revenue * other_op_assets_scaling_pct_revenue. The stock_plus_ratio refinement (O1) needs the goodwill/intangibles/equity-method split, which the statements extraction does not carry; open refinement, recorded.", "driver": "other_op_assets_scaling_pct_revenue"}, "depreciationModel": {"kind": "pct_prior_ppe", "driver": "dep_pct_prior_ppe"}}, "scenarios": {"cases": {"bear": {"narrative": "RECO - Hyperscaler capex digestion and custom-silicon substitution; a top-2 customer air pocket cuts Data Center 12% in FY2028 (LR-NVDA-F01: top customer = 22% of revenue, a halving of that book = -12% of DC); the commitments unwind repeats (LR-NVDA-C01: FY2023 GM trough 56.9%, FY2026 $4.5bn H20 charge) taking GM to 62%; export regime stays shut (F03). No China DC recovery in any case.", "paths": {"datacenter_revenue": [222798.0, 196062.0, 205865.0, 226451.0, 244568.0], "gaming_revenue": [16363.0, 15545.0, 16011.0, 16651.0, 17318.0], "proviz_revenue": [3510.0, 3510.0, 3686.0, 3980.0, 4299.0], "auto_revenue": [2701.0, 2971.0, 3269.0, 3595.0, 3955.0], "oem_other_revenue": [619.0, 619.0, 619.0, 619.0, 619.0], "gross_margin_pct": [0.7, 0.62, 0.66, 0.68, 0.69], "opex_pct_revenue": [0.11, 0.12, 0.115, 0.11, 0.105], "dep_pct_prior_ppe": [0.42, 0.42, 0.42, 0.42, 0.42], "capex_incl_pct_revenue": [0.035, 0.028, 0.025, 0.028, 0.03], "owc_pct_revenue": [0.38, 0.4, 0.36, 0.34, 0.33], "tax_rate": [0.16, 0.16, 0.16, 0.16, 0.16], "other_op_assets_scaling_pct_revenue": [0.32, 0.32, 0.32, 0.32, 0.32]}, "sources": {"datacenter_revenue": "RECO - +15/-12/+5/+10/+8%: FY2028 air pocket sized from F01 (22% customer, halved book = -12% DC); recovery per historical FY2023->24 pattern", "gaming_revenue": "RECO - supply constraint (10-K: Q1 FY2027 headwind) then demand soft", "proviz_revenue": "RECO - scaled from FY2026 +70% momentum, decelerating; small base", "auto_revenue": "RECO - self-driving adoption per MD&A +39% FY2026, decelerating", "oem_other_revenue": "RECO - residual segment, roughly flat to +15%", "gross_margin_pct": "RECO - trough 62% FY2028: commitments-unwind year, -10pp vs base, inside the realized FY2023 precedent (56.9%) and FY2026 $4.5bn charge [C01]", "opex_pct_revenue": "RECO - deleverage to 12%: re-anchored from reported ~10.7% per registry CAUTION, not the 5.19% residual", "dep_pct_prior_ppe": "RECO - held at ~42% (anchor 45.3%); REVIEW: driver formulation odd for fab-less NVDA, includes amortization over small PPE base", "capex_incl_pct_revenue": "RECO - cut to 2.5% then recover (anchor 3.2%)", "owc_pct_revenue": "RECO - 38-40% peak: inventory strands as demand steps down [C01 mechanism]; ex-cash basis (E3)", "tax_rate": "RECO - 16% flat: effective anchor 15.1% (T1 stance) plus drift; REVIEW", "other_op_assets_scaling_pct_revenue": "RECO - held at 32% (anchor 32.8%); O1-style split is an open refinement"}}, "base": {"narrative": "RECO - AI buildout continues but decelerates on the 193.7bn base: DC growth steps 68% -> 35% -> 8% by FY2031; Blackwell mix holds GM low-70s (MD&A: systems transition compresses margin); CUDA holds share (LR-NVDA-T01); Gaming supply-constrained in FY2027 per the filing. No China DC recovery.", "paths": {"datacenter_revenue": [261545.0, 326931.0, 385779.0, 432072.0, 466638.0], "gaming_revenue": [17646.0, 19058.0, 20201.0, 21211.0, 22060.0], "proviz_revenue": [3989.0, 4786.0, 5504.0, 6055.0, 6539.0], "auto_revenue": [3054.0, 3817.0, 4581.0, 5268.0, 5794.0], "oem_other_revenue": [681.0, 749.0, 824.0, 906.0, 997.0], "gross_margin_pct": [0.72, 0.725, 0.725, 0.72, 0.715], "opex_pct_revenue": [0.105, 0.102, 0.1, 0.098, 0.096], "dep_pct_prior_ppe": [0.42, 0.42, 0.42, 0.42, 0.42], "capex_incl_pct_revenue": [0.035, 0.035, 0.035, 0.035, 0.035], "owc_pct_revenue": [0.34, 0.34, 0.34, 0.34, 0.34], "tax_rate": [0.16, 0.16, 0.16, 0.16, 0.16], "other_op_assets_scaling_pct_revenue": [0.32, 0.32, 0.32, 0.32, 0.32]}, "sources": {"datacenter_revenue": "RECO - +35/25/18/12/8%: deceleration from FY2026's +68% on law-of-large-numbers; no China", "gaming_revenue": "RECO - +10% then fading; FY2027 muted per the filing's supply-constraint flag", "proviz_revenue": "RECO - scaled from FY2026 +70% momentum, decelerating; small base", "auto_revenue": "RECO - self-driving adoption per MD&A +39% FY2026, decelerating", "oem_other_revenue": "RECO - residual segment, roughly flat to +15%", "gross_margin_pct": "RECO - low-70s: FY2026 71.1% incl 4.5bn charge (~73% ex); systems-mix compression per MD&A", "opex_pct_revenue": "RECO - 10.5% -> 9.6%: re-anchored per registry CAUTION; modest scale leverage", "dep_pct_prior_ppe": "RECO - held at ~42% (anchor 45.3%); REVIEW: driver formulation odd for fab-less NVDA, includes amortization over small PPE base", "capex_incl_pct_revenue": "RECO - hold 3.5% (anchor 3.2%, buildout continues)", "owc_pct_revenue": "RECO - hold 34% ex-cash (anchor 34.7%)", "tax_rate": "RECO - 16% flat: effective anchor 15.1% (T1 stance) plus drift; REVIEW", "other_op_assets_scaling_pct_revenue": "RECO - held at 32% (anchor 32.8%); O1-style split is an open refinement"}}, "bull": {"narrative": "RECO - Demand broadens beyond the top hyperscalers (sovereign AI, enterprise, the OpenAI partnership the filing says is being finalized); supply eases; Networking attach grows; GM holds ~74%; opex leverages. Concentration risk defers rather than resolves. No China DC recovery assumed even here (F03).", "paths": {"datacenter_revenue": [280919.0, 379240.0, 474050.0, 559379.0, 637692.0], "gaming_revenue": [18448.0, 20662.0, 22728.0, 24547.0, 26019.0], "proviz_revenue": [4467.0, 5808.0, 6969.0, 8015.0, 8816.0], "auto_revenue": [3406.0, 4598.0, 5748.0, 6897.0, 7932.0], "oem_other_revenue": [712.0, 819.0, 941.0, 1083.0, 1245.0], "gross_margin_pct": [0.73, 0.735, 0.74, 0.74, 0.735], "opex_pct_revenue": [0.1, 0.095, 0.091, 0.088, 0.086], "dep_pct_prior_ppe": [0.42, 0.42, 0.42, 0.42, 0.42], "capex_incl_pct_revenue": [0.038, 0.04, 0.038, 0.036, 0.034], "owc_pct_revenue": [0.33, 0.325, 0.32, 0.315, 0.31], "tax_rate": [0.16, 0.16, 0.16, 0.16, 0.16], "other_op_assets_scaling_pct_revenue": [0.32, 0.32, 0.32, 0.32, 0.32]}, "sources": {"datacenter_revenue": "RECO - +45/35/25/18/14%: demand breadth + OpenAI partnership (10-K MD&A mention); still decelerating", "gaming_revenue": "RECO - constraint eases mid-FY2027; Blackwell demand per MD&A", "proviz_revenue": "RECO - scaled from FY2026 +70% momentum, decelerating; small base", "auto_revenue": "RECO - self-driving adoption per MD&A +39% FY2026, decelerating", "oem_other_revenue": "RECO - residual segment, roughly flat to +15%", "gross_margin_pct": "RECO - ~74%: platform pricing holds [V01, T01]; below the 75.0% FY2025 peak", "opex_pct_revenue": "RECO - to 8.6%: leverage on revenue breadth; re-anchored basis", "dep_pct_prior_ppe": "RECO - held at ~42% (anchor 45.3%); REVIEW: driver formulation odd for fab-less NVDA, includes amortization over small PPE base", "capex_incl_pct_revenue": "RECO - up to 4.0%: capacity ahead of demand", "owc_pct_revenue": "RECO - improves to 31%: faster turns; ex-cash basis", "tax_rate": "RECO - 16% flat: effective anchor 15.1% (T1 stance) plus drift; REVIEW", "other_op_assets_scaling_pct_revenue": "RECO - held at 32% (anchor 32.8%); O1-style split is an open refinement"}}}, "_cases_note": "Cases folded from the authoring CSV by fold_cases.py; scenarios.computed is absent until the valuation engine runs on them.", "discount": {"waccLow": 0.12, "waccMid": 0.12, "waccHigh": 0.12, "terminalGrowth": 0.02, "terminalMethod": "gordon", "fadeYears": 0, "midYearDiscounting": false, "waccByCase": {}, "source": "RECO INTERIM, NOT A W1 CONSTRUCTION: 12.0% flat, no band \u2014 set above the ASML reference 10.0% for higher equity beta, as a reviewable proposal only. The W1 CAPM band per fundamentals-engine/notes/wacc_note_v0_1.md has not been built for NVDA; when it is, it replaces this number and the change is a successor run. No band has been invented: low = mid = high, so the WACC tornado line has zero span by construction. Terminal growth 0.02 = zero long-run real growth at the inflation target; no company-specific basis. C5 settled as one rate across cases; C6 as end-year discounting, both per the ASML precedent."}, "netDebt": {"value": null, "asOf": null, "source": null, "_note": "OPTIONAL OVERRIDE, left null: the engine derives net debt as longTermDebt minus excess cash under the cash policy."}, "computed": {"engineVersion": "0.4", "computedAt": "2026-08-12", "conventions": {"grossProfit": "revenue - costOfSales", "ebitda": "grossProfit - sga", "ebit": "ebitda - depreciation", "noplat": "ebit * (1 - taxRate)", "operatingCash": "revenue * drivers.cashPolicy.operatingCashPctRevenue", "excessCash": "balance.operatingCash - operatingCash", "owc": "(operatingCash + otherCurrentAssets) - (accountsPayable + otherNonInterestLiab)", "investedCapital": "owc + ppe + otherOperatingAssets", "capexIncl": "delta(net ppe) + depreciation", "ppeRoll": "ppe[t] = ppe[t-1] + capexIncl[t] - depreciation[t]", "focf": "noplat + depreciation - deltaOWC - capexIncl - deltaOtherOperatingAssets", "focfIdentity": "equivalently noplat - delta(investedCapital)", "roic": "noplat / prior-year investedCapital", "eva": "(roic - wacc) * prior-year investedCapital", "netDebt": "longTermDebt - excessCash", "ev": "sum(PV of explicit FOCF) + PV of terminal value", "equity": "ev - netDebt"}, "conventionsSource": "constellation-valuation/SKILL.md section 2, plus the v0.3 cash policy", "cashPolicy": {"operatingCashPctRevenue": 0.0, "baseYear": {"year": 2026, "revenue": 215938.0, "ppe": 10383.0, "owc": 74957.0, "cashTotal": 10605.0, "cashOperating": 0.0, "cashExcess": 10605.0, "otherOperatingAssets": 70815.0, "investedCapital": 156155.0, "investedCapitalLegacy": 166760.0}}, "unresolvedConventions": ["C5 WACC across cases. Not addressed by SKILL section 2. Default holds the W1 mid band constant across bear/base/bull and swings WACC only in the tornado, to avoid double-counting risk in both the cash flows and the rate. Set scenarios.discount.waccByCase to override.", "C6 discounting timing. Not addressed by SKILL section 2. End-year by default. Set scenarios.discount.midYearDiscounting to switch.", "E3 extraction finding, open. balance.operatingCash in the ASML golden file is the total cash balance, not an operating subset: 12,735.9 against invested capital of 29,548.5 at FY2024. The field name promises a split the extraction did not perform. The cash policy below is a parameterised stand-in. The durable fix is for /collect to emit operating and excess cash as separate fields in a later schema version.", "T1 tax basis, open. assumptions.taxRate in the ASML golden file is 0.2580, close to the Dutch statutory rate, while the effective rate implied by the income lines runs 13.73 / 15.23 / 15.02 / 15.81 / 18.59 percent across FY2020-FY2024. Striking NOPLAT at the statutory rate understates it by roughly 650 on FY2024 EBIT of about 9,021, near 10 percent, and understates FOCF, ROIC and EVA by the same order. The forward tax_rate driver is set per case per year and does NOT inherit assumptions.taxRate, so Track B is free of this. Two things it does not fix: assumptions.taxRate still drives slices 1 to 4 on the historical block, and the statutory-versus-effective choice is a Track A convention that must apply to every name, not just this one.", "O1 superseded by drivers.otherOpAssetsModel in v0.4. Retained for the record: otherOperatingAssets is material: 11,005.4 at FY2024, 39 percent of revenue and the second-largest component of invested capital, on a history running 63 percent (2020) to 36.5 percent (2023) to 38.9 percent (2024). It now enters FOCF through delta(otherOperatingAssets), so a drifting path moves cash flow materially. A single ratio driver over that line is not good enough for a published base case.", "O2 anchor window. FY2020 is an outlier on OWC (66.8 percent of revenue) and other operating assets (63.4 percent) against 27 to 41 and 36 to 49 thereafter, and carries no capex or depreciation anchor by construction. Anchor driver paths on FY2022 to FY2024.", "X2 departure recorded, deliberate. The slice-4 headline capitalises NOPLAT: NOPLAT * (1+g) / (WACC-g). Track B capitalises FOCF after five explicit years. The two numbers will not agree and must not be compared naively. This is the B3 upgrade.", "E1 extraction rule, for the /collect agent and the eval set. The house costOfSales line must be depreciation-free, since depreciation is stated separately. Most reported cost of sales carries production depreciation. If the agent lifts reported COGS as-is and also puts total depreciation on the depreciation line, depreciation is double-counted and EBIT is understated. Add an eval assertion.", "E2 the projected block populates revenue, costOfSales, depreciation and sga only. interestIncome, interestExpense and incomeTaxes are not driven, so slices 1 to 3 must not be pointed at projected years. Slice 5 reads scenarios.computed only."], "driversSkippedInTornado": [], "cases": {"bear": {"valuation": {"wacc": 0.12, "terminalGrowth": 0.02, "terminalMethod": "gordon", "pvExplicit": 363546.0903856216, "pvFade": 0.0, "terminalValue": 1181332.459719603, "pvTerminal": 670319.763177013, "terminalSharePct": 0.6483624165235118, "ev": 1033865.8535626347, "netDebt": -1138.0, "netDebtBasis": "derived: longTermDebt - excessCash, cash policy 0.0000 of revenue", "equity": 1035003.8535626347, "perShare": 42.58574117686943}, "proforma": [{"t": 1, "year": 2027, "revenue": 245991.0, "costOfSales": 73797.30000000002, "grossProfit": 172193.69999999998, "sga": 27059.01, "ebitda": 145134.68999999997, "depreciation": 4360.86, "ebit": 140773.83, "ebitMarginPct": 0.5722722782540824, "noplat": 118250.01719999999, "capexIncl": 8609.685000000001, "ppe": 14631.825, "owc": 93476.58, "otherOperatingAssets": 78717.12, "investedCapital": 186825.525, "deltaOWC": 18519.58, "deltaOtherOperatingAssets": 7902.119999999995, "focf": 87579.4922, "roic": 0.757260524478883, "priorInvestedCapital": 156155.0, "eva": 99511.41719999998}, {"t": 2, "year": 2028, "revenue": 218707.0, "costOfSales": 83108.66, "grossProfit": 135598.34, "sga": 26244.84, "ebitda": 109353.5, "depreciation": 6145.3665, "ebit": 103208.1335, "ebitMarginPct": 0.47190137261267356, "noplat": 86694.83214, "capexIncl": 6123.796, "ppe": 14610.2545, "owc": 87482.8, "otherOperatingAssets": 69986.24, "investedCapital": 172079.29450000002, "deltaOWC": -5993.779999999999, "deltaOtherOperatingAssets": -8730.87999999999, "focf": 101441.06263999999, "roic": 0.4640416888431064, "priorInvestedCapital": 186825.525, "eva": 64275.76914}, {"t": 3, "year": 2029, "revenue": 229450.0, "costOfSales": 78013.0, "grossProfit": 151437.0, "sga": 26386.75, "ebitda": 125050.25, "depreciation": 6136.30689, "ebit": 118913.94311, "ebitMarginPct": 0.518256452865548, "noplat": 99887.71221239999, "capexIncl": 5736.25, "ppe": 14210.19761, "owc": 82602.0, "otherOperatingAssets": 73424.0, "investedCapital": 170236.19761, "deltaOWC": -4880.800000000003, "deltaOtherOperatingAssets": 3437.7599999999948, "focf": 101730.8091024, "roic": 0.5804749054942224, "priorInvestedCapital": 172079.29450000002, "eva": 79238.19687239997}, {"t": 4, "year": 2030, "revenue": 251296.0, "costOfSales": 80414.71999999999, "grossProfit": 170881.28000000003, "sga": 27642.56, "ebitda": 143238.72000000003, "depreciation": 5968.2829962, "ebit": 137270.43700380003, "ebitMarginPct": 0.546249988077009, "noplat": 115307.16708319202, "capexIncl": 7036.2880000000005, "ppe": 15278.2026138, "owc": 85440.64, "otherOperatingAssets": 80414.72, "investedCapital": 181133.5626138, "deltaOWC": 2838.6399999999994, "deltaOtherOperatingAssets": 6990.720000000001, "focf": 104409.80207939202, "roic": 0.6773363638405105, "priorInvestedCapital": 170236.19761, "eva": 94878.82336999201}, {"t": 5, "year": 2031, "revenue": 270759.0, "costOfSales": 83935.29000000001, "grossProfit": 186823.71, "sga": 28429.695, "ebitda": 158394.01499999998, "depreciation": 6416.845097796, "ebit": 151977.16990220398, "ebitMarginPct": 0.5613005288917597, "noplat": 127660.82271785135, "capexIncl": 8122.7699999999995, "ppe": 16984.127516004002, "owc": 89350.47, "otherOperatingAssets": 86642.88, "investedCapital": 192977.477516004, "deltaOWC": 3909.8300000000017, "deltaOtherOperatingAssets": 6228.1600000000035, "focf": 115816.90781564734, "roic": 0.7047883389233646, "priorInvestedCapital": 181133.5626138, "eva": 105924.79520419535}]}, "base": {"valuation": {"wacc": 0.12, "terminalGrowth": 0.02, "terminalMethod": "gordon", "pvExplicit": 556468.4281464191, "pvFade": 0.0, "terminalValue": 2259486.6852276213, "pvTerminal": 1282093.4253367493, "terminalSharePct": 0.6973349430196293, "ev": 1838561.8534831684, "netDebt": -1138.0, "netDebtBasis": "derived: longTermDebt - excessCash, cash policy 0.0000 of revenue", "equity": 1839699.8534831684, "perShare": 75.69535276016987}, "proforma": [{"t": 1, "year": 2027, "revenue": 286915.0, "costOfSales": 80336.20000000001, "grossProfit": 206578.8, "sga": 30126.074999999997, "ebitda": 176452.72499999998, "depreciation": 4360.86, "ebit": 172091.865, "ebitMarginPct": 0.5998008643674956, "noplat": 144557.1666, "capexIncl": 10042.025000000001, "ppe": 16064.165, "owc": 97551.1, "otherOperatingAssets": 91812.8, "investedCapital": 205428.065, "deltaOWC": 22594.100000000006, "deltaOtherOperatingAssets": 20997.800000000003, "focf": 95284.10159999998, "roic": 0.9257287092952515, "priorInvestedCapital": 156155.0, "eva": 125818.5666}, {"t": 2, "year": 2028, "revenue": 355341.0, "costOfSales": 97718.77500000001, "grossProfit": 257622.22499999998, "sga": 36244.782, "ebitda": 221377.44299999997, "depreciation": 6746.9493, "ebit": 214630.49369999996, "ebitMarginPct": 0.6040127474735535, "noplat": 180289.61470799995, "capexIncl": 12436.935000000001, "ppe": 21754.150700000002, "owc": 120815.94, "otherOperatingAssets": 113709.12, "investedCapital": 256279.2107, "deltaOWC": 23264.839999999997, "deltaOtherOperatingAssets": 21896.319999999992, "focf": 129438.46900799997, "roic": 0.8776289389086148, "priorInvestedCapital": 205428.065, "eva": 155638.24690799994}, {"t": 3, "year": 2029, "revenue": 416889.0, "costOfSales": 114644.475, "grossProfit": 302244.525, "sga": 41688.9, "ebitda": 260555.62500000003, "depreciation": 9136.743294, "ebit": 251418.88170600001, "ebitMarginPct": 0.6030835107330729, "noplat": 211191.86063304, "capexIncl": 14591.115000000002, "ppe": 27208.522406000004, "owc": 141742.26, "otherOperatingAssets": 133404.48, "investedCapital": 302355.26240600005, "deltaOWC": 20926.320000000007, "deltaOtherOperatingAssets": 19695.360000000015, "focf": 165115.80892704, "roic": 0.8240694204426157, "priorInvestedCapital": 256279.2107, "eva": 180438.35534903998}, {"t": 4, "year": 2030, "revenue": 465512.0, "costOfSales": 130343.36000000002, "grossProfit": 335168.64, "sga": 45620.176, "ebitda": 289548.46400000004, "depreciation": 11427.57941052, "ebit": 278120.88458948006, "ebitMarginPct": 0.5974515900545637, "noplat": 233621.54305516323, "capexIncl": 16292.920000000002, "ppe": 32073.86299548, "owc": 158274.08000000002, "otherOperatingAssets": 148963.84, "investedCapital": 339311.78299548, "deltaOWC": 16531.820000000007, "deltaOtherOperatingAssets": 15559.359999999986, "focf": 196665.02246568323, "roic": 0.7726723232667213, "priorInvestedCapital": 302355.26240600005, "eva": 197338.91156644322}, {"t": 5, "year": 2031, "revenue": 502028.0, "costOfSales": 143077.98, "grossProfit": 358950.02, "sga": 48194.688, "ebitda": 310755.332, "depreciation": 13471.022458101601, "ebit": 297284.3095418984, "ebitMarginPct": 0.5921667905811994, "noplat": 249718.82001519462, "capexIncl": 17570.980000000003, "ppe": 36173.82053737841, "owc": 170689.52000000002, "otherOperatingAssets": 160648.96, "investedCapital": 367512.3005373784, "deltaOWC": 12415.440000000002, "deltaOtherOperatingAssets": 11685.119999999995, "focf": 221518.3024732962, "roic": 0.7359568176815161, "priorInvestedCapital": 339311.78299548, "eva": 209001.40605573702}]}, "bull": {"valuation": {"wacc": 0.12, "terminalGrowth": 0.02, "terminalMethod": "gordon", "pvExplicit": 674959.8195040063, "pvFade": 0.0, "terminalValue": 3088025.650445866, "pvTerminal": 1752228.6852108797, "terminalSharePct": 0.7219170170784525, "ev": 2427188.5047148857, "netDebt": -1138.0, "netDebtBasis": "derived: longTermDebt - excessCash, cash policy 0.0000 of revenue", "equity": 2428326.5047148857, "perShare": 99.9146850195394}, "proforma": [{"t": 1, "year": 2027, "revenue": 307952.0, "costOfSales": 83147.04000000001, "grossProfit": 224804.96, "sga": 30795.2, "ebitda": 194009.75999999998, "depreciation": 4360.86, "ebit": 189648.9, "ebitMarginPct": 0.6158391567517015, "noplat": 159305.076, "capexIncl": 11702.176, "ppe": 17724.316, "owc": 101624.16, "otherOperatingAssets": 98544.64, "investedCapital": 217893.11599999998, "deltaOWC": 26667.160000000003, "deltaOtherOperatingAssets": 27729.64, "focf": 97566.95999999998, "roic": 1.0201727514328711, "priorInvestedCapital": 156155.0, "eva": 140566.476}, {"t": 2, "year": 2028, "revenue": 411127.0, "costOfSales": 108948.655, "grossProfit": 302178.345, "sga": 39057.065, "ebitda": 263121.27999999997, "depreciation": 7444.2127199999995, "ebit": 255677.06727999996, "ebitMarginPct": 0.6218931553510229, "noplat": 214768.73651519997, "capexIncl": 16445.08, "ppe": 26725.18328, "owc": 133616.275, "otherOperatingAssets": 131560.64, "investedCapital": 291902.09828000003, "deltaOWC": 31992.11499999999, "deltaOtherOperatingAssets": 33016.000000000015, "focf": 140759.7542352, "roic": 0.9856609536723501, "priorInvestedCapital": 217893.11599999998, "eva": 188621.5625952}, {"t": 3, "year": 2029, "revenue": 510436.0, "costOfSales": 132713.36000000002, "grossProfit": 377722.64, "sga": 46449.676, "ebitda": 331272.96400000004, "depreciation": 11224.5769776, "ebit": 320048.38702240004, "ebitMarginPct": 0.6270098249778622, "noplat": 268840.645098816, "capexIncl": 19396.568, "ppe": 34897.174302399995, "owc": 163339.52, "otherOperatingAssets": 163339.52, "investedCapital": 361576.2143024, "deltaOWC": 29723.244999999995, "deltaOtherOperatingAssets": 31778.879999999976, "focf": 199166.52907641605, "roic": 0.9209959321393337, "priorInvestedCapital": 291902.09828000003, "eva": 233812.39330521604}, {"t": 4, "year": 2030, "revenue": 599921.0, "costOfSales": 155979.46, "grossProfit": 443941.54000000004, "sga": 52793.047999999995, "ebitda": 391148.492, "depreciation": 14656.813207007997, "ebit": 376491.678792992, "ebitMarginPct": 0.6275687612085459, "noplat": 316253.0101861133, "capexIncl": 21597.156, "ppe": 41837.517095391995, "owc": 188975.115, "otherOperatingAssets": 191974.72, "investedCapital": 422787.35209539195, "deltaOWC": 25635.595, "deltaOtherOperatingAssets": 28635.20000000001, "focf": 255041.87239312124, "roic": 0.8746510353184317, "priorInvestedCapital": 361576.2143024, "eva": 272863.8644698253}, {"t": 5, "year": 2031, "revenue": 681704.0, "costOfSales": 180651.56, "grossProfit": 501052.44, "sga": 58626.543999999994, "ebitda": 442425.896, "depreciation": 17571.757180064636, "ebit": 424854.1388199354, "ebitMarginPct": 0.6232237728103919, "noplat": 356877.4766087457, "capexIncl": 23177.936, "ppe": 47443.695915327364, "owc": 211328.24, "otherOperatingAssets": 218145.28, "investedCapital": 476917.2159153273, "deltaOWC": 22353.125, "deltaOtherOperatingAssets": 26170.559999999998, "focf": 302747.61278881034, "roic": 0.8441063216295666, "priorInvestedCapital": 422787.35209539195, "eva": 306142.9943572987}]}}, "footballField": {"unit": "USD millions", "evLow": 1033865.8535626347, "evBase": 1838561.8534831684, "evHigh": 2427188.5047148857, "perShareLow": 42.58574117686943, "perShareBase": 75.69535276016987, "perShareHigh": 99.9146850195394}, "tornado": [{"driver": "datacenter_revenue", "evAtBearPath": 1128066.7278671204, "evAtBullPath": 2222483.4788807267, "deltaLow": -710495.125616048, "deltaHigh": 383921.6253975583, "span": 1094416.7510136063}, {"driver": "gross_margin_pct", "evAtBearPath": 1716131.253124431, "evAtBullPath": 1905402.2477285673, "deltaLow": -122430.6003587374, "deltaHigh": 66840.39424539893, "span": 189270.99460413633}, {"driver": "opex_pct_revenue", "evAtBearPath": 1802361.854643655, "evAtBullPath": 1872831.8377590892, "deltaLow": -36199.9988395134, "deltaHigh": 34269.98427592078, "span": 70469.98311543418}, {"driver": "gaming_revenue", "evAtBearPath": 1822174.2652361053, "evAtBullPath": 1849459.7311882232, "deltaLow": -16387.588247063104, "deltaHigh": 10897.877705054823, "span": 27285.465952117927}, {"driver": "capex_incl_pct_revenue", "evAtBearPath": 1858395.1492389902, "evAtBullPath": 1839481.7192634798, "deltaLow": 19833.295755821746, "deltaHigh": 919.8657803114038, "span": 18913.429975510342}, {"driver": "proviz_revenue", "evAtBearPath": 1831372.49562299, "evAtBullPath": 1845042.790908886, "deltaLow": -7189.357860178454, "deltaHigh": 6480.937425717479, "span": 13670.295285895932}, {"driver": "auto_revenue", "evAtBearPath": 1832924.0839084121, "evAtBullPath": 1843619.3722505006, "deltaLow": -5637.769574756268, "deltaHigh": 5057.5187673321925, "span": 10695.288342088461}, {"driver": "owc_pct_revenue", "evAtBearPath": 1866911.8363719713, "evAtBullPath": 1869077.5177246304, "deltaLow": 28349.982888802886, "deltaHigh": 30515.664241462015, "span": 2165.6813526591286}, {"driver": "oem_other_revenue", "evAtBearPath": 1837675.062805061, "evAtBullPath": 1839083.1346023374, "deltaLow": -886.7906781074125, "deltaHigh": 521.2811191689689, "span": 1408.0717972763814}, {"driver": "dep_pct_prior_ppe", "evAtBearPath": 1838561.8534831684, "evAtBullPath": 1838561.8534831684, "deltaLow": 0.0, "deltaHigh": 0.0, "span": 0.0}, {"driver": "other_op_assets_scaling_pct_revenue", "evAtBearPath": 1838561.8534831684, "evAtBullPath": 1838561.8534831684, "deltaLow": 0.0, "deltaHigh": 0.0, "span": 0.0}, {"driver": "tax_rate", "evAtBearPath": 1838561.8534831684, "evAtBullPath": 1838561.8534831684, "deltaLow": 0.0, "deltaHigh": 0.0, "span": 0.0}, {"driver": "wacc (W1 band)", "evAtBearPath": 1838561.8534831684, "evAtBullPath": 1838561.8534831684, "deltaLow": 0.0, "deltaHigh": 0.0, "span": 0.0}]}}}, "scenarioSet": null, "lensRegister": {"schema_version": "lens_register_v0_1", "subject": {"firm": "NVIDIA CORP", "ticker": "NVDA"}, "provenance": {"product_name": "lens_register", "object_id": "nvda_lens_register_2026-08-12", "schema_version": "lens_register_v0_1"}, "ledger_mapping": {"teece": "moat", "value_curve": "value", "porter": "industry", "capital_recovery": "financial", "fragility": "fragility", "culture": "culture"}, "r_convention": "r = min(S, O) / (S + O); S = mass supporting the registered thesis, O = mass opposing it, per branch over the entries that land on that branch", "entries": [{"entry_id": "LR-NVDA-F01", "lens": "fragility", "channel": "driver", "locus": "firm", "locus_note": null, "claim": "Revenue concentrates in very few direct customers: one took 22% of FY2026 total revenue and another 14%, both primarily attributable to the Compute & Networking segment. Any data-center revenue path inherits the purchasing decisions of a handful of counterparties, and the filing states the trend may continue.", "direction": "opposes_thesis", "drivers": ["datacenter_revenue"], "mass": 3, "magnitude_basis": "Disclosed FY2026 figures: top direct customer 22% of total revenue, second 14% (top two = 36%); concentration is rising fast \u2014 FY2024 disclosed only 13% for the largest. Driver id datacenter_revenue is the anticipated registry id, now named in the registry skeleton.", "evidence_ref": "NVIDIA FY2026 Form 10-K, filed 2026-02-25, EDGAR accession 0001045810-26-000021: risk factor on customer concentration ('sales to one direct customer represented 22% of total revenue and sales to another direct customer represented 14%').", "provenance_tier": 1, "status": "draft"}, {"entry_id": "LR-NVDA-F02", "lens": "fragility", "channel": "driver", "locus": "firm", "locus_note": null, "claim": "NVIDIA manufactures nothing itself and its supply chain is, per the filing, mainly concentrated in Asia: wafers from TSMC and Samsung, HBM memory from SK Hynix, Micron and Samsung, CoWoS packaging capacity, and assembly at Hon Hai, Wistron and Fabrinet. Dual-sourced at most stages, so weaker than a sole-source dependence, but margin and volume paths assume this chain executes without constraint.", "direction": "opposes_thesis", "drivers": ["gross_margin_pct", "datacenter_revenue"], "mass": 2, "magnitude_basis": "Named-vendor chain disclosed in Item 1; geographic concentration stated by the issuer. Mass 2 rather than 3 because wafers and memory are dual/triple-sourced, unlike the ASML/Zeiss sole-source precedent.", "evidence_ref": "NVIDIA FY2026 Form 10-K, EDGAR accession 0001045810-26-000021: Item 1 manufacturing discussion ('We utilize foundries, such as Taiwan Semiconductor Manufacturing Company Limited... and Samsung... We purchase memory from SK Hynix Inc., Micron Technology, Inc., and Samsung. We utilize CoWoS technology for semiconductor packaging').", "provenance_tier": 1, "status": "draft"}, {"entry_id": "LR-NVDA-C01", "lens": "capital_recovery", "channel": "driver", "locus": "firm", "locus_note": null, "claim": "Supply is committed ahead of demand at a scale the auditor flags: provisions for excess or obsolete inventory and excess product purchase commitments are the critical audit matter, and those provisions charge cost of sales. If demand steps down, committed supply converts directly into margin damage.", "direction": "opposes_thesis", "drivers": ["gross_margin_pct"], "mass": 3, "magnitude_basis": "The mechanism has fired TWICE at scale: GM fell 64.9% to 56.9% in the FY2023 provisions year, and FY2026 GM (71.1%, down from 75.0%) carries a disclosed $4.5bn charge for H20 excess inventory and purchase obligations. Auditor critical-audit-matter designation per the FY2026 report; commitments in Note 12.", "evidence_ref": "NVIDIA FY2026 Form 10-K, EDGAR accession 0001045810-26-000021: Report of Independent Registered Public Accounting Firm, critical audit matter 'Valuation of Inventories - Provisions for Excess or Obsolete Inventories and Excess Product Purchase Commitments' (Notes 1, 9, 12); internal: inputs/nvda/nvda_golden_source.json income lines.", "provenance_tier": 1, "status": "draft"}, {"entry_id": "LR-NVDA-F03", "lens": "fragility", "channel": "driver", "locus": "mixed", "locus_note": "Export-control regimes are a geopolitical condition, but the controls named in the filing target NVIDIA's specific products (A100 and H100 integrated circuits and systems incorporating them), and licensing decisions are made per company and per part. The firm-specific component is which NVIDIA parts are listed and licensed, not the existence of the regime.", "claim": "A shifting and expanding series of export-control restrictions impacts NVIDIA's ability to serve customers outside the United States, with the company's own A100 and H100 parts specifically named. The data-center revenue path assumes the controlled-market share it embeds remains sellable.", "direction": "opposes_thesis", "drivers": ["datacenter_revenue"], "mass": 3, "magnitude_basis": "46 references to export controls in the FY2026 10-K; the filing's own framing is 'a series of shifting and expanding export control restrictions'. Quantifying the controlled-market share requires the segment/geography disclosure at registry-build time.", "evidence_ref": "NVIDIA FY2026 Form 10-K, EDGAR accession 0001045810-26-000021: risk factors, export-control discussion ('specifically impact our A100 and H100 integrated circuits, DGX or any other systems or boards which incorporate A100 or H100').", "provenance_tier": 1, "status": "draft"}, {"entry_id": "LR-NVDA-T01", "lens": "teece", "channel": "driver", "locus": "firm", "locus_note": null, "claim": "CUDA is the complementary asset a hardware challenger cannot replicate by building a chip: the filing describes the CUDA development platform running on all NVIDIA GPUs plus hundreds of domain-specific libraries, frameworks, SDKs and APIs. The switching cost sits in the software stack and installed developer base, cushioning both pricing and share against competing accelerators.", "direction": "supports_thesis", "drivers": ["datacenter_revenue", "gross_margin_pct"], "mass": 3, "magnitude_basis": "Issuer's own architecture description: platform plus 'hundreds of domain-specific software libraries, frameworks, algorithms, SDKs, and APIs'. Developer-base and ecosystem-size figures should be pinned from the filing or investor materials at signing to give this mass a quantitative footing.", "evidence_ref": "NVIDIA FY2026 Form 10-K, EDGAR accession 0001045810-26-000021: Item 1, Our Company ('the foundational NVIDIA CUDA development platform that runs on all NVIDIA GPUs, as well as hundreds of domain-specific software libraries, frameworks, algorithms, software development kits...').", "provenance_tier": 1, "status": "draft"}, {"entry_id": "LR-NVDA-V01", "lens": "value_curve", "channel": "driver", "locus": "firm", "locus_note": null, "claim": "The offer commands software-like margins on silicon: as-reported gross margin of 71.1% in FY2026, having run as high as 75.0%, is far above merchant-semiconductor norms and is direct evidence that buyers pay for the platform, not the part. The differentiation is carried jointly with the CUDA stack (LR-NVDA-T01).", "direction": "supports_thesis", "drivers": ["gross_margin_pct"], "mass": 2, "magnitude_basis": "Own extraction, as-reported basis (E1 stance: COGS includes depreciation, so not comparable with depreciation-free-basis models): GM 64.9 / 56.9 / 72.7 / 75.0 / 71.1% FY2022-26. A Blue Ocean strategy canvas vs named competitors (AMD, custom hyperscaler silicon) would need factor scoring not yet done; this is level evidence, not a canvas.", "evidence_ref": "inputs/nvda/nvda_golden_source.json income.revenue and income.costOfSales, extracted from EDGAR XBRL (manifest sha in the console Method tab).", "provenance_tier": 1, "status": "draft"}]}, "concordance": {"branches": [{"branch_id": "BR-NVDA-01", "label": "Top-customer air pocket: one of the two direct customers taking 36% of revenue between them cuts or defers its accelerator programme", "S": 3, "O": 8, "r": 0.2727272727272727, "entries": [{"entry_id": "LR-NVDA-F01", "lens": "fragility", "direction": "opposes_thesis", "mass": 3, "tier": 1, "status": "draft", "claim": "Revenue concentrates in very few direct customers: one took 22% of FY2026 total revenue and another 14%, both primarily attributable to the Compute & Networking segment. Any data-center revenue path inherits the purchasing decisions of a handful of counterparties, and the filing states the trend may continue."}, {"entry_id": "LR-NVDA-F02", "lens": "fragility", "direction": "opposes_thesis", "mass": 2, "tier": 1, "status": "draft", "claim": "NVIDIA manufactures nothing itself and its supply chain is, per the filing, mainly concentrated in Asia: wafers from TSMC and Samsung, HBM memory from SK Hynix, Micron and Samsung, CoWoS packaging capacity, and assembly at Hon Hai, Wistron and Fabrinet. Dual-sourced at most stages, so weaker than a sole-source dependence, but margin and volume paths assume this chain executes without constraint."}, {"entry_id": "LR-NVDA-F03", "lens": "fragility", "direction": "opposes_thesis", "mass": 3, "tier": 1, "status": "draft", "claim": "A shifting and expanding series of export-control restrictions impacts NVIDIA's ability to serve customers outside the United States, with the company's own A100 and H100 parts specifically named. The data-center revenue path assumes the controlled-market share it embeds remains sellable."}, {"entry_id": "LR-NVDA-T01", "lens": "teece", "direction": "supports_thesis", "mass": 3, "tier": 1, "status": "draft", "claim": "CUDA is the complementary asset a hardware challenger cannot replicate by building a chip: the filing describes the CUDA development platform running on all NVIDIA GPUs plus hundreds of domain-specific libraries, frameworks, SDKs and APIs. The switching cost sits in the software stack and installed developer base, cushioning both pricing and share against competing accelerators."}]}, {"branch_id": "BR-NVDA-02", "label": "Export-control regime extends to the current-generation data-centre parts, closing a further tranche of non-US demand", "S": 3, "O": 8, "r": 0.2727272727272727, "entries": [{"entry_id": "LR-NVDA-F01", "lens": "fragility", "direction": "opposes_thesis", "mass": 3, "tier": 1, "status": "draft", "claim": "Revenue concentrates in very few direct customers: one took 22% of FY2026 total revenue and another 14%, both primarily attributable to the Compute & Networking segment. Any data-center revenue path inherits the purchasing decisions of a handful of counterparties, and the filing states the trend may continue."}, {"entry_id": "LR-NVDA-F02", "lens": "fragility", "direction": "opposes_thesis", "mass": 2, "tier": 1, "status": "draft", "claim": "NVIDIA manufactures nothing itself and its supply chain is, per the filing, mainly concentrated in Asia: wafers from TSMC and Samsung, HBM memory from SK Hynix, Micron and Samsung, CoWoS packaging capacity, and assembly at Hon Hai, Wistron and Fabrinet. Dual-sourced at most stages, so weaker than a sole-source dependence, but margin and volume paths assume this chain executes without constraint."}, {"entry_id": "LR-NVDA-F03", "lens": "fragility", "direction": "opposes_thesis", "mass": 3, "tier": 1, "status": "draft", "claim": "A shifting and expanding series of export-control restrictions impacts NVIDIA's ability to serve customers outside the United States, with the company's own A100 and H100 parts specifically named. The data-center revenue path assumes the controlled-market share it embeds remains sellable."}, {"entry_id": "LR-NVDA-T01", "lens": "teece", "direction": "supports_thesis", "mass": 3, "tier": 1, "status": "draft", "claim": "CUDA is the complementary asset a hardware challenger cannot replicate by building a chip: the filing describes the CUDA development platform running on all NVIDIA GPUs plus hundreds of domain-specific libraries, frameworks, SDKs and APIs. The switching cost sits in the software stack and installed developer base, cushioning both pricing and share against competing accelerators."}]}, {"branch_id": "BR-NVDA-03", "label": "Commitments unwind: demand steps down against pre-committed supply and the excess converts to inventory and purchase-obligation provisions charged to cost of revenue", "S": 5, "O": 5, "r": 0.5, "entries": [{"entry_id": "LR-NVDA-F02", "lens": "fragility", "direction": "opposes_thesis", "mass": 2, "tier": 1, "status": "draft", "claim": "NVIDIA manufactures nothing itself and its supply chain is, per the filing, mainly concentrated in Asia: wafers from TSMC and Samsung, HBM memory from SK Hynix, Micron and Samsung, CoWoS packaging capacity, and assembly at Hon Hai, Wistron and Fabrinet. Dual-sourced at most stages, so weaker than a sole-source dependence, but margin and volume paths assume this chain executes without constraint."}, {"entry_id": "LR-NVDA-C01", "lens": "capital_recovery", "direction": "opposes_thesis", "mass": 3, "tier": 1, "status": "draft", "claim": "Supply is committed ahead of demand at a scale the auditor flags: provisions for excess or obsolete inventory and excess product purchase commitments are the critical audit matter, and those provisions charge cost of sales. If demand steps down, committed supply converts directly into margin damage."}, {"entry_id": "LR-NVDA-T01", "lens": "teece", "direction": "supports_thesis", "mass": 3, "tier": 1, "status": "draft", "claim": "CUDA is the complementary asset a hardware challenger cannot replicate by building a chip: the filing describes the CUDA development platform running on all NVIDIA GPUs plus hundreds of domain-specific libraries, frameworks, SDKs and APIs. The switching cost sits in the software stack and installed developer base, cushioning both pricing and share against competing accelerators."}, {"entry_id": "LR-NVDA-V01", "lens": "value_curve", "direction": "supports_thesis", "mass": 2, "tier": 1, "status": "draft", "claim": "The offer commands software-like margins on silicon: as-reported gross margin of 71.1% in FY2026, having run as high as 75.0%, is far above merchant-semiconductor norms and is direct evidence that buyers pay for the platform, not the part. The differentiation is carried jointly with the CUDA stack (LR-NVDA-T01)."}]}, {"branch_id": "BR-NVDA-04", "label": "Platform margin fades toward the sector as competing accelerators and customer silicon erode the CUDA switching cost", "S": 5, "O": 5, "r": 0.5, "entries": [{"entry_id": "LR-NVDA-F02", "lens": "fragility", "direction": "opposes_thesis", "mass": 2, "tier": 1, "status": "draft", "claim": "NVIDIA manufactures nothing itself and its supply chain is, per the filing, mainly concentrated in Asia: wafers from TSMC and Samsung, HBM memory from SK Hynix, Micron and Samsung, CoWoS packaging capacity, and assembly at Hon Hai, Wistron and Fabrinet. Dual-sourced at most stages, so weaker than a sole-source dependence, but margin and volume paths assume this chain executes without constraint."}, {"entry_id": "LR-NVDA-C01", "lens": "capital_recovery", "direction": "opposes_thesis", "mass": 3, "tier": 1, "status": "draft", "claim": "Supply is committed ahead of demand at a scale the auditor flags: provisions for excess or obsolete inventory and excess product purchase commitments are the critical audit matter, and those provisions charge cost of sales. If demand steps down, committed supply converts directly into margin damage."}, {"entry_id": "LR-NVDA-T01", "lens": "teece", "direction": "supports_thesis", "mass": 3, "tier": 1, "status": "draft", "claim": "CUDA is the complementary asset a hardware challenger cannot replicate by building a chip: the filing describes the CUDA development platform running on all NVIDIA GPUs plus hundreds of domain-specific libraries, frameworks, SDKs and APIs. The switching cost sits in the software stack and installed developer base, cushioning both pricing and share against competing accelerators."}, {"entry_id": "LR-NVDA-V01", "lens": "value_curve", "direction": "supports_thesis", "mass": 2, "tier": 1, "status": "draft", "claim": "The offer commands software-like margins on silicon: as-reported gross margin of 71.1% in FY2026, having run as high as 75.0%, is far above merchant-semiconductor norms and is direct evidence that buyers pay for the platform, not the part. The differentiation is carried jointly with the CUDA stack (LR-NVDA-T01)."}]}], "unmatched": [], "drafts": 6, "total": 6}, "conventionsLog": {"schema_version": "conventions_log_v0_1", "subject": {"firm": "NVIDIA CORP", "ticker": "NVDA"}, "provenance": {"product_name": "conventions_log", "object_id": "collect_0001045810", "schema_version": "conventions_log_v0_1"}, "_discipline": "Seeded by collect_statements.py with the stances the extraction took. Only the curator moves a convention to decided.", "conventions": [{"id": "E1", "title": "Cost-of-sales basis", "owner": "collect_extraction", "status": "open", "interim_default": "E1: costOfSales is as reported and may include production depreciation (unlike the depreciation-free ASML reference basis); sga is the residual keeping EBIT exact, so EBIT/NOPLAT and derived cash flows are exact while the gross-margin level is not cross-basis comparable.", "resolution_path": null, "resolution": null, "decided_on": null}, {"id": "E3", "title": "Operating vs excess cash", "owner": "collect_extraction", "status": "open", "interim_default": "E3: operatingCash carries the total cash balance; no operating/excess split exists in XBRL.", "resolution_path": null, "resolution": null, "decided_on": null}, {"id": "E4", "title": "No reported cash flow statement", "owner": "collect_extraction", "status": "open", "interim_default": "E4: no reported cash flow statement emitted; the identity-derived one ties by construction on this mapping.", "resolution_path": null, "resolution": null, "decided_on": null}, {"id": "T1", "title": "Tax basis: statutory vs effective", "owner": "collect_extraction", "status": "open", "interim_default": "T1: assumptions.taxRate = 0.1512 is the EFFECTIVE rate of the latest fiscal year (taxes/pretax); statutory-vs-effective stays open.", "resolution_path": null, "resolution": null, "decided_on": null}, {"id": "V0", "title": "WACC unset", "owner": "collect_extraction", "status": "open", "interim_default": "assumptions.wacc = null: valuation input, never extracted.", "resolution_path": null, "resolution": null, "decided_on": null}, {"id": "A1", "title": "Atlas sector mapping for arena ai-compute-systems", "owner": "track_a_convention", "status": "open", "interim_default": "NVDA maps to Business equipment / tech (phi 0.84, hold 0.83, n 196), the nearest cell and the same one ASML uses; the atlas has no ai-compute-systems cell.", "resolution_path": "Either accept the tech-cell mapping, substitute pooled phi 0.73 if the cell is judged unrepresentative of an accelerated-compute platform, or build an arena cell when the EDGAR 2009+ panel lands. Recorded in inputs/nvda/nvda_config.json atlas_mapping_basis.", "resolution": null, "decided_on": null}, {"id": "S1", "title": "No one-time margin shock in the v0.1 shape set", "owner": "scenario_derivation_spec", "status": "open", "interim_default": "Spec \u00a73.2 assigns level_shift to volume/unit/share drivers and fade_path to margin drivers. A provisions charge is a one-time margin shift, which neither covers. BR-NVDA-03 uses the mechanism-correct level_shift on gross_margin_pct; the generator accepts it because params are validated per shape, not per driver-shape pair.", "resolution_path": "Either widen \u00a73.2's level_shift applicability to any driver, add a margin_shock shape, or rule that one-time margin events belong in the bear case rather than a branch. Spec-level decision.", "resolution": null, "decided_on": null}]}, "deriveConfig": {"subject": {"firm": "NVIDIA CORP", "ticker": "NVDA", "engine_version": "track_b_0.4", "drivers_file": "nvda_drivers.json"}, "horizon_years": 5, "lambda": 0.4, "atlas_sector": "Business equipment / tech", "atlas_mapping_basis": "DECISION FOR REVIEW. The registry arena is 'ai-compute-systems'; the P4 fade atlas has no such cell, so no exact mapping exists. Business equipment / tech is the nearest: it is the Fama-French tech grouping that contains semiconductor and computing-hardware firms, it is the atlas's best-populated cell (n = 196 of 155 firms / 559 transitions), and it is the same cell ASML maps to, which keeps the two subjects comparable on the same persistence rate. phi 0.84 implies a competitive-advantage period of about 6.4 years and a top-tercile hold of 83%/yr. WHAT THIS ASSUMES, and what a reviewer should contest: that an accelerated-compute platform's relative-ROIC advantage decays at the same rate as the broad tech grouping's. NVIDIA's realised ROIC (74-93% forward on the policy basis) sits far above the cell's population, so the mapping may understate erosion (mean reversion from an extreme) or overstate it (a platform moat outlasting hardware peers) \u2014 the atlas cannot distinguish these on n = 196. Alternatives considered: Manufacturing (phi 0.57) rejected as a poor fit for a fab-less platform; pooled phi 0.73 available if the curator judges the tech cell unrepresentative, at the cost of the ASML comparability. Recorded, not defaulted.", "atlas_provenance": {"product_name": "p4_fade_atlas", "object_id": "p4_fade_atlas_prototype_v0_1", "schema_version": "fade_atlas_v0_1"}, "provenance": {"product_name": "scenario_derive_config", "object_id": "nvda_scenario_config_2026-08-12", "schema_version": "scenario_config_v0_1"}, "envelope_override_justification": null, "readings": {"shape_params": "closed", "sector_mean_consistency": "must_agree_per_driver", "default_prior": "share_envelope_across_all_branches", "analyst_probability_on_face": "after_modifiers", "modifier_cap": "per_modifier_and_sum", "rounding": "round_then_sum"}, "lambda_basis": "Carried unchanged from the ASML ratified basis: discriminance evidence of 11 Aug 2026 put candidate lens signals inside a \u00b10.08 Brier-skill band around zero, and calibration_ledger_spec_v0_9 \u00a75 prescribes shrinking the gain when BSS \u2264 0. Held at the \u00a74.2 value of 0.4 pending a branch-level score. No NVDA-specific evidence exists; the parameter is a system parameter, not a per-name one."}, "manifest": [{"role": "golden file (statements, cases, computed)", "file": "nvda_golden_source.json", "sha256": "ac055f1442fb14c3feb18afec1ded8a7cdf19409e31074d52e424369d34dec73"}, {"role": "Track B drivers (derivation input)", "file": "nvda_drivers.json", "sha256": "7fef90fbf7351e4b32496012155f5527e345eaffa209fa16522165023081ad31"}, {"role": "threat register", "file": "nvda_threats.json", "sha256": "e07eb605c6382ade7362badf342e9900f72b0311f0274783d1e9807064991eec"}, {"role": "derivation config (readings, lambda)", "file": "nvda_config.json", "sha256": "98d315d49bd036f53bdbb9575d6524086b53697719e8961f2e540725203aacf9"}, {"role": "lens register", "file": "nvda_lens_register.json", "sha256": "401d3b925b4ae2de0524be4a15511fa85b3747122ce4d8d47541e87a0f07a213"}, {"role": "conventions log", "file": "conventions_log.json", "sha256": "7b480354e7ad0906c340be0fe5bb2ef2e0fe7ce7a335de8555ebda5e45ce3537"}, {"role": "fade atlas table", "file": "atlas.csv", "sha256": "74518c7911a5115d55f6839719b15810059f2c642a5655ca3bbfcab5fe649ad3"}], "provider": {"name": "none", "model": "static export", "ready": false, "keyEnv": null}, "static": true, "exportedAt": "2026-08-13"};
+const G = STATE.golden, S = STATE.scenarioSet, P = STATE.provider;
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const fmt = (v, d=0) => v === null || v === undefined || v === "" ? "—"
+  : Number(v).toLocaleString(undefined, {minimumFractionDigits:d, maximumFractionDigits:d});
+const pct = (v, d=2) => v === null || v === undefined ? "—" : (v*100).toFixed(d) + "%";
+
+/* ---------- header ---------- */
+const comp = (G.scenarios && G.scenarios.computed) || {};
+$("firm").textContent = G.company;
+$("strap").textContent = `${G.unit} · engine ${comp.engineVersion || "—"} · computed ${comp.computedAt || "—"}`;
+const chips = [["block","SPEC DRAFT · NOT STAMPED"]];
+if (S) chips.push(["wait", "SCENARIO SET " + S._path.split("/").pop()]);
+else chips.push(["wait","NO SCENARIO SET YET"]);
+chips.push(["", `${((G.drivers||{}).definitions||[]).length} DRIVERS`]);
+const uc = (comp.unresolvedConventions || (G.scenarios && G.scenarios._openItems)) || [];
+if (uc.length) chips.push(["block", `${uc.length} UNRESOLVED CONVENTIONS`]);
+$("chips").innerHTML = chips.map(([c,t]) => `<span class="chip ${c}">${esc(t)}</span>`).join("");
+
+/* ---------- tables ---------- */
+const DRIVER_UNIT = Object.fromEntries(
+  ((G.drivers && G.drivers.definitions) || []).map(d => [d.id, d.unit || ""]));
+function driverVal(id, v) {
+  if (v === null || v === undefined || isNaN(v)) return "—";
+  const u = DRIVER_UNIT[id] || "";
+  if (u === "fraction") return (v * 100).toFixed(2) + "%";
+  if (u === "systems")  return fmt(v, 0);
+  return fmt(v, 2);                       // model.unit and model.unit/sys
+}
+const unitNote = (id) => ({ "fraction": "%", "systems": "systems",
+  "model.unit/sys": (G.unit || "") + " / system" }[DRIVER_UNIT[id]] || G.unit || "");
+
+const humanise = (k) => k.replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+                          .replace(/^./, c => c.toUpperCase());
+function rows(obj, labels) {
+  return Object.entries(obj).map(([k, v]) => {
+    const cells = v.map(x => `<td class="n">${fmt(x)}</td>`).join("");
+    return `<tr><td>${esc((labels && labels[k]) || humanise(k))}</td>${cells}</tr>`;
+  }).join("");
+}
+function yearHead(years) {
+  return `<tr><th></th>${years.map(y => `<th style="text-align:right">${y}</th>`).join("")}</tr>`;
+}
+
+const CASE_ORDER = ["bear", "base", "bull"];
+const caseCls = (c) => ({bear:"c-bear", base:"c-base", bull:"c-bull"}[c] || "");
+const CASES = (G.scenarios && G.scenarios.cases) || {};
+const PATHS0 = Object.keys(CASES).length ? CASES[Object.keys(CASES)[0]].paths : {};
+const divergingIds = Object.keys(PATHS0).filter(id =>
+  new Set(Object.values(CASES).map(c => JSON.stringify(c.paths[id]))).size > 1);
+const flatIds = Object.keys(PATHS0).filter(id => !divergingIds.includes(id));
+const TORNADO = (() => {
+  const t = comp.tornado; if (!t) return {};
+  const list = Array.isArray(t) ? t : Object.entries(t).map(([k,v]) => ({driver:k, span:v}));
+  return Object.fromEntries(list.map(r => [r.driver || r.id, Number(r.span ?? r.evSpan ?? 0)]));
+})();
+const REG = STATE.lensRegister;
+const RE = Object.fromEntries(((REG && REG.entries) || []).map(e => [e.entry_id, e]));
+const eref = (id) => RE[id]
+  ? `<span style="font-family:var(--mono);font-size:10px;color:${RE[id].direction==="supports_thesis"?"var(--pass)":"var(--block)"}">${id} · ${RE[id].direction==="supports_thesis"?"S":"O"}${RE[id].mass} · ${RE[id].status}</span>`
+  : "";
+
+function valueCurveSVG() {
+  const tiers = [["duv_dry_asp","Dry DUV"],["arfi_asp","ArFi"],["euv_asp","EUV 0.33"],["highna_asp","High-NA 0.55"]];
+  const vals = tiers.map(([id]) => PATHS0[id] ? PATHS0[id][0] : null);
+  if (vals.some(v => v === null)) return "";
+  const W=560,H=210,L=52,B=30,T=16,R=14, ymax=280;
+  const x=(i)=>L+i*(W-L-R)/(tiers.length-1), y=(v)=>T+(H-T-B)*(1-v/ymax);
+  const pts = vals.map((v,i)=>`${x(i)},${y(v)}`).join(" ");
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Offer curve: ASP by product tier" style="max-width:100%">
+    ${[0,70,140,210,280].map(g=>`<line x1="${L}" y1="${y(g)}" x2="${W-R}" y2="${y(g)}" stroke="var(--rule)" stroke-width="0.5"/>
+      <text x="${L-6}" y="${y(g)+3.5}" text-anchor="end" font-size="9" fill="var(--ink-faint)" font-family="monospace">${g}</text>`).join("")}
+    <text x="${L}" y="${T-6}" font-size="9" fill="var(--ink-faint)" font-family="monospace">EUR m / system</text>
+    <polyline points="${pts}" fill="none" stroke="var(--brass)" stroke-width="2"/>
+    ${vals.map((v,i)=>`<circle cx="${x(i)}" cy="${y(v)}" r="4" fill="var(--brass)"/>
+      <text x="${x(i)}" y="${y(v)-9}" text-anchor="middle" font-size="10.5" fill="var(--ink)" font-family="monospace">${v}</text>
+      <text x="${x(i)}" y="${H-9}" text-anchor="middle" font-size="10" fill="var(--ink-soft)">${tiers[i][1]}</text>`).join("")}
+  </svg>`;
+}
+
+function highnaBarsSVG() {
+  if (!CASES.bear || !CASES.bear.paths.highna_units) return "";
+  const W=560,H=150,L=52,B=26,T=16, ymax=40;
+  const vals = CASE_ORDER.map(c => CASES[c].paths.highna_units.slice(-1)[0]);
+  const cols = {bear:"var(--block)", base:"var(--brass)", bull:"var(--pass)"};
+  const bw=90, gap=(W-L-30-3*bw)/2;
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="High-NA terminal shipments by case" style="max-width:100%">
+    ${[0,10,20,30,40].map(g=>{const gy=T+(H-T-B)*(1-g/ymax);return `<line x1="${L}" y1="${gy}" x2="${W-14}" y2="${gy}" stroke="var(--rule)" stroke-width="0.5"/>
+      <text x="${L-6}" y="${gy+3.5}" text-anchor="end" font-size="9" fill="var(--ink-faint)" font-family="monospace">${g}</text>`}).join("")}
+    <text x="${L}" y="${T-6}" font-size="9" fill="var(--ink-faint)" font-family="monospace">systems shipped, FY2029 cumulative</text>
+    ${vals.map((v,i)=>{const bx=L+18+i*(bw+gap), bh=(H-T-B)*v/ymax;
+      return `<rect x="${bx}" y="${H-B-bh}" width="${bw}" height="${bh}" fill="${cols[CASE_ORDER[i]]}" opacity="0.85" rx="2"/>
+      <text x="${bx+bw/2}" y="${H-B-bh-6}" text-anchor="middle" font-size="11" fill="var(--ink)" font-family="monospace">${v}</text>
+      <text x="${bx+bw/2}" y="${H-8}" text-anchor="middle" font-size="10.5" fill="${cols[CASE_ORDER[i]]}">${CASE_ORDER[i]}</text>`}).join("")}
+  </svg>`;
+}
+
+function derivedCF() {
+  // Cash flow by IDENTITY from the two statements: every balance line is used
+  // exactly once, so the total ties to the change in cash by construction.
+  // Not the reported statement — that is absent from schema v3 (convention E4).
+  const inc = G.income, bal = G.balance, ys = G.years;
+  const ni = ys.map((_, t) => inc.revenue[t] - inc.costOfSales[t] - inc.depreciation[t]
+    - inc.sga[t] + inc.interestIncome[t] - inc.interestExpense[t] - inc.incomeTaxes[t]);
+  const d = (arr, t) => arr[t] - arr[t - 1];
+  const rows = [];
+  const push = (label, fn, cls) => rows.push({label, vals: ys.slice(1).map((_, i) => fn(i + 1)), cls});
+  push("Net income", t => ni[t]);
+  push("+ Depreciation & amortisation", t => inc.depreciation[t]);
+  push("− Δ other current operating assets", t => -d(bal.otherCurrentAssets, t));
+  push("+ Δ accounts payable & accrued", t => d(bal.accountsPayable, t));
+  push("+ Δ other non-interest liabilities (incl. prepayments)", t => d(bal.otherNonInterestLiab, t));
+  push("Cash from operations", t => ni[t] + inc.depreciation[t] - d(bal.otherCurrentAssets, t)
+    + d(bal.accountsPayable, t) + d(bal.otherNonInterestLiab, t), "tot");
+  push("− Capex incl. (Δ net PPE + depreciation)", t => -(d(bal.ppe, t) + inc.depreciation[t]));
+  push("− Δ R&D / other operating assets, net", t => -d(bal.otherOperatingAssets, t));
+  push("Cash from investing", t => -(d(bal.ppe, t) + inc.depreciation[t]) - d(bal.otherOperatingAssets, t), "tot");
+  push("Δ interest-bearing debt", t => d(bal.longTermDebt, t));
+  push("Net shareholder flows (Δ equity − net income)", t => d(bal.equity, t) - ni[t]);
+  push("Cash from financing", t => d(bal.longTermDebt, t) + d(bal.equity, t) - ni[t], "tot");
+  const dcash = t => ni[t] + inc.depreciation[t] - d(bal.otherCurrentAssets, t)
+    + d(bal.accountsPayable, t) + d(bal.otherNonInterestLiab, t)
+    - (d(bal.ppe, t) + inc.depreciation[t]) - d(bal.otherOperatingAssets, t)
+    + d(bal.longTermDebt, t) + d(bal.equity, t) - ni[t];
+  push("Δ cash (derived)", dcash, "tot");
+  push("Check: derived Δ cash − reported Δ cash", t => dcash(t) - d(bal.operatingCash, t));
+  return rows;
+}
+
+function cfPanel() {
+    const rows = derivedCF();
+    return `<div class="panel"><h2>Statement of cash flows · derived by identity</h2>
+      <p class="note" style="color:var(--wait)">Schema v3 carries no reported cash flow statement
+      (open convention E4). This one is derived from the income statement and balance-sheet
+      deltas: every balance line is used exactly once, so it ties to the change in cash by
+      construction — the check row is the proof. What deltas cannot recover: the
+      buyback/dividend split (shown net) and any non-cash reclassifications.</p>
+      <div class="scroll"><table>
+      <thead><tr><th></th>${G.years.slice(1).map(y => `<th style="text-align:right">${y}</th>`).join("")}</tr></thead>
+      <tbody>${rows.map(r => `<tr${r.cls ? ` class="${r.cls}"` : ""}><td>${esc(r.label)}</td>
+        ${r.vals.map(v => `<td class="n">${fmt(v)}</td>`).join("")}</tr>`).join("")}
+      </tbody></table></div>
+      <p class="note">Readable directly: FY2021's 9,982 from operations against 9,409 returned to
+      shareholders is the buyback era; the prepayment line (+4,463 in FY2021) is the customer
+      funding the fragility lens flags.</p></div>`;
+  }
+
+const TABS = {
+  "Reading": () => {
+    if (!G.company.startsWith("ASML"))
+      return `<div class="panel"><h2>No reading yet for ${esc(G.company)}</h2>
+        <p class="note">Commentary is written per company from its recorded findings — the
+        lens register, the conventions log, the concordance report and the derived scenario
+        set. None of those layers exists for this subject yet; the Statements tab (with the
+        identity-derived cash flows) is the extraction, and everything else is curation
+        still to do. Nothing generic is shown in its place.</p></div>`;
+    const S_ = STATE.scenarioSet;
+    const go = (tab, txt) => `<button onclick="show('${tab}')" style="font-size:11px;padding:3px 9px;margin-left:6px">${txt} →</button>`;
+    return `<div class="panel"><h2>The company, as this model holds it</h2>
+      <p class="note">ASML is the world's only manufacturer of EUV lithography systems, selling
+      into a customer base so concentrated that two buyers take 38% of net sales, through a supply
+      chain that runs on a single optics source, funded in part by its own customers' prepayments.
+      Revenue ran 13,979 to 28,263 (EUR millions) over FY2020–24. The engine's base case values it
+      at 330.53 per share on a 284–380 bear–bull range, with 73.4% of enterprise value sitting in
+      the terminal — this is a valuation carried mostly by what happens after the five explicit
+      years.</p>
+      <p class="note" style="color:var(--wait)">Commentary, not data: every claim below links to
+      its evidence on this page, and the probabilities cited are DRAFT and unstamped.</p></div>
+
+      <div class="panel"><h2>Main findings</h2>
+      <div class="conv"><b>1 · Value hangs on High-NA adoption</b><br>
+        One assumption dominates: cumulative High-NA shipments by FY2029 span 8 / 20 / 36 across
+        the cases, the widest value swing of any driver (EV span 16,301). Your read puts 25% on
+        the slip. ${go("Scenarios","assumptions")}</div>
+      <div class="conv"><b>2 · The moat is genuinely contested where it matters</b><br>
+        The margin-fade branch carries real disagreement: Zeiss single-source against the
+        installed-base annuity, r = 0.29 — the only branch where opposition and support both
+        showed up. ${go("Lenses","disagreement")}</div>
+      <div class="conv"><b>3 · The moat does not live in blended gross margin</b><br>
+        Fetched peer margins: AMAT 48.67%, Lam 50.47%, KLA 61.30% — mean 53.48% against ASML's
+        54.17% anchor. KLA's margin is higher than ASML's. The advantage lives in ROIC and EUV
+        pricing, not blended GM; the fade branch as mapped is nearly toothless and is flagged for
+        remap at review. ${go("Derived scenarios","the branch")}</div>
+      <div class="conv"><b>4 · The bear case keeps the customers' money</b><br>
+        OWC is −2.15% of revenue in every case: customers fund the operating cycle (~775m at
+        FY2026 base revenue) and the bear case assumes that funding survives the downturn it
+        models. Routed to the engine as convention O3; the number stays wrong on the face until
+        the engine re-runs. ${go("Conventions","O3")}</div>
+      <div class="conv"><b>5 · Customer concentration is rising fast</b><br>
+        Largest customer went from 16.6% to 23.9% of net sales in one year; two customers take
+        38.0%. Unit paths inherit the capex decisions of two boards. ${go("Lenses","fragility")}</div>
+      <div class="conv"><b>6 · A tax convention understates the engine's own profitability</b><br>
+        Striking NOPLAT at the statutory 25.8% against effective rates of 13.7–18.6% understates
+        FY2024 NOPLAT by roughly 650, near 10% — open convention T1, affecting slices 1–4.
+        ${go("Conventions","T1")}</div>
+      <div class="conv"><b>7 · The derived probability set holds together</b><br>
+        Three sourced branches railed to 17.08 / 23.08 / 20.08%, base case 39.76%, inside the
+        atlas envelope with 5.4pp headroom. In aggregate your reads sit almost exactly on the
+        cause-agnostic base rate — the judgment is in the allocation, not the level.
+        ${go("Derived scenarios","the set")}</div>
+      <div class="conv"><b>8 · What the analysis says it does not know</b><br>
+        Porter's entrants and substitutes boxes are empty, one lens claim lands on drivers no
+        branch perturbs, five conventions are open, and the whole overlay carries no demonstrated
+        forecast skill. The gaps are drawn, not filled. ${go("Method","validation")}</div>
+      </div>`;
+  },
+
+  "Statements": () => `
+    <div class="panel"><h2>Income statement</h2><div class="scroll"><table>
+      <thead>${yearHead(G.years)}</thead><tbody>${rows(G.income, G.labels)}</tbody></table></div></div>
+    <div class="panel"><h2>Balance sheet</h2><div class="scroll"><table>
+      <thead>${yearHead(G.years)}</thead><tbody>${rows(G.balance, G.labels)}</tbody></table></div>
+      <p class="note">Tax rate ${pct(G.assumptions.taxRate)} · WACC ${pct(G.assumptions.wacc)}
+      · shares ${fmt(G.sharesOutstanding[G.sharesOutstanding.length-1],1)}m</p></div>` + cfPanel(),
+
+  "Scenarios": () => {
+    let out = "";
+    // 1. The assumptions that separate the cases, BEFORE any computed effect.
+    if (divergingIds.length) {
+      const rows = divergingIds
+        .map(id => ({id, span: TORNADO[id] || 0}))
+        .sort((a,b) => b.span - a.span);
+      out += `<div class="panel"><h2>What separates the cases</h2>
+        <p class="note">The assumptions, before their effect on any total. Only these
+        ${rows.length} drivers differ across bear, base and bull; the other
+        ${flatIds.length} are held identical in every case by construction (see Drivers).
+        Values are FY2029 terminal; EV span is each driver swung bear-to-bull alone.</p>
+        <div class="scroll"><table>
+        <thead><tr><th>Driver</th><th style="text-align:right">unit</th>
+        <th style="text-align:right" class="c-bear">bear</th>
+        <th style="text-align:right" class="c-base">base</th>
+        <th style="text-align:right" class="c-bull">bull</th>
+        <th style="text-align:right">EV span</th></tr></thead><tbody>
+        ${rows.map(({id, span}) => `<tr><td>${esc(id)}</td>
+          <td class="n" style="color:var(--ink-faint);font-size:11.5px">${esc(unitNote(id))}</td>
+          ${CASE_ORDER.map(c => `<td class="n ${caseCls(c)}">${driverVal(id, CASES[c].paths[id].slice(-1)[0])}</td>`).join("")}
+          <td class="n">${span ? fmt(span) : "—"}</td></tr>`).join("")}
+        </tbody></table></div></div>`;
+    }
+    // 2. The narratives that motivate them.
+    out += `<div class="panel"><h2>Case narratives</h2>` +
+      CASE_ORDER.filter(k => CASES[k]).map(k =>
+        `<div class="conv" style="border-color:${{bear:"var(--block)",base:"var(--brass)",bull:"var(--pass)"}[k]}">
+         <b class="${caseCls(k)}">${esc(k)}</b><br>${esc(CASES[k].narrative||"")}</div>`).join("") + `</div>`;
+    // 3. Only now the computed effect.
+    const ff = comp.footballField;
+    if (ff) {
+      const band = (lo, base, hi, label, unit, dp) => {
+        const span = hi - lo || 1;
+        const cols = {Bear:"var(--block)", Base:"var(--brass)", Bull:"var(--pass)"};
+        const row = (name, v) => `<tr><td style="color:${cols[name]}">${name}</td>
+          <td class="n">${fmt(v, dp)}</td>
+          <td style="width:170px"><div class="bar" style="position:relative"><i style="position:absolute;left:${
+            ((v - lo) / span * 100).toFixed(1)}%;transform:translateX(-50%);width:3px;height:100%;background:${cols[name]}"></i></div></td></tr>`;
+        return `<div class="panel"><h2>${label}</h2><div class="scroll"><table>
+          <thead><tr><th>Case</th><th style="text-align:right">${unit}</th>
+          <th style="text-align:right">bear → bull</th></tr></thead><tbody>
+          ${row("Bear", lo)}${row("Base", base)}${row("Bull", hi)}
+          <tr><td style="color:var(--ink-faint);font-size:11px">axis</td><td></td>
+          <td style="font-family:var(--mono);font-size:10px;color:var(--ink-faint)">
+          <span style="float:left">${fmt(lo, dp)}</span><span style="float:right">${fmt(hi, dp)} ${esc(unit)}</span></td></tr>
+          <tr class="tot"><td>Spread</td><td class="n">${fmt(hi - lo, dp)}</td>
+          <td class="n">${((hi - lo) / base * 100).toFixed(1)}% of base</td></tr>
+          </tbody></table></div></div>`;
+      };
+      if (typeof ff.perShareBase === "number")
+        out += band(ff.perShareLow, ff.perShareBase, ff.perShareHigh,
+                    "Effect · value per share", "EUR / share", 2);
+      if (typeof ff.evBase === "number")
+        out += band(ff.evLow, ff.evBase, ff.evHigh,
+                    "Effect · enterprise value", ff.unit || G.unit, 0);
+    }
+    const clean = Object.entries(TORNADO).map(([d,v]) => ({d, s:v}))
+      .filter(r => r.s > 0).sort((a,b) => b.s - a.s);
+    if (clean.length) {
+      const max = clean[0].s;
+      out += `<div class="panel"><h2>Sensitivity · EV span by driver</h2><div class="scroll"><table>
+        <thead><tr><th>Driver</th><th style="text-align:right">EV span (${esc(G.unit)})</th><th></th></tr></thead><tbody>
+        ${clean.map(r => `<tr><td>${esc(r.d)}</td><td class="n">${fmt(r.s)}</td>
+          <td style="width:140px"><div class="bar"><i style="width:${(r.s/max*100).toFixed(1)}%"></i></div></td></tr>`).join("")}
+        </tbody></table></div>
+        <p class="note">Each driver swung bear to bull, every other driver held at base.</p></div>`;
+    }
+    return out;
+  },
+
+  "Drivers": () => {
+    const defs = ((G.drivers || {}).definitions) || [];
+    const anch = (G.drivers || {}).anchors || {};
+    if (!Object.keys(PATHS0).length && defs.length) {
+      return `<div class="panel"><h2>Driver registry · ${esc((G.drivers.registryVersion) || "skeleton")}</h2>
+        <p class="note">Definitions and anchors exist; the three case paths and narratives are
+        the analyst work still to do, and Scenarios stays empty until the valuation engine runs
+        on them. Every anchor carries its basis and source below — read the cautions before
+        building paths on top of them.</p>
+        <div class="scroll"><table>
+        <thead><tr><th>Driver</th><th style="text-align:right">unit</th>
+        <th style="text-align:right">anchor</th><th>basis · source</th></tr></thead><tbody>
+        ${defs.map(d => { const a = anch[d.id] || {};
+          return `<tr><td>${esc(d.id)}<br><span style="color:var(--ink-faint);font-size:11px">${esc(d.label)}</span></td>
+          <td class="n" style="color:var(--ink-faint);font-size:11.5px">${esc(unitNote(d.id))}</td>
+          <td class="n">${a.value !== undefined ? driverVal(d.id, a.value) : "—"}</td>
+          <td style="white-space:normal;font-size:11.5px;color:var(--ink-soft);min-width:220px">${esc(a.basis || "")}${a.source ? ` · <i>${esc(a.source)}</i>` : ""}</td></tr>`; }).join("")}
+        </tbody></table></div>
+        ${G.drivers._skeleton ? `<p class="note" style="color:var(--wait)">${esc(G.drivers._skeleton)}</p>` : ""}</div>`;
+    }
+    const table = (ids, withCases) => `<div class="scroll"><table>
+      <thead><tr><th>Driver</th><th style="text-align:right">unit</th>
+      <th style="text-align:right">anchor</th>
+      ${withCases ? CASE_ORDER.map(c => `<th style="text-align:right" class="${caseCls(c)}">${c} FY2029</th>`).join("") : ""}
+      </tr></thead><tbody>
+      ${ids.map(id => `<tr><td>${esc(id)}</td>
+        <td class="n" style="color:var(--ink-faint);font-size:11.5px">${esc(unitNote(id))}</td>
+        <td class="n">${driverVal(id, PATHS0[id][0])}</td>
+        ${withCases ? CASE_ORDER.map(c => `<td class="n ${caseCls(c)}">${driverVal(id, CASES[c].paths[id].slice(-1)[0])}</td>`).join("") : ""}
+        </tr>`).join("")}
+      </tbody></table></div>`;
+    return `<div class="panel"><h2>Drivers that diverge across cases (${divergingIds.length})</h2>
+      ${table(divergingIds, true)}
+      <p class="note">Anchor is base-case year one. Every driver carries a value, a source and a
+      stated rule in the golden file; the engine refuses to compute otherwise.</p></div>
+      <div class="panel"><h2>Drivers held identical in every case (${flatIds.length})</h2>
+      ${table(flatIds, false)}
+      <p class="note" style="color:var(--wait)">Zero scenario span here is by construction, not
+      evidence: no disagreement has been admitted on these drivers. The fragility scan treats
+      each as a candidate claim — owc_pct_revenue already carries one (LR-ASML-F01).</p></div>`;
+  },
+
+  "Derived scenarios": () => {
+    if (!S) return `<div class="panel"><h2>No scenario set yet</h2>
+      <p class="note">The threat register is still being curated, so no branch probabilities exist.
+      Running <code>scenario_derive.py</code> today refuses at input completeness and lists exactly
+      which curator fields are missing. Nothing here is estimated in the meantime.</p></div>`;
+    const co = S.coherence, sm = S.sector_map;
+    return `<div class="panel"><h2>How to read this table</h2>
+      <dl class="kv">
+      <dt>locus</dt><dd>WHERE the threat acts. <span class="c-bull">firm</span>: hits ASML's
+        position inside its sector — admitted. <span class="c-base">mixed</span>: admitted with a
+        note naming the firm-specific part. <span class="c-bear">sector</span>: hits everyone at
+        once, demeans away in the sector-relative frame the atlas measures — excluded, never
+        scored.</dd>
+      <dt>analyst</dt><dd>The curator's evidence-graded probability that the threat bites within
+        the ${S.horizon_years}-year horizon. Pure judgment, documented with tiered sources.</dd>
+      <dt>base</dt><dd>The empirical prior. No panel of threat-materialisation rates exists yet,
+        so each branch draws the atlas erosion envelope split equally — the rate at which
+        advantages in this sector die of ALL causes, divided across the named ones. Flagged *.</dd>
+      <dt>railed</dt><dd>λ·base + (1−λ)·analyst, λ = ${S.lambda}. The blend that stops one
+        strong opinion from outrunning the sector's history: the analyst read is pulled
+        ${(S.lambda*100).toFixed(0)}% of the way toward the base rate before it reaches the
+        face.</dd>
+      </dl></div>
+      <div class="panel"><h2>Probability set</h2><div class="scroll"><table>
+      <thead><tr><th>Branch</th><th>Locus</th><th style="text-align:right">Analyst</th>
+      <th style="text-align:right">Base</th><th style="text-align:right">Railed</th></tr></thead><tbody>
+      ${S.branches.map(b => `<tr><td>${esc(b.branch_id)} · ${esc(b.source.label)}</td>
+        <td>${esc(b.source.locus || "not recorded")}</td><td class="n">${pct(b.p_analyst)}</td>
+        <td class="n">${pct(b.p_base)}${b.default_prior_used ? " *" : ""}</td>
+        <td class="n"><b>${pct(b.p_railed)}</b></td></tr>`).join("")}
+      <tr class="tot"><td>Base case · ${esc(S.base_case.definition)}</td><td></td><td></td><td></td>
+        <td class="n">${pct(S.base_case.p)}</td></tr>
+      </tbody></table></div>
+      <p class="note">* drawn from the shared cause-agnostic prior, not a threat-specific reference class.</p></div>
+      <div class="panel"><h2>Coherence — why these three checks</h2>
+      <p class="note"><b>Envelope.</b> The atlas says an advantage in this sector survives a year
+      with probability ${(sm.hold*100).toFixed(0)}%, so over ${S.horizon_years} years the chance
+      it erodes from ANY cause is 1 − ${sm.hold}^${S.horizon_years} = ${pct(co.erosion_envelope)}.
+      Every named threat is a subset of "the advantage erodes", so the named probabilities must
+      fit inside that ceiling plus a 5pp tolerance. It is the one empirical rail against
+      overclaiming threats.</p>
+      <p class="note"><b>Conservation.</b> The base case is defined as the residual — no recorded
+      threat bites — so base + branches must return to 100.00% within ±2pp. A breach means a
+      probability was edited without its complement.</p>
+      <p class="note"><b>Prior sum vs your reads.</b> Σ analyst reads = 60.00% against Σ base =
+      ${pct(co.erosion_envelope)}: in aggregate the curator sits on the cause-agnostic rate, and
+      the information is in the allocation across threats, not in the level.</p>
+      <dl class="kv">
+        <dt>Prior sum</dt><dd>${pct(co.prior_sum)}</dd>
+        <dt>Erosion envelope</dt><dd>${pct(co.erosion_envelope)} (1 − ${sm.hold}^${S.horizon_years})</dd>
+        <dt>Envelope</dt><dd>${esc(co.envelope_status)}</dd>
+        <dt>Atlas cell</dt><dd>${esc(sm.atlas_sector)} · φ ${sm.phi} · n ${sm.n} · ${esc(sm.grade)} grade</dd>
+        <dt>λ</dt><dd>${S.lambda} on the base rate</dd>
+      </dl></div>
+      ${S.excluded_threats.length ? `<div class="panel"><h2>Excluded</h2>${
+        S.excluded_threats.map(e => `<div class="conv"><b>${esc(e.reason)}</b><br>${esc(e.label)}</div>`).join("")
+      }</div>` : ""}`;
+  },
+
+  "Lenses": () => {
+    const C = STATE.concordance, R = STATE.lensRegister;
+    if (!R) return `<div class="panel"><p class="empty">No lens register yet.</p></div>`;
+    const side = (e) => e.direction === "supports_thesis"
+      ? `<span style="color:var(--pass)">S${e.mass}</span>`
+      : `<span style="color:var(--block)">O${e.mass}</span>`;
+    let out = "";
+
+    // ---- generic lens idioms: rendered from the register, any subject -------
+    const byLens = (l) => R.entries.filter(e => e.lens === l);
+    const driversOf = (es) => [...new Set(es.flatMap(e => e.drivers || []))];
+    const claimCard = (e) => `<div class="conv" style="border-color:${
+      e.direction === "supports_thesis" ? "var(--pass)" : "var(--block)"}">
+      <b>${eref(e.entry_id)}${e.locus === "mixed" ? " · mixed locus" : ""}</b><br>
+      ${esc(e.claim)}${e.locus_note ? `<br><span style="color:var(--ink-faint)">Locus: ${esc(e.locus_note)}</span>` : ""}</div>`;
+    const spanOf = (d) => TORNADO[d] || 0;
+
+    // Fragility as a load path: one node per claim, ordered by the EV span of the
+    // driver it lands on, so the heaviest dependence reads first.
+    const frag = byLens("fragility");
+    if (frag.length) {
+      const ordered = [...frag].sort((a, b) =>
+        Math.max(...(b.drivers || []).map(spanOf), 0) - Math.max(...(a.drivers || []).map(spanOf), 0));
+      out += `<div class="panel"><h2>Fragility · the load path</h2>
+        <div class="flow">
+          ${ordered.map((e, k) => `${k ? `<div class="farrow">→<small>${
+            esc((e.drivers || [])[0] || "")}</small></div>` : ""}
+            <div class="fnode" style="border-color:var(--block)">
+            <b>${esc(e.entry_id.split("-").pop())}</b>${esc(e.claim.split(":")[0].slice(0, 120))}
+            <br>${eref(e.entry_id)}</div>`).join("")}
+        </div>
+        <p class="note">${frag.length} recorded dependence${frag.length > 1 ? "s" : ""}, ordered by
+        the EV span of the driver each lands on. Every node is a claim with a citation; none is
+        an inference.</p></div>`;
+    }
+
+    // Porter as the five boxes. Unclaimed forces are drawn dashed: a coverage gap
+    // made visible rather than filled.
+    const FORCES = [["supplier", "Supplier power"], ["buyer", "Buyer power"],
+                    ["rivalry", "Rivalry"], ["entrants", "New entrants"],
+                    ["substitutes", "Substitutes"]];
+    const porter = byLens("porter");
+    const forceHit = (key) => porter.concat(frag).filter(e =>
+      new RegExp(key === "entrants" ? "entrant|new entry"
+               : key === "substitutes" ? "substitut|alternative"
+               : key === "supplier" ? "suppl|vendor|foundr|source"
+               : key === "buyer" ? "buyer|customer|concentrat"
+               : "rival|competitor|monopol|only manufacturer|share", "i").test(e.claim));
+    const pbox = (key, label, col, row) => {
+      const hits = forceHit(key);
+      const sup = hits.some(e => e.direction === "supports_thesis");
+      return `<div class="pbox ${hits.length ? (sup ? "sup" : "opp") : "none"}"
+        style="grid-column:${col};grid-row:${row}"><b>${label}</b>${
+        hits.length ? hits.map(e => `${esc(e.claim.slice(0, 150))} ${eref(e.entry_id)}`).join("<br>")
+                    : "no claim registered"}</div>`;
+    };
+    out += `<div class="panel"><h2>Porter · five forces, firm-relative reading only</h2>
+      <div class="porter">
+        ${pbox("entrants", "New entrants", 2, 1)}
+        ${pbox("supplier", "Supplier power", 1, 2)}
+        ${pbox("rivalry", "Rivalry", 2, 2)}
+        ${pbox("buyer", "Buyer power", 3, 2)}
+        ${pbox("substitutes", "Substitutes", 2, 3)}
+      </div>
+      <p class="note">Forces are matched to registered claims by mechanism, so a box fills only
+      when a cited claim speaks to it. Dashed boxes are coverage gaps, visible rather than filled.
+      Sector-level five-forces content demeans away in the closed-set frame; only firm-located
+      readings are admitted.</p></div>`;
+
+    // Teece as the appropriability chain, with the atlas regime in the middle.
+    const teece = byLens("teece");
+    if (teece.length) {
+      const sm = S ? S.sector_map : null;
+      out += `<div class="panel"><h2>Teece · who keeps the value from the innovation</h2>
+        <div class="flow">
+          <div class="fnode"><b>Innovation</b>${esc(G.company)}, arena
+            ${esc((G.drivers || {}).arena || "unmapped")}.</div>
+          <div class="farrow">→<small>appropriability</small></div>
+          <div class="fnode"><b>Regime check</b>${sm
+            ? `Sector fade φ ${sm.phi}, top-tercile hold ${(sm.hold * 100).toFixed(0)}%/yr — the
+               empirical rate at which such advantages decay (atlas, ${esc(sm.grade)} grade).`
+            : `No atlas sector mapped yet: the persistence rate this claim should be scored
+               against is not on file. Mapping happens in the derivation config.`}</div>
+          <div class="farrow">→<small>complementary assets</small></div>
+          <div class="fnode" style="border-color:var(--pass)"><b>Complementary asset</b>
+            ${esc(teece[0].claim.split(":")[0].slice(0, 160))}<br>${eref(teece[0].entry_id)}</div>
+        </div>
+        <p class="note">Teece is the one lens the calibration loop can eventually score: it claims
+        persistence, and the fade atlas measures persistence.</p></div>`;
+    }
+
+    // Capital recovery: the claimed driver plotted across the three cases.
+    const cap = byLens("capital_recovery");
+    if (cap.length) {
+      const d = (cap[0].drivers || [])[0];
+      const havePaths = d && CASES.bear && CASES.bear.paths[d];
+      out += `<div class="panel"><h2>Capital recovery · commitment vs adoption</h2>
+        ${havePaths ? `<div class="scroll"><table>
+          <thead><tr><th>${esc(d)}</th>${CASE_ORDER.map(c =>
+            `<th style="text-align:right" class="${caseCls(c)}">${c} FY${G.years[G.years.length-1] + (G.drivers.horizonYears || 5)}</th>`).join("")}
+            <th style="text-align:right">EV span</th></tr></thead><tbody>
+          <tr><td>${esc(unitNote(d))}</td>${CASE_ORDER.map(c =>
+            `<td class="n ${caseCls(c)}">${driverVal(d, CASES[c].paths[d].slice(-1)[0])}</td>`).join("")}
+            <td class="n">${spanOf(d) ? fmt(spanOf(d)) : "—"}</td></tr>
+          </tbody></table></div>` : ""}
+        ${cap.map(claimCard).join("")}</div>`;
+    }
+
+    // Value curve: the ladder across whichever drivers the claim names.
+    const vc = byLens("value_curve");
+    if (vc.length) {
+      const ids = driversOf(vc).filter(id => PATHS0[id] !== undefined);
+      out += `<div class="panel"><h2>Value curve · price/margin ladder (strategy canvas pending)</h2>
+        ${ids.length ? `<div class="scroll"><table>
+          <thead><tr><th>Driver named by the claim</th><th style="text-align:right">unit</th>
+          <th style="text-align:right">anchor</th></tr></thead><tbody>
+          ${ids.sort((a,b) => (PATHS0[b][0]||0) - (PATHS0[a][0]||0)).map(id =>
+            `<tr><td>${esc(id)}</td>
+             <td class="n" style="color:var(--ink-faint);font-size:11.5px">${esc(unitNote(id))}</td>
+             <td class="n">${driverVal(id, PATHS0[id][0])}</td></tr>`).join("")}
+          </tbody></table></div>` : ""}
+        ${vc.map(claimCard).join("")}
+        <p class="note">This is level evidence from the firm's own drivers, not a Blue Ocean
+        strategy canvas: a canvas plots firm vs industry across the factors buyers weigh and needs
+        competitor factor scoring the model does not carry. Open item, stated rather than drawn.</p></div>`;
+    }
+
+    // Without a threat register there are no branches to land on: show the
+    // entries ungrouped rather than crashing or pretending concordance exists.
+    if (!C) {
+      const side = (e) => e.direction === "supports_thesis"
+        ? `<span style="color:var(--pass)">S${e.mass}</span>`
+        : `<span style="color:var(--block)">O${e.mass}</span>`;
+      const drafts = R.entries.filter(e => e.status === "draft").length;
+      return out + `<div class="panel"><h2>Lens claims — ungrouped</h2>
+        <p class="note">No threat register exists for this subject yet, so no branch
+        mapping and no concordance r can be computed. Claims are shown ungrouped.
+        ${drafts ? `<b style="color:var(--wait)">${drafts} of ${R.entries.length}
+        entries are draft: proposals awaiting curator sign-off, not citable.</b>` : ""}</p>
+        ${R.entries.map(e => `<div class="conv"><b>${side(e)} · ${esc(e.entry_id)} ·
+          ${esc(e.lens)} · ${esc(e.locus)} locus · tier ${e.provenance_tier} ·
+          ${esc(e.status)}</b><br>${esc(e.claim)}</div>`).join("")}</div>`;
+    }
+
+    out += `<div class="panel"><h2>Disagreement engine</h2>
+      <p class="note">Each lens makes a claim about a driver, never about a return and never a
+      probability. Supporting mass S and opposing mass O per branch give r = min(S,O)/(S+O),
+      the same contestedness the calibration ledger rails on.
+      ${C.drafts ? `<b style="color:var(--wait)">${C.drafts} of ${C.total} entries are draft:
+      proposals awaiting curator sign-off, not citable.</b>` : ""}</p></div>`;
+    for (const b of C.branches) {
+      const rTxt = b.r === null ? "no claims land here — uncontested by omission"
+        : `S = ${b.S} · O = ${b.O} · r = ${b.r.toFixed(2)}
+           ${Math.min(b.S,b.O)===0 ? "(one-sided: opposition or support missing, not resolved)"
+             : b.r < 0.15 ? "(clean)" : b.r < 0.30 ? "(mixed)" : "(contested)"}`;
+      out += `<div class="panel"><h2>${esc(b.branch_id)}</h2>
+        <p class="note" style="margin:0 0 8px">${esc(b.label)}</p>
+        <p class="note" style="margin:0 0 10px;font-family:var(--mono);font-size:12px">${rTxt}</p>
+        ${b.entries.map(e => `<div class="conv"><b>${side(e)} · ${esc(e.entry_id)} ·
+          ${esc(e.lens)} · tier ${e.tier} · ${esc(e.status)}</b><br>${esc(e.claim)}</div>`).join("")
+        || '<p class="empty">no lens claims attached</p>'}</div>`;
+    }
+    if (C.unmatched.length) {
+      out += `<div class="panel"><h2>Unmatched claims — coverage findings</h2>
+        <p class="note">These land on drivers no active branch perturbs. They contest the
+        scenario set's coverage, not a branch's probability: either a threat is missing
+        from the register, or the claim needs an explicit target branch.</p>
+        ${C.unmatched.map(e => `<div class="conv"><b>${esc(e.entry_id)} · ${esc(e.lens)} ·
+          lands on ${esc(e.drivers.join(", "))}</b><br>${esc(e.claim)}</div>`).join("")}</div>`;
+    }
+    return out;
+  },
+
+  "Conventions": () => {
+    const log = STATE.conventionsLog;
+    const byId = Object.fromEntries(((log && log.conventions) || []).map(c => [c.id, c]));
+    const decided = Object.values(byId).filter(c => c.status === "decided").length;
+    let out = `<div class="panel"><h2>Conventions ledger</h2>
+      <p class="note">Each is a question the engine could not settle on its own, travelling with
+      the numbers it affects. Resolving one is a three-step loop: the chat may <b>draft</b> a
+      resolution, only the curator moves it to <b>decided</b> in the log, and no number on this
+      page changes until the owning engine <b>re-runs</b> — the valuation engine for model
+      conventions, scenario_derive.py for derivation conventions. This console computes nothing.
+      ${log ? `<b style="color:var(--pass)">${decided} decided</b> · <b style="color:var(--wait)">${Object.keys(byId).length - decided} open</b>` : ""}</p></div>`;
+    const items = uc.map(c => {
+      const t = typeof c === "string" ? c : (c.note || c.text || JSON.stringify(c));
+      const m = /^([A-Z]\d+)\s+([\s\S]*)$/.exec(t.trim());
+      return {id: m ? m[1] : (c.id || ""), text: m ? m[2] : t};
+    });
+    // The engine stamps its own list into computed; the log carries entries added
+    // afterwards (routings, new findings). Render the union, or later decisions
+    // stay invisible on the face.
+    const inEngine = new Set(items.map(x => x.id));
+    for (const c of Object.values(byId)) {
+      if (!inEngine.has(c.id)) items.push({id: c.id, text: c.interim_default || c.resolution || ""});
+    }
+    for (const it of items) {
+      const lg = byId[it.id];
+      const chip = lg ? `<span class="status-chip st-${lg.status}">${lg.status}</span>` : "";
+      out += `<div class="conv"><b>${esc(it.id)}</b>${chip}
+        ${lg && lg.title ? `<span style="color:var(--ink)"> ${esc(lg.title)}</span>` : ""}<br>
+        ${esc(it.text)}
+        ${lg && lg.resolution ? `<br><span style="color:var(--pass)">Resolution (${esc(lg.decided_on || "")}): ${esc(lg.resolution)}</span>` : ""}
+        ${lg && lg.status === "open" && lg.resolution_path ? `<br><span style="color:var(--wait)">To resolve: ${esc(lg.resolution_path)}</span>` : ""}
+        </div>`;
+    }
+    return out;
+  },
+
+  "Method": () => {
+    const cfg = STATE.deriveConfig, man = STATE.manifest || [];
+    let out = `<div class="panel"><h2>Three engines and a viewer</h2>
+      <p class="note">Every number on this page was computed somewhere specific, from inputs that
+      hash to specific values. Nothing is computed in the browser or in the chat.</p>
+      <div class="scroll"><table>
+      <thead><tr><th>Stage</th><th>Logic sits in</th><th>Inputs</th><th>Output</th><th>Re-run</th></tr></thead>
+      <tbody>
+      <tr><td>Extraction</td><td>/collect agent</td><td>filings, house conventions (E1, E3)</td>
+        <td>golden file, schema v3</td><td>re-extract; conventions log tracks open items</td></tr>
+      <tr><td>Valuation</td><td>valuation engine ${esc(comp.engineVersion||"")}</td>
+        <td>golden drivers + three pre-registered cases</td>
+        <td>scenarios.computed, ${esc(comp.computedAt||"")}</td>
+        <td>outside this console; page shows the stale block until then</td></tr>
+      <tr><td>Derivation</td><td>scenario_derive.py (local)</td>
+        <td>config + threats + drivers + atlas (+ contradictions)</td>
+        <td>scenario_set JSON + face, byte-deterministic, sha256 printed</td>
+        <td>local re-run; successor revisions only, never overwrite</td></tr>
+      <tr><td>Disagreement</td><td>lens_register.py (local)</td>
+        <td>lens register + threat register</td>
+        <td>S, O, r per branch; coverage findings</td>
+        <td>local re-run; r does not feed the rail without a declared reading</td></tr>
+      <tr><td>Display</td><td>this console</td><td>all of the above</td>
+        <td>this page + the chat digest</td><td>restart to pick up file changes</td></tr>
+      </tbody></table></div></div>`;
+    out += `<div class="panel"><h2>Input manifest · sha256</h2>
+      <p class="note">The reproducibility anchor: identical hashes mean an identical page. Quote a
+      hash prefix when citing a number from this console.</p>
+      <div class="scroll"><table>
+      <thead><tr><th>Role</th><th>File</th><th>sha256</th></tr></thead><tbody>
+      ${man.map(m => `<tr><td>${esc(m.role)}</td><td style="font-family:var(--mono);font-size:11.5px">${esc(m.file)}</td>
+        <td style="font-family:var(--mono);font-size:11px;color:${m.sha256?"var(--ink-soft)":"var(--block)"}">${m.sha256 ? esc(m.sha256.slice(0,16)) + "…" : "missing"}</td></tr>`).join("")}
+      </tbody></table></div></div>`;
+    if (cfg) {
+      out += `<div class="panel"><h2>Derivation readings in force</h2>
+        <p class="note">Six points the derivation spec leaves open, each a declared switch in the
+        config, never a generator default. Changing one produces a new revision beside the old.</p>
+        <dl class="kv">
+        ${Object.entries(cfg.readings || {}).sort().map(([k,v]) =>
+          `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("")}
+        <dt>lambda</dt><dd>${cfg.lambda} on the base rate</dd>
+        <dt>horizon</dt><dd>${cfg.horizon_years} years</dd>
+        <dt>atlas sector</dt><dd>${esc(cfg.atlas_sector)}</dd>
+        </dl>
+        ${cfg.lambda_basis ? `<p class="note" style="margin-top:12px"><b>λ basis on record.</b> ${esc(cfg.lambda_basis)}</p>` : ""}</div>`;
+    }
+    out += `<div class="panel"><h2>The equations that connect the drivers</h2>
+      <div class="scroll"><table><tbody>
+      <tr><td>Revenue</td><td style="font-family:var(--mono);font-size:12px">Σ (units × ASP) per system line + metrology + IBM</td></tr>
+      <tr><td>Gross profit</td><td style="font-family:var(--mono);font-size:12px">revenue × gross_margin_pct &nbsp;(house GM, depreciation-free — E1)</td></tr>
+      <tr><td>EBIT</td><td style="font-family:var(--mono);font-size:12px">GP − opex_pct_revenue × revenue − depreciation</td></tr>
+      <tr><td>NOPLAT</td><td style="font-family:var(--mono);font-size:12px">EBIT × (1 − tax_rate)</td></tr>
+      <tr><td>FOCF</td><td style="font-family:var(--mono);font-size:12px">NOPLAT + depreciation − capex_incl − Δ working capital</td></tr>
+      <tr><td>Value</td><td style="font-family:var(--mono);font-size:12px">Σ FOCF_t / (1+WACC)^t + Gordon terminal on FOCF₅ &nbsp;(WACC 10%, g 2%; terminal = 73.4% of EV)</td></tr>
+      <tr><td>Fade path</td><td style="font-family:var(--mono);font-size:12px">driver_t = sector_mean + (driver₀ − sector_mean) × φ^t &nbsp;·&nbsp; CAP ≈ 1/(1−φ)</td></tr>
+      <tr><td>Erosion envelope</td><td style="font-family:var(--mono);font-size:12px">1 − hold^H &nbsp;·&nbsp; Σ p_railed ≤ envelope + 0.05</td></tr>
+      <tr><td>Rail</td><td style="font-family:var(--mono);font-size:12px">p_railed = λ·p_base + (1−λ)·p_analyst &nbsp;=&nbsp; p_base + (p_analyst − p_base)(1 − λ·2r) at r → 0.5</td></tr>
+      <tr><td>Conservation</td><td style="font-family:var(--mono);font-size:12px">p_base_case + Σ p_railed = 1.00 ± 0.02</td></tr>
+      <tr><td>Concordance</td><td style="font-family:var(--mono);font-size:12px">r = min(S, O) / (S + O) over signed lens masses per branch</td></tr>
+      </tbody></table></div>
+      <p class="note">The rail identity in the ninth row is why §10.1 closed the way it did: the
+      scenario rail IS the calibration ledger's equation evaluated at maximum dispersion.</p></div>`;
+
+    out += `<div class="panel"><h2>Validation record — what each tool has actually earned</h2>
+      <div class="conv"><b>fade atlas</b><br>Module A live: 155 firms, 559 forward transitions,
+        2020–24, working grade — the φ and hold cells this page uses. Module B (exit hazard)
+        blocked on data: null on a curated large-cap panel (p = 0.80), by construction not by
+        failure of the idea. Module C (accruals) directional: Sloan's sign replicates, not
+        significant on this window (p = 0.18).</div>
+      <div class="conv"><b>position vs lenses (the discriminance harness)</b><br>Gap alone reaches
+        pseudo-R² 0.218; adding moat advantage or ROIC advantage adds nothing (p = 0.79 / 0.65).
+        Every candidate lens signal's Brier skill sat inside ±0.08 of zero across three test
+        years; a regularised six-signal scored −0.14, actively harmful.</div>
+      <div class="conv"><b>Teece artifact</b><br>Operationalised (scoring spec exists) and its
+        predictive contribution is the moat-advantage null above. Its standing here is therefore
+        claims-only — but it is the one lens whose claims the atlas can eventually score, because
+        both speak about persistence. First scoreable moment: branch resolutions, 2027–28.</div>
+      <div class="conv"><b>lens register / disagreement engine</b><br>No forecast claim at all, by
+        design: claims about drivers, r as computed contestedness. Validation is structural — 89
+        pytest cases pin the arithmetic, and the register is fully draft until signed.</div>
+      <div class="conv"><b>scenario_derive.py</b><br>89 tests, byte-deterministic output, all six
+        refusal gates demonstrated. What it does NOT yet have: a single resolved branch, so zero
+        calibration evidence. The first falsifiers resolve 2027-12-31.</div>
+      <div class="conv"><b>derived cash flows</b><br>Ties to the reported change in cash exactly,
+        by construction — an identity, not a model. The check row on the Cash flows tab is the
+        proof, per year.</div></div>`;
+
+    out += `<div class="panel"><h2>Status</h2>
+      <p class="note">scenario_derivation_spec_v0_1 is DRAFT with amendments A1–A3 recorded; no
+      scenario set is OTS-stamped or citable in client work until ratification. The lens register
+      is fully draft pending curator signing. The λ rail sits at the maximum-dispersion corner;
+      leaving it requires a declared reading consuming the computed r, not a tool side effect.</p></div>`;
+    return out;
+  },
+};
+
+const tabNames = Object.keys(TABS);
+$("tabs").innerHTML = tabNames.map((n,i) =>
+  `<button role="tab" aria-selected="${i===0}" data-t="${esc(n)}">${esc(n)}</button>`).join("");
+function show(name) {
+  $("view").innerHTML = TABS[name]();
+  [...$("tabs").children].forEach(b => b.setAttribute("aria-selected", b.dataset.t === name));
+}
+$("tabs").addEventListener("click", e => { if (e.target.dataset.t) show(e.target.dataset.t); });
+show(tabNames[0]);
+
+/* ---------- conversation ----------
+   In static export mode there is no proxy, so the pane explains where the
+   conversation lives instead of pretending to offer one. */
+if (STATE.static) {
+  document.getElementById("chat").innerHTML = `
+    <header><div class="eyebrow">Conversation</div>
+      <div class="sub" style="margin-top:6px">not available on the published page</div></header>
+    <div style="padding:18px">
+      <p class="note" style="margin-top:0">This is a static export. The live console runs a local
+      proxy so the conversation can read these numbers without an API key ever reaching the
+      browser — that proxy cannot exist on a static host, so the pane is inert here rather than
+      insecure.</p>
+      <p class="note">Everything else on this page is the same object the live console serves:
+      same inputs, same hashes, same refusals. To ask questions of the numbers, run the console
+      locally from the repository.</p>
+      <p class="note" style="font-family:var(--mono);font-size:11.5px;color:var(--ink-faint)">
+      exported ${esc(STATE.exportedAt || "")}</p>
+    </div>`;
+} else {
+$("provider").textContent = P.ready
+  ? `${P.name} · ${P.model}`
+  : `${P.name} · ${P.model} · ${P.keyEnv} not set`;
+
+const history = [];
+function bubble(role, text, cls) {
+  const d = document.createElement("div");
+  d.className = "msg " + (cls || (role === "user" ? "you" : "them"));
+  d.innerHTML = `<span class="who">${role === "user" ? "You" : (cls === "err" ? "Console" : P.name)}</span>
+                 <div class="body">${esc(text)}</div>`;
+  $("log").appendChild(d); $("log").scrollTop = $("log").scrollHeight;
+  return d;
+}
+
+const SEEDS = [
+  "Which driver moves enterprise value most, and by how much?",
+  "Walk me through how gross margin differs across the three cases.",
+  "Which numbers here are measured and which are analyst judgement?",
+  "Draft a resolution for convention T1, the tax basis question.",
+  S ? "Do the branch probabilities fit inside the erosion envelope?"
+    : "What is missing before a scenario set can be produced?",
+];
+$("seed").innerHTML = SEEDS.map(s => `<button type="button">${esc(s)}</button>`).join("");
+$("seed").addEventListener("click", e => {
+  if (e.target.tagName === "BUTTON") { $("q").value = e.target.textContent; $("ask").requestSubmit(); }
+});
+
+$("ask").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const q = $("q").value.trim();
+  if (!q) return;
+  $("q").value = ""; $("send").disabled = true;
+  $("seed").style.display = "none";
+  bubble("user", q);
+  history.push({role:"user", content:q});
+  const pending = bubble("assistant", "thinking");
+  pending.querySelector(".body").innerHTML = '<span class="dots"></span>';
+  try {
+    const r = await fetch("/api/chat", {
+      method:"POST", headers:{"content-type":"application/json"},
+      body: JSON.stringify({messages: history}),
+    });
+    const d = await r.json();
+    pending.remove();
+    if (d.error) { bubble("assistant", d.error, "err"); }
+    else { bubble("assistant", d.reply); history.push({role:"assistant", content:d.reply}); }
+  } catch (err) {
+    pending.remove();
+    bubble("assistant", "Could not reach the console proxy: " + err.message, "err");
+  } finally {
+    $("send").disabled = false; $("q").focus();
+  }
+});
+$("q").addEventListener("keydown", e => {
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("ask").requestSubmit(); }
+});
+}
+</script>
+</body>
+</html>
