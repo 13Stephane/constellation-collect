@@ -56,6 +56,7 @@ Usage
 import argparse
 import copy
 import json
+import os
 import sys
 from datetime import date
 
@@ -93,57 +94,36 @@ CONVENTIONS = {
 #   C3 OWC basis               RESOLVED. Engine formula matches the house OWC exactly.
 #   C4 net debt                RESOLVED. Derivable as longTermDebt - operatingCash.
 #
-# Still open, plus two raised by the reconciliation:
-UNRESOLVED_CONVENTIONS = [
-    "C5 WACC across cases. Not addressed by SKILL section 2. Default holds the W1 mid "
-    "band constant across bear/base/bull and swings WACC only in the tornado, to avoid "
-    "double-counting risk in both the cash flows and the rate. Set "
-    "scenarios.discount.waccByCase to override.",
+# Still open at the ENGINE level. These are statements about how this engine
+# computes, true of every model it is pointed at, and they carry no subject's
+# numbers. Anything that quotes a particular filer belongs in that subject's
+# conventions log, not here: until 15 Aug 2026 four ASML findings sat in this
+# list and were emitted onto every subject's computed block and every published
+# page. A subject's log may record a decision on any of these ids, in which case
+# the log entry wins and the engine default drops out.
+ENGINE_CONVENTIONS = [
+    ("C5",
+     "C5 WACC across cases. Not addressed by SKILL section 2. Default holds the W1 mid "
+     "band constant across bear/base/bull and swings WACC only in the tornado, to avoid "
+     "double-counting risk in both the cash flows and the rate. Set "
+     "scenarios.discount.waccByCase to override."),
 
-    "C6 discounting timing. Not addressed by SKILL section 2. End-year by default. "
-    "Set scenarios.discount.midYearDiscounting to switch.",
+    ("C6",
+     "C6 discounting timing. Not addressed by SKILL section 2. End-year by default. "
+     "Set scenarios.discount.midYearDiscounting to switch."),
 
-    "E3 extraction finding, open. balance.operatingCash in the ASML golden file is the "
-    "total cash balance, not an operating subset: 12,735.9 against invested capital of "
-    "29,548.5 at FY2024. The field name promises a split the extraction did not perform. "
-    "The cash policy below is a parameterised stand-in. The durable fix is for /collect to "
-    "emit operating and excess cash as separate fields in a later schema version.",
+    ("X2",
+     "X2 departure recorded, deliberate. The slice-4 headline capitalises NOPLAT: "
+     "NOPLAT * (1+g) / (WACC-g). Track B capitalises FOCF after five explicit years. The "
+     "two numbers will not agree and must not be compared naively. This is the B3 upgrade."),
 
-    "T1 tax basis, open. assumptions.taxRate in the ASML golden file is 0.2580, close to "
-    "the Dutch statutory rate, while the effective rate implied by the income lines runs "
-    "13.73 / 15.23 / 15.02 / 15.81 / 18.59 percent across FY2020-FY2024. Striking NOPLAT at "
-    "the statutory rate understates it by roughly 650 on FY2024 EBIT of about 9,021, near 10 "
-    "percent, and understates FOCF, ROIC and EVA by the same order. The forward tax_rate "
-    "driver is set per case per year and does NOT inherit assumptions.taxRate, so Track B is "
-    "free of this. Two things it does not fix: assumptions.taxRate still drives slices 1 to 4 "
-    "on the historical block, and the statutory-versus-effective choice is a Track A "
-    "convention that must apply to every name, not just this one.",
-
-    "O1 superseded by drivers.otherOpAssetsModel in v0.4. Retained for the record: "
-    "otherOperatingAssets is material: 11,005.4 at FY2024, 39 percent of "
-    "revenue and the second-largest component of invested capital, on a history running 63 "
-    "percent (2020) to 36.5 percent (2023) to 38.9 percent (2024). It now enters FOCF through "
-    "delta(otherOperatingAssets), so a drifting path moves cash flow materially. A single "
-    "ratio driver over that line is not good enough for a published base case.",
-
-    "O2 anchor window. FY2020 is an outlier on OWC (66.8 percent of revenue) and other "
-    "operating assets (63.4 percent) against 27 to 41 and 36 to 49 thereafter, and carries no "
-    "capex or depreciation anchor by construction. Anchor driver paths on FY2022 to FY2024.",
-
-    "X2 departure recorded, deliberate. The slice-4 headline capitalises NOPLAT: "
-    "NOPLAT * (1+g) / (WACC-g). Track B capitalises FOCF after five explicit years. The "
-    "two numbers will not agree and must not be compared naively. This is the B3 upgrade.",
-
-    "E1 extraction rule, for the /collect agent and the eval set. The house costOfSales "
-    "line must be depreciation-free, since depreciation is stated separately. Most reported "
-    "cost of sales carries production depreciation. If the agent lifts reported COGS as-is "
-    "and also puts total depreciation on the depreciation line, depreciation is "
-    "double-counted and EBIT is understated. Add an eval assertion.",
-
-    "E2 the projected block populates revenue, costOfSales, depreciation and sga only. "
-    "interestIncome, interestExpense and incomeTaxes are not driven, so slices 1 to 3 must "
-    "not be pointed at projected years. Slice 5 reads scenarios.computed only.",
+    ("E2",
+     "E2 the projected block populates revenue, costOfSales, depreciation and sga only. "
+     "interestIncome, interestExpense and incomeTaxes are not driven, so slices 1 to 3 must "
+     "not be pointed at projected years. Slice 5 reads scenarios.computed only."),
 ]
+
+CONVENTIONS_LOG_BASENAME = "conventions_log.json"
 
 ARRAY_FIELDS = {
     "income": ["revenue", "costOfSales", "depreciation", "sga",
@@ -169,6 +149,78 @@ def load_json(path):
             return json.load(fh)
     except Exception as exc:
         die("cannot read %s: %s" % (path, exc))
+
+
+# ---------------------------------------------------------------------------
+# conventions: engine-level defaults, plus this subject's own open entries
+# ---------------------------------------------------------------------------
+def convention_text(entry):
+    """Render one conventions-log entry as a single line of prose.
+
+    The log's own interim_default often opens with the id ("E1: costOfSales is
+    ..."), so strip that rather than printing the id twice."""
+    head = ("%s %s" % (entry.get("id", "?"), entry.get("title") or "")).strip()
+    owner = entry.get("owner")
+    if owner:
+        head += " [owner: %s]" % owner
+    parts = [head.rstrip(".") + "."]
+    body = (entry.get("interim_default") or "").strip()
+    prefix = "%s:" % entry.get("id", "")
+    if body.startswith(prefix):
+        body = body[len(prefix):].strip()
+    if body:
+        parts.append("Interim default: " + body)
+    path = (entry.get("resolution_path") or "").strip()
+    if path:
+        parts.append("Resolution path: " + path)
+    return " ".join(parts)
+
+
+def resolve_conventions_log(model_path, explicit):
+    """The subject's log sits beside its golden file. Refuse rather than fall
+    back on a global list: emitting one subject's findings on another subject's
+    page is the failure this replaced."""
+    if explicit:
+        if not os.path.isfile(explicit):
+            die("--conventions-log %s not found" % explicit, 4)
+        return explicit
+
+    guess = os.path.join(os.path.dirname(os.path.abspath(model_path)),
+                         CONVENTIONS_LOG_BASENAME)
+    if os.path.isfile(guess):
+        return guess
+    die("no %s beside %s, and --conventions-log not given. The open conventions "
+        "carried onto the computed block are the SUBJECT's, not a global list; "
+        "there is no default. Point --conventions-log at this subject's log."
+        % (CONVENTIONS_LOG_BASENAME, model_path), 4)
+
+
+def unresolved_conventions(log_path):
+    """Engine defaults plus every entry this subject has not decided. Where the
+    log carries an id the engine also names, the log wins: the curator's record
+    of that subject's stance supersedes the engine's default wording."""
+    doc = load_json(log_path)
+    entries = doc.get("conventions")
+    if not isinstance(entries, list):
+        die("%s has no 'conventions' list" % log_path, 4)
+
+    subject_ids = {e.get("id") for e in entries}
+    out = [text for cid, text in ENGINE_CONVENTIONS if cid not in subject_ids]
+    engine_kept = len(out)
+    for e in entries:
+        if (e.get("status") or "open") != "decided":
+            out.append(convention_text(e))
+    return out, {
+        "log": os.path.basename(log_path),
+        "logSubject": (doc.get("subject") or {}).get("firm"),
+        "engineDefaultsCarried": engine_kept,
+        "engineDefaultsSupersededByLog": sorted(
+            cid for cid, _ in ENGINE_CONVENTIONS if cid in subject_ids),
+        "subjectEntriesOpen": len(out) - engine_kept,
+        "rule": "engine-level conventions are subject-agnostic statements about "
+                "this engine; everything else comes from the subject's own "
+                "conventions log, and a decided entry drops out.",
+    }
 
 
 def find_nulls(node, path, out):
@@ -556,11 +608,18 @@ def main():
     ap.add_argument("--drivers", help="schema-v3 overlay: drivers + scenarios blocks")
     ap.add_argument("-o", "--out", required=True, help="output schema-v3 JSON")
     ap.add_argument("--as-of", default=date.today().isoformat(), help="stamp for computedAt")
+    ap.add_argument("--conventions-log",
+                    help="this subject's conventions_log.json; its open entries are "
+                         "carried onto the computed block. Defaults to the file of that "
+                         "name beside --model, and refuses if there is none.")
     ap.add_argument("--allow-missing-sources", action="store_true",
                     help="compute despite null source fields (prototype only)")
     ap.add_argument("--check-only", action="store_true",
                     help="validate and report fill gaps, do not compute")
     args = ap.parse_args()
+
+    log_path = resolve_conventions_log(args.model, args.conventions_log)
+    unresolved, unresolved_src = unresolved_conventions(log_path)
 
     model = load_json(args.model)
     if args.drivers:
@@ -606,7 +665,8 @@ def main():
         "conventionsSource": "constellation-valuation/SKILL.md section 2, plus the v0.3 cash policy",
         "cashPolicy": {"operatingCashPctRevenue": cash_policy(model),
                        "baseYear": base_state(model)},
-        "unresolvedConventions": UNRESOLVED_CONVENTIONS,
+        "unresolvedConventions": unresolved,
+        "unresolvedConventionsSource": unresolved_src,
         "driversSkippedInTornado": skipped,
         "cases": {c: {"valuation": results[c], "proforma": proformas[c]} for c in CASES},
         "footballField": {
@@ -648,7 +708,13 @@ def main():
         print("  %-28s span=%13.1f  low=%+12.1f  high=%+12.1f"
               % (r["driver"], r["span"], r["deltaLow"], r["deltaHigh"]))
     print("\nOpen conventions carried into the output: %d (see scenarios.computed)"
-          % len(UNRESOLVED_CONVENTIONS))
+          % len(unresolved))
+    print("  %d engine-level, %d from %s"
+          % (unresolved_src["engineDefaultsCarried"],
+             unresolved_src["subjectEntriesOpen"], log_path))
+    if unresolved_src["engineDefaultsSupersededByLog"]:
+        print("  superseded by this subject's log: %s"
+              % ", ".join(unresolved_src["engineDefaultsSupersededByLog"]))
     print("Wrote %s" % args.out)
 
 
