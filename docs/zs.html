@@ -23,7 +23,12 @@
     -webkit-font-smoothing: antialiased;
     display:grid; grid-template-columns: minmax(0,1fr) 420px;
   }
-  @media (max-width: 980px) { body { grid-template-columns: 1fr; } #chat { border-left:none; border-top:1px solid var(--rule); } }
+  /* The narrow-viewport rules live at the END of this stylesheet, not here.
+     A media query adds no specificity, so a mobile override written above the
+     rule it overrides simply loses the cascade. See the last block in this
+     sheet. (And never write a closing style tag inside a CSS comment: the HTML
+     parser ends the element on it whatever the CSS says, which silently drops
+     every rule below.) */
 
   /* ---- left: the numbers ---- */
   main { overflow-y:auto; padding:26px 30px 60px; }
@@ -165,6 +170,34 @@
   .rv-bar { height:4px; background:var(--rule); border-radius:2px; overflow:hidden;
             margin:10px 0 4px; }
   .rv-bar i { display:block; height:100%; background:var(--brass); }
+
+  /* ---- narrow viewports, LAST so these actually win --------------------
+     One column, and the page scrolls as a DOCUMENT rather than as two
+     independent panes. Switching the column count alone was not enough, and
+     the failure was invisible on a desktop: html/body carry height:100%,
+     #chat carries height:100vh, and main carries overflow-y:auto, which
+     resolves its min-height to 0. Stacked, the chat claimed the entire
+     viewport and squeezed main down to its header, so a phone opening a
+     published page saw the inert conversation pane and nothing else. Every
+     height assumption has to be released together.
+
+     These rules sit at the end of the sheet on purpose. A media query adds no
+     specificity, so the same block written above #chat's own rule lost the
+     cascade and left the pane a full 100vh tall. */
+  @media (max-width: 980px) {
+    html, body { height:auto; }
+    body { grid-template-columns:1fr; }
+    /* min-width:0 is the load-bearing one. A grid item defaults to
+       min-width:auto, so one wide table inside a panel stretches the whole
+       track past the viewport, and then the chips row and the tab bar have
+       room they should not have and stop wrapping. The page then overflows
+       sideways as a whole instead of the table scrolling inside its own card. */
+    main { min-width:0; overflow-y:visible; padding:20px 18px 48px; }
+    .panel { overflow-x:auto; }
+    #chat { border-left:none; border-top:1px solid var(--rule);
+            height:auto; position:static; }
+    #log { flex:none; overflow-y:visible; }
+  }
 </style>
 </head>
 <body>
