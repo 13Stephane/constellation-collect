@@ -1,0 +1,421 @@
+<!doctype html>
+<!-- Constellation program page. Built by collect/build_program_page.py, which
+     injects the state. One page per BASIS, not per company: the unit here is
+     the peer group, and the members are its rows. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Constellation · program</title>
+<style>
+  /* Same tokens as console.html. Duplicated rather than shared because both
+     pages are single-file exports that have to open with no server. */
+  :root {
+    --ground:#0F2426; --surface:#17383B; --raised:#1D4145; --rule:#2B5054;
+    --ink:#F4F0E9; --ink-soft:#AFC3C0; --ink-faint:#7E9895;
+    --brass:#C6A553; --pass:#8FCE9A; --block:#E0A3A3; --wait:#C6A553;
+    --serif: Georgia, "Iowan Old Style", "Times New Roman", serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--ground); color:var(--ink);
+    font: 14px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased; }
+  main { max-width: 1080px; margin:0 auto; padding:26px 30px 72px; }
+  h1 { font-family:var(--serif); font-size:22px; font-weight:600; margin:0; }
+  h2 { font-family:var(--serif); font-size:16px; font-weight:600; margin:0 0 12px; }
+  .eyebrow { font-family:var(--mono); font-size:10.5px; letter-spacing:.14em;
+             text-transform:uppercase; color:var(--ink-faint); }
+  .sub { color:var(--ink-soft); margin:8px 0 0; font-size:13.5px; }
+  header { border-bottom:2px solid var(--brass); padding-bottom:16px; }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:12px; }
+  .chip { font-family:var(--mono); font-size:10.5px; padding:3px 9px; border-radius:3px;
+          border:1px solid var(--rule); color:var(--ink-soft); }
+  .chip.pass{ color:var(--pass); border-color:transparent; background:#1E3B2C; }
+  .chip.block{ color:var(--block); border-color:transparent; background:#3B2325; }
+  .chip.wait{ color:var(--wait); border-color:transparent; background:#33301F; }
+  nav { display:flex; gap:2px; margin:22px 0 18px; flex-wrap:wrap; }
+  nav button { font-family:var(--mono); font-size:11px; letter-spacing:.08em;
+    text-transform:uppercase; background:transparent; color:var(--ink-faint);
+    border:1px solid var(--rule); padding:7px 13px; cursor:pointer; border-radius:3px; }
+  nav button:hover { color:var(--ink); border-color:var(--brass); }
+  nav button[aria-selected="true"] { color:var(--ground); background:var(--brass);
+    border-color:var(--brass); font-weight:600; }
+  .panel { background:var(--surface); border:1px solid var(--rule); border-radius:4px;
+           padding:18px 20px; margin-bottom:16px; }
+  .note { color:var(--ink-soft); font-size:13px; margin:10px 0 0; }
+  .conv { border-left:2px solid var(--rule); padding:8px 0 8px 12px; margin:12px 0;
+          color:var(--ink-soft); font-size:13px; }
+  .scroll { overflow-x:auto; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th { text-align:left; font-family:var(--mono); font-size:10px; letter-spacing:.1em;
+       text-transform:uppercase; color:var(--ink-faint); font-weight:500;
+       padding:0 10px 7px 0; border-bottom:1px solid var(--rule); white-space:nowrap; }
+  td { padding:7px 10px 7px 0; border-bottom:1px solid #21464A; vertical-align:top;
+       font-variant-numeric: tabular-nums; }
+  td.num, th.num { text-align:right; }
+  .mono { font-family:var(--mono); font-size:11.5px; }
+  .flag { color:var(--block); }
+  .warn { color:var(--wait); }
+  .ok { color:var(--pass); }
+  dl.kv { display:grid; grid-template-columns:max-content 1fr; gap:6px 18px; margin:0; }
+  dl.kv dt { font-family:var(--mono); font-size:11px; color:var(--ink-faint); }
+  dl.kv dd { margin:0; font-size:13px; color:var(--ink-soft); }
+  .banner { border:1px solid var(--block); background:#3B2325; color:var(--block);
+            border-radius:4px; padding:14px 18px; margin-bottom:16px; font-size:13.5px; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="eyebrow">Constellation · peer-group program</div>
+    <h1 id="pid">—</h1>
+    <p class="sub" id="strap">—</p>
+    <div class="chips" id="chips"></div>
+  </header>
+  <nav id="tabs" role="tablist"></nav>
+  <div id="view"></div>
+</main>
+
+<script>
+const STATE = {"program": {"schema_version": "program_v0_1", "program_id": "security-fc-01", "provenance": {"product_name": "peer_group_program", "object_id": "security_fc_01_program", "schema_version": "program_v0_1"}, "_what_this_is": "The security-platform basis. Pre-registered and to be stamped BEFORE any position is computed, so the denominator cannot be widened, narrowed or re-toleranced after the positions are seen. It is the FIRST program basis containing a subject of the valuation pipeline: ZS is fully worked there \u2014 signed lens register, r03 scenario set, constructed W1 band \u2014 so its position here and its own model's EV/Gross Profit are the same ratio computed twice, and program.py positions --subject-golden checks the two are on one gross-profit line.", "declared_basis": [{"ticker": "ZS", "cik": "0001713683", "label": "Zscaler, Inc.", "listing": null, "basis_frequency": "continuous"}, {"ticker": "CRWD", "cik": "0001535527", "label": "CrowdStrike Holdings, Inc.", "listing": null, "basis_frequency": "continuous"}, {"ticker": "PANW", "cik": "0001327567", "label": "Palo Alto Networks Inc", "listing": null, "basis_frequency": "continuous"}, {"ticker": "NET", "cik": "0001477333", "label": "Cloudflare, Inc.", "listing": null, "basis_frequency": "continuous"}, {"ticker": "OKTA", "cik": "0001660134", "label": "Okta, Inc.", "listing": null, "basis_frequency": "continuous"}, {"ticker": "FTNT", "cik": "0001262039", "label": "Fortinet, Inc.", "listing": null, "basis_frequency": "continuous"}], "basis_n": 6, "target": "full_coverage", "metric": "demeaned_ln_ev_gross_profit", "gp_basis": "as_reported", "gp_basis_reasoning": "As-reported cost of revenue for all six. This is not a preference: gross_profit.py establishes that a schema-v3 income block carries one undifferentiated depreciation line and one cost-of-sales line, so the depreciation-free and ex-acquired-intangible-amortisation bases are not computable for ANY subject, and as_reported is the only line every member can produce. ZS's own model records E1 as the as-reported stance, so the subject level and this basis are on one line and the --subject-golden check passes rather than being waived. What is given up is stated: the as-reported line is each filer's own presentation, so a member that puts more of its delivery cost in cost of revenue reads as lower-margin than one that puts it in operating expense, and nothing here can tell them apart. That limit belongs on the face of every page this basis produces.", "ev_convention": {"statement": "EV = market cap (shares x regular-session close at T) + total debt (ex-leases) + finance leases + operating leases + minority interest + preferred - cash and equivalents - current short-term investments. Operating leases included, post-ASC 842, debt-like. Non-current marketable securities NOT deducted: conservative and uniform. Identical to the Cloud-FC-01 convention, deliberately, so positions from the two programs are built the same way even though they are never pooled.", "include_finance_leases": true, "include_operating_leases": true, "include_minority_interest": true, "include_preferred": true, "deduct_cash": true, "deduct_current_short_term_investments": true, "deduct_noncurrent_investments": false}, "T": "2026-06-30", "income_window": {"basis": "TTM", "max_spread_months": 3}, "_income_window_note": "TTM at T, with a three-month maximum spread, and this is the demanding choice on purpose. The six FISCAL year-ends span SIX months \u2014 ZS and PANW at 31 July 2025, NET and FTNT at 31 December 2025, CRWD and OKTA at 31 January 2026 \u2014 so a last_fiscal_year basis would compare multiples struck up to half a year apart and call it one comparison. The consequence is deliberate and has to be paid: the free provider supplies ANNUAL income lines only, so revenue and gross profit must be transcribed at TTM for all six, and program.py positions refuses the annual figures rather than accepting the spread.", "tolerance": {"band": 0.02, "units": "demeaned_ln", "derivation": "DERIVED ON THIS BASIS'S OWN COMPONENTS, 2026-08-15, superseding the Cloud-FC-01 inheritance. Procedure: each member perturbed alone to each of the eight sign corners of price +/-0.5%, net debt +/-1%, gross profit +/-0.5%, the rest of the basis held; the floor is the largest move in that member's own demeaned position. Perturbing the basis together understates it, because common error demeans away \u2014 which is the one kind of error that cannot move a relative position. Result: a floor of 0.0108, largest at ZS, and the band is RETAINED at 0.02 as a conservative round number above it rather than tightened to the floor. Note the register predicted this before any component existed: 'these six are mostly net cash, so the net-debt term should contribute less here and the floor may come out tighter'. It did \u2014 0.0108 against Cloud-FC-01's 0.016. Reproduce with program.py tolerance --program <this> --components <components>."}, "cross_checks": ["ev_revenue"], "rejected_alternatives": [{"alternative": "Adopting ZS's W1 peer basis unexamined because it is already recorded", "reason": "The W1 basis was chosen to estimate an arena ASSET BETA, not to name the firms a buyer compares, and a program that inherits it without asking has answered its central question by accident. It is examined here and adopted: in this arena the two sets coincide, because the firms whose asset risk estimates the arena's are the same firms a security buyer runs a bake-off between. That is a claim about this arena and not a general rule \u2014 NVDA is the counter-case, where INTC belongs in the beta basis and nowhere near a buyer's comparison. Contest it by naming a firm that belongs in one set and not the other."}, {"alternative": "The EMCLOUD 30 as the basis", "reason": "Thirty names is a reference class, not a basis: full coverage is unreachable, so the coherence check would be permanently diagnostic and the gate would never bind. They are kept as the reference class the rank-overtake base rates are measured on, which is the job they can do."}, {"alternative": "Adding S (SentinelOne) as a seventh", "reason": "The strongest candidate seventh and a genuine security platform. Held out for now on two grounds: it lists from July 2021, 57 of the 86 months in the return window, so it enters at the top of the multiple expansion with no prior history to be judged against; and adding it turns the basis from the set ZS's cost of capital is estimated against into a new set needing its own justification. Reversible before the stamp, and the reason to revisit it is that a basis excluding a live rival to please a beta estimate would be the very inheritance rejected above."}, {"alternative": "A narrower basis of ZS, CRWD and PANW", "reason": "A cleaner gate at n = 3, but an arbitrary inclusion line, and it drops the two names that most separate the arena's business models: NET, which sells network before security, and OKTA, which sells identity. A basis that keeps only the closest comparables measures less than it looks."}, {"alternative": "Segment-level basis, ranking the security segments of larger platforms", "reason": "Segments have no enterprise value and therefore no multiple."}], "satellites": [], "stamp": {"stamped_by": "St\u00e9phane Guerraz (executed by Claude Opus 5 on explicit instruction, session 2026-08-17)", "stamped_on": "2026-08-17", "ots_receipt": null}, "_stamp_note": "WHAT THIS STAMP ATTESTS, AND WHAT IT DOES NOT. It closes the two things that were open: the tolerance band is DERIVED on this basis's own components rather than inherited from Cloud-FC-01 (floor 0.0108, band retained at 0.02 above it rather than tightened to it), and the three partial family reads are CONFIRMED against the filings, one of them withdrawn as complete and the other two bounded and shown immaterial. Evidence is in curator_filled_2026-06-30.json under _curator_decisions.confirmed. THE ORDERING IS NOT CLEAN AND SAYING SO IS THE POINT. This register declares that it is stamped BEFORE any position is computed, so the denominator cannot be widened, narrowed or re-toleranced once the ladder is visible. The positions at T = 2026-06-30 already existed when this stamp was applied, so that claim is NOT true of this stamp and no one should read it as true. What is true is narrower and checkable: the basis composition, the gp_basis, the EV convention, the income window and the rejected alternatives are unchanged from the pre-registered register, which the git history of this file carries; the only field written after the positions were seen is the tolerance derivation, and it RETAINED the declared 0.02 rather than moving it, which is the direction a fitted band would not take. The S (SentinelOne) hold-out was reversible before the stamp and is now fixed for this basis; adding it makes a new basis with its own register. No OTS receipt: cn1_timestamp.sh exists and is deliberately not called here, as on every scenario set."}, "positions": {"schema_version": "program_positions_v0_1", "program_id": "security-fc-01", "T": "2026-06-30", "gp_basis": "as_reported", "_identity": "Positions are demeaned logs and therefore sum to zero by construction, at every date, for any metric. The sum below is an arithmetic check on this file, NOT evidence about the basis: what the program constrains is that the FORECAST changes sum to zero, and that binds only at full coverage.", "position_sum": -0.0, "mean_ln_ev_gross_profit": 2.898275, "order": ["NET", "PANW", "FTNT", "CRWD", "OKTA", "ZS"], "order_ex_operating_leases": ["NET", "PANW", "FTNT", "CRWD", "OKTA", "ZS"], "near_ties": [], "cross_checks_are_never_conserved": ["ev_revenue"], "members": [{"ticker": "ZS", "market_cap": 22825.295, "enterprise_value": 21147.372, "gross_profit": 2407.729, "ev_gross_profit": 8.7831, "ln_ev_gross_profit": 2.172832, "position": -0.725443, "rank": 6, "basis_frequency": "continuous", "balance_sheet_asof": "2026-04-30", "income_window_end": "2026-04-30", "source": "yfinance (TIER 3) off ZS. Close 141.14999389648438 on 2026-06-30 \u2014 this is what the provider is used for. Income lines from the statement ending 2025-07-31. Every enterprise-value component is UNRESOLVED here and carries its reason in _unresolved; transcribe them from the filing.", "ev_revenue": 6.7512}, {"ticker": "CRWD", "market_cap": 48567.146, "enterprise_value": 44877.143, "gross_profit": 3644.019, "ev_gross_profit": 12.3153, "ln_ev_gross_profit": 2.510841, "position": -0.387433, "rank": 4, "basis_frequency": "continuous", "balance_sheet_asof": "2026-04-30", "income_window_end": "2026-04-30", "source": "yfinance (TIER 3) off CRWD. Close 190.78500366210938 on 2026-06-30 \u2014 this is what the provider is used for. Income lines from the statement ending 2026-01-31. Every enterprise-value component is UNRESOLVED here and carries its reason in _unresolved; transcribe them from the filing.", "ev_revenue": 9.1731}, {"ticker": "PANW", "market_cap": 277931.291, "enterprise_value": 276891.291, "gross_profit": 7443.0, "ev_gross_profit": 37.2016, "ln_ev_gross_profit": 3.616351, "position": 0.718076, "rank": 2, "basis_frequency": "continuous", "balance_sheet_asof": "2026-04-30", "income_window_end": "2026-04-30", "source": "yfinance (TIER 3) off PANW. Close 341.0199890136719 on 2026-06-30 \u2014 this is what the provider is used for. Income lines from the statement ending 2025-07-31. Every enterprise-value component is UNRESOLVED here and carries its reason in _unresolved; transcribe them from the filing.", "ev_revenue": 26.7295}, {"ticker": "NET", "market_cap": 86702.8, "enterprise_value": 86069.352, "gross_profit": 1754.464, "ev_gross_profit": 49.0573, "ln_ev_gross_profit": 3.89299, "position": 0.994715, "rank": 1, "basis_frequency": "continuous", "balance_sheet_asof": "2026-06-30", "income_window_end": "2026-06-30", "source": "yfinance (TIER 3) off NET. Close 245.27999877929688 on 2026-06-30 \u2014 this is what the provider is used for. Income lines from the statement ending 2025-12-31. Every enterprise-value component is UNRESOLVED here and carries its reason in _unresolved; transcribe them from the filing.", "ev_revenue": 35.7111}, {"ticker": "OKTA", "market_cap": 24032.802, "enterprise_value": 21854.802, "gross_profit": 2260.0, "ev_gross_profit": 9.6703, "ln_ev_gross_profit": 2.269056, "position": -0.629219, "rank": 5, "basis_frequency": "continuous", "balance_sheet_asof": "2026-04-30", "income_window_end": "2026-04-30", "source": "yfinance (TIER 3) off OKTA. Close 136.4499969482422 on 2026-06-30 \u2014 this is what the provider is used for. Income lines from the statement ending 2026-01-31. Every enterprise-value component is UNRESOLVED here and carries its reason in _unresolved; transcribe them from the filing.", "ev_revenue": 7.4768}, {"ticker": "FTNT", "market_cap": 112549.444, "enterprise_value": 109041.244, "gross_profit": 5836.6, "ev_gross_profit": 18.6823, "ln_ev_gross_profit": 2.927578, "position": 0.029303, "rank": 3, "basis_frequency": "continuous", "balance_sheet_asof": "2026-06-30", "income_window_end": "2026-06-30", "source": "yfinance (TIER 3) off FTNT. Close 153.6199951171875 on 2026-06-30 \u2014 this is what the provider is used for. Income lines from the statement ending 2025-12-31. Every enterprise-value component is UNRESOLVED here and carries its reason in _unresolved; transcribe them from the filing.", "ev_revenue": 15.0352}]}, "set": null, "coherence": null, "provenance": {"CRWD": {"provider": 5, "curator": 12, "fields": ["balance_sheet_asof", "cash", "debt", "finance_leases", "gross_profit", "income_window_end", "minority_interest", "operating_leases", "preferred", "revenue", "shares", "short_term_investments"]}, "FTNT": {"provider": 5, "curator": 12, "fields": ["balance_sheet_asof", "cash", "debt", "finance_leases", "gross_profit", "income_window_end", "minority_interest", "operating_leases", "preferred", "revenue", "shares", "short_term_investments"]}, "NET": {"provider": 5, "curator": 12, "fields": ["balance_sheet_asof", "cash", "debt", "finance_leases", "gross_profit", "income_window_end", "minority_interest", "operating_leases", "preferred", "revenue", "shares", "short_term_investments"]}, "OKTA": {"provider": 5, "curator": 12, "fields": ["balance_sheet_asof", "cash", "debt", "finance_leases", "gross_profit", "income_window_end", "minority_interest", "operating_leases", "preferred", "revenue", "shares", "short_term_investments"]}, "PANW": {"provider": 5, "curator": 12, "fields": ["balance_sheet_asof", "cash", "debt", "finance_leases", "gross_profit", "income_window_end", "minority_interest", "operating_leases", "preferred", "revenue", "shares", "short_term_investments"]}, "ZS": {"provider": 5, "curator": 12, "fields": ["balance_sheet_asof", "cash", "debt", "finance_leases", "gross_profit", "income_window_end", "minority_interest", "operating_leases", "preferred", "revenue", "shares", "short_term_investments"]}}, "componentCaveats": [{"member": "PANW", "field": "operating_leases", "effect": "UNDERSTATES", "note": "719.0 is us-gaap OperatingLeaseLiabilityNoncurrent at 2026-04-30 and is the whole of what the filing discloses. The 10-Q balance sheet carries no current lease line (the portion is inside 'Accrued and other liabilities' of 760) and the leases note carries no maturity or present-value table, so the current leg is recoverable nowhere and none was invented. Bound: the last disclosed split was 79.2 current against 338.0 noncurrent at 2025-07-31, 19.0% current, and the lease book roughly doubled in the acquisition quarter, so the missing leg is of order 170. Perturbed by 200 the position moves +0.000335, against a tolerance floor of 0.0108 derived on this basis. Order unchanged, no near-tie. Confirmed against the filing 2026-08-17."}, {"member": "OKTA", "field": "operating_leases", "effect": "UNDERSTATES", "note": "61.0 is us-gaap OperatingLeaseLiabilityNoncurrent at 2026-04-30. The 10-Q balance sheet carries no current lease line (the portion is inside 'Accrued expenses and other current liabilities' of 99) and this 10-Q has no leases note at all, so the leg is disclosed nowhere and none was invented. Bound: the FY2026 10-K gives total 101 against noncurrent 72 at 2026-01-31, so the current leg was 29 a quarter earlier while noncurrent fell 72 to 61. Perturbed by 35 the position moves +0.001213, the largest move of the two, against a floor of 0.0108; the tightest adjacent gap on this ladder, OKTA/ZS at 0.0962, is 79 times it. Confirmed against the filing 2026-08-17."}], "manifest": [{"role": "program register (the frozen basis)", "file": "program.json", "sha256": "bd844c57afaeab88f10eb78a0aa327e2d296ec1b92ff9c89c2e70b01d04c4d1a"}, {"role": "components (fetched + transcribed)", "file": "components_2026-06-30.json", "sha256": "24f15bef4142342af6d258265839c8cb24602ce7dabdc8639432511e01d23101"}, {"role": "positions at T", "file": "positions_2026-06-30.json", "sha256": "cabafbeef235e6aa87529aeb36d023efbcc6196e7ae7a8ac4bbb84dccbe811fe"}, {"role": "base-rate ledger", "file": "\u2014", "sha256": null}, {"role": "reads (the judgment)", "file": "\u2014", "sha256": null}, {"role": "derived program set", "file": "\u2014", "sha256": null}, {"role": "forecasts", "file": "\u2014", "sha256": null}], "exportedAt": "2026-08-17", "static": true};
+const P = STATE.program, POS = STATE.positions, SET = STATE.set, COH = STATE.coherence;
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const n2 = (v, d=2) => v === null || v === undefined ? "—" : Number(v).toFixed(d);
+const sgn = (v, d=3) => v === null || v === undefined ? "—"
+  : (v >= 0 ? "+" : "") + Number(v).toFixed(d);
+const big = (v) => v === null || v === undefined ? "—"
+  : Number(v).toLocaleString(undefined, {maximumFractionDigits:0});
+
+/* ---------- header ---------- */
+$("pid").textContent = P.program_id;
+$("strap").textContent =
+  `${P.declared_basis.length} members · T ${P.T} · gross profit on ${P.gp_basis}`
+  + (SET ? ` · set ${SET.revision}` : " · no set derived");
+
+const chips = [];
+chips.push(COH
+  ? [COH.mode === "gate" ? "pass" : "wait",
+     "COHERENCE " + COH.mode.toUpperCase() + " · DERIVED"]
+  : ["wait", "NO COHERENCE READING"]);
+chips.push(P.stamp ? ["pass", "STAMPED " + P.stamp.stamped_on]
+                   : ["block", "NOT STAMPED"]);
+if (SET && SET.lens_entries !== "signed only")
+  chips.push(["block", "DERIVED INCLUDING DRAFT LENS ENTRIES"]);
+/* An unmeasured base rate reaching a probability is the loudest thing on this
+   page, because it is the one defect a reader cannot see in the number. Both
+   ledgers can be unmeasured — the overtake band behind an event and the
+   three-way band behind a member's expected change — and the count here is the
+   same count the exporter refuses on, or the two would drift apart. */
+const ILL = SET ? SET.events.filter(e => e.base_rate && e.base_rate.illustrative) : [];
+const ILL_TW = SET ? SET.members.filter(m => (m.three_way_source || {}).illustrative) : [];
+const ILL_N = ILL.length + ILL_TW.length;
+if (ILL_N) chips.push(["block", ILL_N + " ROW(S) ON UNMEASURED BANDS"]);
+chips.push(["", "TOLERANCE ±" + P.tolerance.band + " " + P.tolerance.units]);
+$("chips").innerHTML = chips.map(([c,t]) => `<span class="chip ${c}">${esc(t)}</span>`).join("");
+
+const banner = ILL_N ? `<div class="banner"><b>${ILL_N} row(s) here rest on a base rate
+  nobody measured.</b>
+  ${ILL.length ? "Events: " + esc(ILL.map(e => e.event_id).join(", ")) + ". " : ""}
+  ${ILL_TW.length ? "Expected changes: "
+    + esc(ILL_TW.map(m => m.ticker).join(", ")) + ". " : ""}
+  Their bands are placeholders carried so the ledger covers this basis's gaps. A probability
+  built on one looks exactly like a probability built on 145 observations, which is why the
+  marker travels with the number from the ledger to this page and why the exporter refuses
+  to publish without <span class="mono">--allow-illustrative</span>. Measure them before any
+  of this is stamped or cited.</div>` : "";
+
+const TABS = {
+  "Positions": () => {
+    const rows = POS.members.slice().sort((a,b) => b.position - a.position);
+    let out = banner + `<div class="panel"><h2>The conserved quantity</h2>
+      <p class="note">Each member's position is the demeaned log of its EV/Gross-Profit
+      multiple: <span class="mono">ln(EV/GP) − mean(ln(EV/GP))</span> across this basis.
+      They sum to zero by construction, at every date, for any metric. What a program
+      constrains is that the FORECAST changes also sum to zero — see Coherence.</p>
+      <div class="scroll"><table>
+      <thead><tr><th>#</th><th>Member</th><th class="num">EV</th><th class="num">EV/GP</th>
+        <th class="num">ln</th><th class="num">position</th>
+        ${(POS.cross_checks_are_never_conserved || []).map(c =>
+          `<th class="num">${esc(c)}</th>`).join("")}
+        <th>Balance sheet</th></tr></thead><tbody>
+      ${rows.map(r => `<tr>
+        <td class="mono">${r.rank}</td>
+        <td><b>${esc(r.ticker)}</b><br><span class="note" style="margin:0">${
+          esc((P.declared_basis.find(m => m.ticker === r.ticker) || {}).label || "")}</span></td>
+        <td class="num">${big(r.enterprise_value)}</td>
+        <td class="num">${n2(r.ev_gross_profit)}</td>
+        <td class="num">${n2(r.ln_ev_gross_profit, 4)}</td>
+        <td class="num"><b>${sgn(r.position)}</b></td>
+        ${(POS.cross_checks_are_never_conserved || []).map(c =>
+          `<td class="num">${n2(r[c === "ev_revenue" ? "evRevenue" : c] ?? r[c])}</td>`).join("")}
+        <td class="mono">${esc(r.balance_sheet_asof)}</td></tr>`).join("")}
+      </tbody></table></div>
+      <p class="note">Sum of positions <span class="mono">${sgn(POS.position_sum, 12)}</span>.
+      ${esc(POS._identity)}</p>
+      <p class="note"><b>Cross-checks are reported and never conserved.</b> Conserving two
+      metrics at once would let a forecast satisfy one identity while violating the other,
+      and the page would show whichever agreed.</p></div>`;
+
+    out += `<div class="panel"><h2>Order under a defensible convention change</h2>
+      <p class="note">Recomputed with operating leases out, which is the one genuinely
+      defensible alternative post-ASC 842. An order the convention chose is an order the
+      convention can take away.</p>
+      <dl class="kv">
+        <dt>as declared</dt><dd class="mono">${esc(POS.order.join(" > "))}</dd>
+        <dt>ex op-leases</dt><dd class="mono">${esc(POS.order_ex_operating_leases.join(" > "))}</dd>
+      </dl>`;
+    out += POS.near_ties.length
+      ? POS.near_ties.map(f => `<div class="conv"><b class="warn">NEAR-TIE
+          ${esc(f.pair.join(" / "))}</b> — gap ${sgn(f.gap)} as declared,
+          ${sgn(f.gap_ex_operating_leases)} with operating leases out, against a band of
+          ±${P.tolerance.band}. ${f.order_survives
+            ? "The order survives the change but the margin does not clear the band."
+            : `<span class="flag">The order FLIPS.</span>`}
+          Carried as a flagged near-tie, never as a forced order.</div>`).join("")
+      : `<p class="note ok">No adjacent pair is convention-sensitive at this band.</p>`;
+    return out + `</div>`;
+  },
+
+  "Events": () => {
+    if (!SET) return `<div class="panel"><h2>No set derived</h2><p class="note">Positions
+      exist; no adjacent-pair events have been derived against them. Run
+      <span class="mono">program_derive.py</span>.</p></div>`;
+    let out = banner + `<div class="panel"><h2>Adjacent-pair events</h2>
+      <p class="note">One event per adjacent pair: the lower name overtakes the one above
+      it within the horizon. That is the unit because it resolves cleanly —
+      <span class="mono">pos(lo) &gt; pos(hi)</span> at T+h, with no threshold to argue
+      about — and because it is the one the panel can supply an empirical base rate for.</p>
+      <div class="scroll"><table>
+      <thead><tr><th>Event</th><th class="num">gap</th><th class="num">base</th>
+        <th class="num">p analyst</th><th class="num">S/O</th><th class="num">r</th>
+        <th class="num">railed</th><th class="num">mod</th><th class="num">final</th>
+      </tr></thead><tbody>
+      ${SET.events.map(e => {
+        const c = e.concordance, so = (c.S + c.O) ? `${c.S}/${c.O}` : "none";
+        return `<tr>
+          <td class="mono">${esc(e.event_id)}${e.base_rate.illustrative
+            ? ` <span class="flag">⚠</span>` : ""}</td>
+          <td class="num">${n2(e.gap, 3)}</td>
+          <td class="num">${n2(e.base_rate.value, 3)}</td>
+          <td class="num">${n2(e.p_analyst, 3)}</td>
+          <td class="num ${(c.S + c.O) ? "" : "warn"}">${so}</td>
+          <td class="num">${n2(c.r)}</td>
+          <td class="num">${n2(e.p_railed, 3)}</td>
+          <td class="num">${e.modifier ? sgn(e.modifier, 2) : "—"}</td>
+          <td class="num"><b>${n2(e.p_final, 3)}</b></td></tr>`;
+      }).join("")}
+      </tbody></table></div>
+      <p class="note"><b>S/O sits beside r because a computed 0.50 and a fallback 0.50 rail
+      identically and mean opposite things.</b> One is a pair at maximum contestedness; the
+      other is a pair nobody has looked at.</p></div>`;
+
+    for (const e of SET.events) {
+      const c = e.concordance, br = e.base_rate;
+      out += `<div class="panel"><h2>${esc(e.event_id)} — ${n2(e.p_final, 3)}</h2>
+        <p class="note">${esc(e.event)}</p>
+        ${br.illustrative ? `<div class="conv flag"><b>UNMEASURED BAND.</b>
+          ${esc(br.illustrative)}</div>` : ""}
+        <dl class="kv">
+          <dt>base rate</dt><dd>${n2(br.value, 3)} on the band
+            [${br.band[0]}, ${br.band[1]}), n = ${esc(String(br.n))}${
+            br.ci95 ? `, 95% CI ${br.ci95[0]}–${br.ci95[1]}` : ""}</dd>
+          <dt>estimator</dt><dd>${esc(br.estimator || "—")}</dd>
+          ${br.recorded ? `<dt>recorded</dt><dd>${esc(br.recorded)}</dd>` : ""}
+          ${(br.cross_checks || []).length ? `<dt>cross-checks</dt><dd>${
+            (br.cross_checks || []).map(x => esc(x)).join("<br>")}</dd>` : ""}
+          <dt>panel</dt><dd class="mono">${esc((br.panel || {}).file || "—")}</dd>
+          <dt>panel caveat</dt><dd>${esc((br.panel || {}).caveat || "—")}</dd>
+          <dt>rail</dt><dd class="mono">${esc(e.rail.formula)}</dd>
+          <dt>λ, r used</dt><dd>${e.rail.lambda}, ${n2(e.rail.r_used)} →
+            factor ${n2(e.rail.factor)} · reading <b>${esc(e.rail.reading)}</b></dd>
+          ${e.falsifier ? `<dt>falsifier</dt><dd>${esc(e.falsifier.condition)}
+            <br><span class="mono">resolves ${esc(e.falsifier.resolution_date)}</span></dd>` : ""}
+        </dl>
+        <p class="note">${esc(c.r_source)}</p>
+        ${c.landing.length ? `<div class="scroll"><table>
+          <thead><tr><th>Claim</th><th>Member</th><th>Lens</th><th class="num">mass</th>
+            <th>Side</th><th>Reads as</th></tr></thead><tbody>
+          ${c.landing.map(x => `<tr><td class="mono">${esc(x.entry_id)}</td>
+            <td>${esc(x.member)}</td><td>${esc(x.lens)}</td>
+            <td class="num">${x.mass}</td>
+            <td class="${x.side === "S" ? "ok" : "flag"}">${x.side}</td>
+            <td>${esc(x.says)}</td></tr>`).join("")}
+          </tbody></table></div>` : ""}
+        ${c.parked.length ? `<p class="note">Parked: ${
+          c.parked.map(x => `<span class="mono">${esc(x.entry_id)}</span>`).join(", ")}
+          — ${esc(c.parked[0].why)}. In a closed basis a sector fact is by construction the
+          thing that cannot move a relative position: every member is exposed to it.</p>` : ""}
+      </div>`;
+    }
+    return out;
+  },
+
+  "Coherence": () => {
+    if (!COH) return `<div class="panel"><h2>No coherence reading</h2></div>`;
+    const v = COH.verdict;
+    let out = `<div class="panel"><h2>Coherence — ${esc(COH.mode)}, ${esc(v)}</h2>
+      <p class="note"><b>The mode is derived, never asserted.</b> ${esc(COH.mode_derivation)}
+      A register that asserted its own mode would be a register that had decided its own
+      gate.</p>
+      <dl class="kv">
+        <dt>coverage</dt><dd>${COH.carded.length}/${P.declared_basis.length}
+          ${COH.uncarded.length ? `· uncarded ${esc(COH.uncarded.join(", "))}` : ""}</dd>
+        <dt>Σ expected Δ</dt><dd class="mono">${sgn(COH.sum_expected_delta, 4)}
+          against a band of ±${COH.band}</dd>
+        <dt>verdict</dt><dd class="${v === "PASS" ? "ok" : v === "RECORDED" ? "warn" : "flag"}">
+          <b>${esc(v)}</b></dd>
+      </dl>
+      <p class="note">${v === "PASS"
+        ? "The forecast changes net to zero inside the band, so the set is coherent and the attestation may be stamped at closure. The gate fires at SET CLOSURE, not at any individual card."
+        : v === "RECORDED"
+        ? "Diagnostic. Below full coverage the un-carded names absorb the residual, so the check is slack. Incoherent partial sets are permitted and are expected to calibrate worse, which is itself the falsifiable test."
+        : "The forecasts do not net to zero: some of them have every name out-performing its own basis, which cannot happen."}</p>
+      ${SET ? `<p class="note warn">${esc(SET._not_rescaled)}</p>` : ""}</div>`;
+
+    if (SET) out += `<div class="panel"><h2>Where each member is expected to go</h2>
+      <p class="note">The three-way vector is conditional on where the name STARTS: a
+      ceiling name has room to rise that a floor name does not, so a flat base rate would be
+      two different errors in opposite directions. The expected change is
+      <span class="mono">(rise − fall) × median |12m move|</span>.</p>
+      <div class="scroll"><table>
+      <thead><tr><th>Member</th><th>Role</th><th class="num">position</th>
+        <th class="num">nearest gap</th><th class="num">rise</th><th class="num">hold</th>
+        <th class="num">fall</th><th class="num">E[Δ]</th><th>Band</th></tr></thead><tbody>
+      ${SET.members.map(m => `<tr><td><b>${esc(m.ticker)}</b></td>
+        <td>${esc(m.role)}</td><td class="num">${sgn(m.position)}</td>
+        <td class="num">${n2(m.nearest_gap, 3)}</td>
+        <td class="num">${n2(m.three_way.rise)}</td>
+        <td class="num">${n2(m.three_way.hold)}</td>
+        <td class="num">${n2(m.three_way.fall)}</td>
+        <td class="num"><b>${sgn(m.expected_delta, 4)}</b></td>
+        <td class="mono">[${m.three_way_source.band[0]}, ${m.three_way_source.band[1]})
+          n=${esc(String(m.three_way_source.n))}${
+          m.three_way_source.illustrative ? ` <span class="flag">⚠ unmeasured</span>` : ""}</td>
+      </tr>`).join("")}
+      </tbody></table></div></div>`;
+
+    if (SET) out += `<div class="panel"><h2>Carried limitation</h2>
+      <div class="conv warn">${esc(SET._carried_limitation)}</div></div>`;
+    return out;
+  },
+
+  "Conventions": () => {
+    let out = `<div class="panel"><h2>The gross-profit basis</h2>
+      <p class="note">Gross profit is the least standardised line in this comparison, and
+      the basis floor can otherwise be an accounting policy. It is decided once, applied
+      basis-wide, and never mixed.</p>
+      <dl class="kv"><dt>gp_basis</dt><dd><b>${esc(P.gp_basis)}</b></dd></dl>
+      <p class="note">${esc(P.gp_basis_reasoning)}</p></div>`;
+
+    out += `<div class="panel"><h2>The enterprise-value convention</h2>
+      <p class="note">${esc(P.ev_convention.statement)}</p>
+      <p class="note">Enterprise value is computed from components and never read from a
+      provider's own field, which is what makes the members comparable to each other rather
+      than each comparable only to itself.</p></div>`;
+
+    out += `<div class="panel"><h2>The band, and why it is a floor</h2>
+      <dl class="kv">
+        <dt>tolerance</dt><dd>±${P.tolerance.band} ${esc(P.tolerance.units)}</dd>
+        <dt>income window</dt><dd>${esc(P.income_window.basis)}, members within
+          ${P.income_window.max_spread_months} month(s) of one another</dd>
+      </dl>
+      <p class="note">${esc(P.tolerance.derivation)}</p>
+      <p class="note warn">A tolerance chosen to make a set cohere is a fitted parameter,
+      and setting it after seeing the forecasts is the failure the register exists to
+      prevent.</p></div>`;
+
+    out += `<div class="panel"><h2>What this basis is not</h2>
+      <p class="note">A basis with no rejected alternative was not chosen; it was arrived
+      at.</p>
+      ${(P.rejected_alternatives || []).map(r => `<div class="conv"><b>${
+        esc(r.alternative)}</b><br>${esc(r.reason)}</div>`).join("")}
+      ${(P.satellites || []).length ? `<p class="note">Satellites, carried and carded but
+        excluded from the conserved metric: ${(P.satellites || []).map(s =>
+        `<b>${esc(s.ticker)}</b> (${esc(s.reason)})`).join("; ")}</p>` : ""}</div>`;
+
+    const prov = STATE.provenance;
+    if (prov) out += `<div class="panel"><h2>Where the components came from</h2>
+      <p class="note">A transcribed line never passes as a fetched one. No free provider
+      publishes operating lease liabilities reliably, its lease rows do not mean what this
+      convention means, and its balance sheet is the latest annual column whatever T is —
+      so most of an enterprise value is transcribed, and the file says which parts.</p>
+      <div class="scroll"><table>
+      <thead><tr><th>Member</th><th class="num">fetched</th><th class="num">transcribed</th>
+        <th>Transcribed fields</th></tr></thead><tbody>
+      ${Object.entries(prov).map(([t, p]) => `<tr><td><b>${esc(t)}</b></td>
+        <td class="num">${p.provider}</td><td class="num">${p.curator}</td>
+        <td class="mono">${esc(p.fields.join(", ")) || "—"}</td></tr>`).join("")}
+      </tbody></table></div></div>`;
+
+    const cav = STATE.componentCaveats;
+    if (cav && cav.length) out += `<div class="panel"><h2>Components known to be wrong, and which way</h2>
+      <p class="note">A line can be the best read the filing supports and still be
+      wrong in a known direction. Each one below carries its direction and its bound,
+      because a multiple built on an understated component looks exactly like a clean
+      one, and the reader cannot tell unless the page says so.</p>
+      <div class="scroll"><table>
+      <thead><tr><th>Member</th><th>Field</th><th>Effect</th><th>What is known</th></tr></thead><tbody>
+      ${cav.map(c => `<tr><td><b>${esc(c.member)}</b></td>
+        <td class="mono">${esc(c.field)}</td>
+        <td><span class="flag">${esc(c.effect)}</span></td>
+        <td>${esc(c.note)}</td></tr>`).join("")}
+      </tbody></table></div></div>`;
+    return out;
+  },
+
+  "Method": () => {
+    let out = `<div class="panel"><h2>Inputs, by hash</h2>
+      <p class="note">Same hashes, same page. This is the reproducibility anchor.</p>
+      <div class="scroll"><table>
+      <thead><tr><th>Role</th><th>File</th><th>sha256</th></tr></thead><tbody>
+      ${(STATE.manifest || []).map(m => `<tr><td>${esc(m.role)}</td>
+        <td class="mono">${esc(m.file)}</td>
+        <td class="mono" style="color:${m.sha256 ? "var(--ink-soft)" : "var(--block)"}">${
+          m.sha256 ? esc(m.sha256.slice(0,16)) + "…" : "missing"}</td></tr>`).join("")}
+      </tbody></table></div></div>`;
+
+    out += `<div class="panel"><h2>The identity, and what it costs to keep</h2>
+      <div class="scroll"><table><tbody>
+      <tr><td>Position</td><td class="mono">ln(EV/GP) − mean(ln(EV/GP)) across the basis</td></tr>
+      <tr><td>Conservation</td><td class="mono">Σ position = 0 at every date, by construction</td></tr>
+      <tr><td>The gate</td><td class="mono">Σ E[Δposition] = 0 ± tolerance, at full coverage</td></tr>
+      <tr><td>Overtake</td><td class="mono">pos_lo(T+h) &gt; pos_hi(T+h), i.e. lo out-moves hi by more than gap g</td></tr>
+      <tr><td>Rail</td><td class="mono">p_railed = p_base + (p_analyst − p_base)(1 − λ·2r)</td></tr>
+      <tr><td>Concordance</td><td class="mono">r = min(S, O) / (S + O) over the pair's lens masses</td></tr>
+      </tbody></table></div>
+      <p class="note">At r → 0.5 the rail collapses to λ·p_base + (1−λ)·p_analyst, which is
+      spec §4.2 exactly and is what <span class="mono">scenario_derive.py</span> evaluates
+      for every branch. A scenario branch carries no lens deltas of its own; a PAIR does,
+      because both its members have registers. Using the computed r is therefore a DECLARED
+      reading${SET ? ` — this set ran <b>${esc((SET.readings || {}).rail_dispersion)}</b>` : ""},
+      never a side effect of running a tool.</p></div>`;
+
+    out += `<div class="panel"><h2>Status</h2>
+      <p class="note">${P.stamp
+        ? `Stamped ${esc(P.stamp.stamped_on)} by ${esc(P.stamp.stamped_by)}.`
+        : `<span class="flag">NOT STAMPED.</span> The register fixes the denominator only
+           once it is stamped before the first read, so nothing here is citable.`}
+      ${SET ? ` Lens entries: ${esc(SET.lens_entries)}. Derived ${esc(SET.derived_at)} as
+        ${esc(SET.revision)}; a new revision sits beside the old and never replaces it.` : ""}</p>
+      ${P._stamp_note ? `<p class="note">${esc(P._stamp_note)}</p>` : ""}
+      <p class="note">This page is a static export. It carries whatever labels the
+      underlying objects carry; the exporter never strips them.</p></div>`;
+    return out;
+  },
+};
+
+const tabNames = Object.keys(TABS);
+$("tabs").innerHTML = tabNames.map((t,i) =>
+  `<button role="tab" aria-selected="${i===0}" data-t="${esc(t)}">${esc(t)}</button>`).join("");
+function show(name) {
+  $("view").innerHTML = TABS[name]();
+  [...$("tabs").children].forEach(b => b.setAttribute("aria-selected", b.dataset.t === name));
+  window.scrollTo({top: 0});
+}
+$("tabs").addEventListener("click", e => { if (e.target.dataset.t) show(e.target.dataset.t); });
+show(tabNames[0]);
+</script>
+</body>
+</html>
