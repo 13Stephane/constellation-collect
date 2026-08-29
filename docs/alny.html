@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Constellation Read — renderer</title>
+<!--
+  CONSTELLATION CARD RENDERER  (v0.9 layout · concordance rail · v0.7 taxonomy)
+  ------------------------------------------------------------------------
+  HOW TO USE
+  1. This file renders ONE locked read into the v0.9 poster, from the READ
+     object below. To render another name, replace READ and reload.
+  2. The poster is DERIVED. The stamp binds the locked .md, never this HTML.
+     Re-rendering enriches the HTML without changing the stamped file or hash.
+  3. Curator-judgment fields are marked  // CURATOR  . The renderer does no
+     judgment: it lays out what the curator locked, and DERIVES the concordance
+     (S, O, r) deterministically from the locked deltas so it cannot drift.
+
+  CALIBRATION MERGE (baked in, per amzn_card_calibration_merge_spec.md)
+  - base rate comes from the v0.7 ledger for the PINNED resolution, not a prior
+  - de-hype is held SIGN-ONLY (no calibrated magnitude)
+  - each moat dot carries its own {evidence, tier} tag (thread 5)
+  - v1.0 (cn-ext-2026-08-28, E2): a moat dot scored reinforcing claims a FENCE and
+    carries fence_origin {built|granted} + clock_type {technical|commercial|regulatory-political}
+    on face. Any granted fence puts the standing limitation on face, never in a footnote.
+    Magnitudes withheld: no half-life is rendered, computed, or stored.
+  - headline is labelled P(call correct), a confidence not a magnitude
+
+  CONCORDANCE RAIL (v0.9, per calibration_ledger_spec_v0_9.md §3)
+  - the renderer parses the seven locked deltas, sums with-call mass S and
+    against-call mass O, and derives the opposing share r = O / (S + O)
+  - effective lens net = lensNetRaw · g · (1 − λ · 2r), with RAIL = {λ, g} below
+  - probability = baseRate + dehype + effective lens net (the rail shrinks a
+    contested net toward the base rate; it never flips the call)
+  - r and the support/oppose mass are shown in a Concordance panel beside de-hype
+  - a console warning fires if the locked probability and the railed probability
+    disagree by more than half a point, so a pre-rail read is flagged to relock
+-->
+<style>
+  :root{
+    --bg:#193C3F; --panel:#1E4A4E; --panel2:#234F53;
+    --ink:#F4F0E9; --gold:#C6A553; --border:#2A5C61; --muted:#8FAEAF;
+    --up:#9CC79A; --down:#D79A74;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#0F2628;font-family:Georgia,'Times New Roman',serif;color:var(--ink);
+    -webkit-font-smoothing:antialiased;padding:28px}
+  .card{max-width:1100px;margin:0 auto;background:var(--bg);border:1px solid var(--border);
+    border-radius:14px;padding:34px 38px 26px;box-shadow:0 18px 50px rgba(0,0,0,.45)}
+  .head{display:flex;align-items:center;gap:18px;border-bottom:1px solid var(--border);padding-bottom:18px}
+  .mark{width:60px;height:60px;flex:0 0 auto}
+  .head .word{font-size:12px;letter-spacing:.22em;color:var(--gold);text-transform:uppercase}
+  .head .firm{font-size:30px;font-weight:bold;line-height:1.05;margin-top:2px}
+  .head .basis{font-size:12px;color:var(--muted);margin-top:5px}
+  .head .right{margin-left:auto;text-align:right}
+  .pill{display:inline-block;border:1px solid var(--gold);color:var(--gold);border-radius:20px;
+    padding:5px 13px;font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+  .pill.unst{border-color:var(--down);color:var(--down)}
+  .hero{display:grid;grid-template-columns:300px 1fr;gap:30px;margin-top:22px;align-items:stretch}
+  .ladder{background:var(--panel);border:1px solid var(--border);border-radius:11px;padding:16px 18px}
+  .ladder h4{margin:0 0 4px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);font-weight:normal}
+  .ladder .cap{font-size:10.5px;color:var(--muted);margin:0 0 12px;font-style:italic}
+  .rung{display:flex;align-items:center;gap:10px;padding:7px 0;position:relative}
+  .rung .nm{width:54px;font-size:14px}
+  .rung .bar{flex:1;height:9px;background:var(--panel2);border-radius:5px;position:relative;overflow:hidden}
+  .rung .fill{position:absolute;top:0;left:0;height:100%;background:var(--muted);border-radius:5px}
+  .rung .pos{width:88px;text-align:right}
+  .rung .pos b{display:block;font-size:14.5px;color:var(--ink);font-weight:bold}
+  .rung .pos i{font-style:normal;font-size:10px;color:var(--muted)}
+  .rung.floor .nm{color:var(--gold);font-weight:bold}
+  .rung.floor .fill{background:var(--gold)}
+  .rung.floor .pos b,.rung.floor .pos i{color:var(--gold)}
+  .moveline{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:11.5px;color:var(--up)}
+  .arrowup{font-size:15px}
+  .heroR{display:flex;flex-direction:column;justify-content:center}
+  .metricRow{display:flex;align-items:baseline;gap:13px}
+  .bignum{font-size:44px;font-weight:bold;line-height:.9;color:var(--gold);letter-spacing:-.01em}
+  .bignum span{font-size:20px;color:var(--ink)}
+  .mlabel{font-size:19px;font-weight:bold;color:var(--gold)}
+  .rank{font-size:17px;color:var(--ink);margin-top:10px}
+  .rank b{color:var(--gold);font-size:23px}
+  .conf{display:inline-block;margin-top:14px;background:rgba(198,165,83,.12);border:1px solid var(--gold);
+    border-radius:8px;padding:9px 14px;font-size:14px}
+  .conf b{font-size:25px;color:var(--gold)}
+  .conf .pl{display:block;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:3px}
+  .plain{margin-top:14px;font-size:13.5px;color:var(--muted);max-width:560px;line-height:1.5}
+  .plain b{color:var(--ink)}
+  .read{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-top:26px;align-items:start}
+  .lenscol,.moat{background:var(--panel);border:1px solid var(--border);border-radius:11px;padding:16px 18px}
+  .secT{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);margin:0 0 10px;font-weight:normal}
+  .lens{padding:10px 0;border-bottom:1px solid var(--border)}
+  .lens:last-child{border-bottom:none}
+  .lensTop{display:flex;align-items:baseline;gap:10px}
+  .ln{font-size:11px;color:var(--muted);width:22px;flex:0 0 auto}
+  .lq{font-size:11px;color:var(--muted);font-style:italic}
+  .ltitle{font-size:14.5px;font-weight:bold}
+  .tag{margin-left:auto;font-size:13px;font-weight:bold;padding:1px 9px;border-radius:6px;white-space:nowrap}
+  .tag.u{color:var(--up);background:rgba(156,199,154,.12)}
+  .tag.d{color:var(--down);background:rgba(215,154,116,.12)}
+  .lread{font-size:12.5px;color:var(--ink);line-height:1.5;margin-top:4px;padding-left:32px;opacity:.92}
+  .moat .hd{display:flex;align-items:baseline;gap:8px}
+  .moat .hd .ltitle{font-size:16px}
+  .moat .q{font-size:11px;font-style:italic;color:var(--muted);margin:3px 0 12px}
+  .dot{display:flex;align-items:center;gap:9px;padding:5px 0;font-size:12px;border-bottom:1px solid rgba(42,92,97,.4)}
+  .dot:last-of-type{border-bottom:none}
+  .dot .dir{width:13px;flex:0 0 auto;text-align:center;font-size:13px;font-weight:bold;line-height:1}
+  .dot .dir.up{color:var(--up)} .dot .dir.neu{color:var(--muted)} .dot .dir.dn{color:var(--down)}
+  .dot .dl{width:78px;color:var(--ink);flex:0 0 auto}
+  .dot .de{flex:1;color:var(--muted);font-size:11px;line-height:1.35}
+  /* E2 fence fields — on face, own line inside the dot row */
+  .fence{flex:0 0 100%;display:flex;align-items:center;gap:6px;margin:5px 0 1px 22px}
+  .flab{font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);opacity:.75}
+  .fchip{font-size:10px;padding:1px 7px;border-radius:5px;border:1px solid var(--border);
+         color:var(--muted);white-space:nowrap;line-height:1.5}
+  .fchip.origin.built{color:var(--up);border-color:rgba(156,199,154,.45);background:rgba(156,199,154,.10)}
+  .fchip.origin.granted{color:var(--gold);border-color:rgba(198,165,83,.55);background:rgba(198,165,83,.14);font-weight:bold}
+  .grantlim{margin-top:11px;padding:9px 12px;border-radius:8px;border:1px solid rgba(198,165,83,.55);
+            background:rgba(198,165,83,.11);color:var(--gold);font-size:11.5px;line-height:1.45}
+  .failbox{border:2px solid var(--down);border-radius:11px;padding:20px 22px;background:rgba(215,154,116,.08)}
+  .failbox h3{margin:0 0 10px;font-size:16px;color:var(--down)}
+  .failbox li{font-size:12.5px;color:var(--ink);line-height:1.6;font-family:ui-monospace,Menlo,monospace}
+  .failbox .why{margin-top:12px;font-size:12px;color:var(--muted);font-style:italic}
+  .tier{display:inline-flex;gap:3px;flex:0 0 auto;justify-content:flex-end;align-items:center}
+  .tier b{width:7px;height:7px;border-radius:50%;border:1px solid var(--gold);box-sizing:border-box}
+  .tier b.on{background:var(--gold)}
+  .net3{margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:12px;color:var(--muted)}
+  .net3 b{color:var(--up)}
+  .dehype{background:var(--panel);border:1px solid var(--border);border-radius:11px;padding:16px 18px;margin-top:18px}
+  .dehype .hd{display:flex;align-items:baseline;gap:8px;margin-bottom:7px}
+  .dehype .hd .ltitle{font-size:15px;color:var(--gold)}
+  .dehype .hd .z{margin-left:auto;font-size:18px;font-weight:bold;color:var(--ink)}
+  .dehype p{font-size:12px;line-height:1.55;color:var(--ink);margin:0;opacity:.92}
+  .build{margin-top:26px;background:var(--panel);border:1px solid var(--border);border-radius:11px;padding:18px 20px}
+  .flow{display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:nowrap}
+  .step{text-align:center;flex:0 0 auto}
+  .step .v{font-size:19px;font-weight:bold;line-height:1}
+  .step .l{font-size:9.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-top:3px;white-space:nowrap}
+  .step.g .v{color:var(--gold)}
+  .op{font-size:18px;color:var(--muted)}
+  .baseexp{margin-top:14px;padding-top:13px;border-top:1px solid var(--border);font-size:12px;line-height:1.55;color:var(--ink);opacity:.92}
+  .baseexp b{color:var(--gold)}
+  .calib{margin-top:10px;font-size:11.5px;line-height:1.5;color:var(--muted)}
+  .calib b{color:var(--ink)}
+  .fals{margin-top:18px;border:1px solid var(--gold);border-radius:11px;padding:14px 18px;background:rgba(198,165,83,.06);font-size:12.5px;line-height:1.55}
+  .fals b{color:var(--gold)}
+  .evgp{margin-top:18px;border:1px solid var(--border);border-radius:11px;padding:18px 20px;background:rgba(255,255,255,.015)}
+  .evgp h5{margin:0 0 8px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);font-weight:normal}
+  .evgp p{font-size:12.5px;line-height:1.6;margin:0 0 8px;color:var(--ink);opacity:.93}
+  .evgp p:last-child{margin-bottom:0}
+  .evgp b{color:var(--gold)}
+  .gap{margin-top:18px;font-size:11px;color:var(--muted);line-height:1.5;border-top:1px solid var(--border);padding-top:14px}
+  .gap b{color:var(--ink)}
+  .srcs{margin-top:14px;font-size:10.5px;color:var(--muted);line-height:1.6}
+  .srcs b{color:var(--ink)}
+  .foot{margin-top:14px;font-size:10.5px;color:var(--muted);line-height:1.6;border-top:1px solid var(--border);padding-top:12px}
+  .foot b{color:var(--ink)} .foot .st{color:var(--down);font-weight:bold}
+  /* concordance (v0.9) — confidence-axis sibling of de-hype */
+  .conc .hd .z{color:var(--ink)}
+  .massbar{display:flex;height:22px;border:1px solid var(--border);border-radius:6px;overflow:hidden;margin:2px 0 8px;font-size:10px;letter-spacing:.02em}
+  .massbar .s{background:var(--up);color:var(--bg);display:flex;align-items:center;padding-left:9px;font-weight:bold}
+  .massbar .o{background:var(--down);color:var(--bg);display:flex;align-items:center;padding-left:9px;font-weight:bold}
+  .step .sub{font-size:8.5px;color:var(--muted);margin-top:2px;white-space:nowrap;opacity:.9}
+</style>
+</head>
+<body>
+<div class="card" id="card"></div>
+
+<script>
+/* =====================================================================
+   READ  —  the locked read. Replace this object per name.
+   Fields marked  // CURATOR  are judgment and must be set by the curator.
+   ===================================================================== */
+// __READ_START__  (injected by render_card.py — do not hand-edit)
+const READ = {
+  "meta": {
+    "firm": "Alnylam",
+    "ticker": "ALNY",
+    "basis": "bio-fc-01 · five-name commercial-stage biotech · EV / Gross-Profit · cutoff T = 6 Jul 2026",
+    "predicted": "P(holds ceiling · 12m) ≈ 66%",
+    "probLabel": "P(holds ceiling · 12m)",
+    "version": "v0.9 layout · concordance rail · rubric v0.8 · E2 fence fields adopted (DRAFT, a03)",
+    "stamped": false
+  },
+  "ladder": {
+    "h4": "Actual EV / Gross-Profit · × turns",
+    "cap": "Peer average ≈ 9.3× · distance from it shown, not a percentile",
+    "rungs": [
+      {
+        "nm": "ALNY",
+        "turns": "14.0×",
+        "vsavg": "+51% vs avg",
+        "width": 100,
+        "floor": false
+      },
+      {
+        "nm": "VRTX",
+        "turns": "11.6×",
+        "vsavg": "+25% vs avg",
+        "width": 76,
+        "floor": false
+      },
+      {
+        "nm": "AMGN",
+        "turns": "9.1×",
+        "vsavg": "−2% vs avg",
+        "width": 50,
+        "floor": false
+      },
+      {
+        "nm": "GILD",
+        "turns": "7.6×",
+        "vsavg": "−18% vs avg",
+        "width": 35,
+        "floor": false
+      },
+      {
+        "nm": "BMRN",
+        "turns": "4.1×",
+        "vsavg": "−56% vs avg",
+        "width": 4,
+        "floor": true
+      }
+    ],
+    "moveline": "Scored event: hold the ceiling (retain 1st) in 12m · the challenger is VRTX"
+  },
+  "hero": {
+    "bignum": "14.0",
+    "unit": "×",
+    "mlabel": "EV / Gross-Profit",
+    "rank": "1st of 5",
+    "rankNote": "the ceiling — richest per unit of gross profit",
+    "probability": 66,
+    "confText": "Holds most of the time, but the skew is down: the challenger below (VRTX) carries a stronger lens net, and ALNY's ceiling is partly a growth multiple its returns do not yet support.",
+    "plain": "<b>Read in 10 seconds:<\/b> Alnylam is the most expensive of the five on EV/GP — a rich growth multiple on the RNAi platform and the ATTR-CM value migration. It most likely holds the top slot (~66%), but the skew is to the downside: VRTX just below is the stronger business, and ALNY screens rich on GP while its returns are only now inflecting."
+  },
+  "lenses": [
+    {
+      "n": "L1",
+      "title": "Industry structure",
+      "q": "Porter — five forces",
+      "tag": "−1",
+      "dir": "d",
+      "read": "The ATTR-CM market is large and growing ($11.2B by 2030) but rivalry is intensifying to three or four players and payer power is rising — more competitive intensity than the CF near-monopoly below it."
+    },
+    {
+      "n": "L2",
+      "title": "Value vector",
+      "q": "Slywotzky — value migration",
+      "tag": "+3",
+      "dir": "u",
+      "read": "Value is migrating from the small ATTR-PN niche to the large ATTR-CM market and onward to new siRNA indications (zilebesiran, ALN-APOC3, obesity). The strongest positive lens."
+    },
+    {
+      "n": "L4",
+      "title": "Strategy · the bet",
+      "q": "the firm's own stated bet",
+      "tag": "+2",
+      "dir": "u",
+      "read": "Amvuttra ATTR-CM capture on HELIOS-B (28% risk reduction on all-cause mortality plus recurrent CV events; quarterly dosing) plus platform extension."
+    },
+    {
+      "n": "L5",
+      "title": "Fragility · stress test",
+      "q": "Rumelt — coherent action",
+      "tag": "−2",
+      "dir": "d",
+      "read": "TTR-franchise revenue concentration, payer pushback on price as the volume base broadens, and competitive erosion risk — more fragile than the mature-franchise names."
+    },
+    {
+      "n": "L6",
+      "title": "Leadership & culture",
+      "q": "practitioner read",
+      "tag": "+1",
+      "dir": "u",
+      "read": "Greenstreet-led execution of the PN-to-CM transition and the first profitable year."
+    },
+    {
+      "n": "L7",
+      "title": "Financial trajectory",
+      "q": "Koller · Mauboussin — ROIC vs cost of capital",
+      "tag": "−1",
+      "dir": "d",
+      "read": "FY2025 first profitable year; ROIC still below a ~9–11% biotech WACC, inflecting up. Weak versus the high-ROIC mature names — the reason the ceiling is metric-sensitive."
+    }
+  ],
+  "moat": {
+    "n": "L3",
+    "title": "Moat — the heart",
+    "tag": "+3",
+    "dir": "u",
+    "q": "seven sub-dimensions · Teece · Helmer tradition · scored for AI direction · net index below",
+    "dots": [
+      {
+        "dir": "up",
+        "label": "Algorithm / IP",
+        "de": "foundational RNAi + GalNAc-conjugate estate; RNAi pioneer",
+        "tier": 1,
+        "fence_origin": "granted",
+        "clock_type": "regulatory-political"
+      },
+      {
+        "dir": "up",
+        "label": "Data",
+        "de": "accumulated RNAi clinical / safety dataset; platform learning",
+        "tier": 2,
+        "fence_origin": "built",
+        "clock_type": "technical"
+      },
+      {
+        "dir": "up",
+        "label": "Counter-pos.",
+        "de": "upstream knockdown vs incumbent stabilizer franchises",
+        "tier": 2,
+        "fence_origin": "built",
+        "clock_type": "commercial"
+      },
+      {
+        "dir": "neu",
+        "label": "Network",
+        "de": "rare-disease commercialization, not a network business",
+        "tier": 2
+      },
+      {
+        "dir": "neu",
+        "label": "Scale",
+        "de": "growing siRNA / GalNAc manufacturing; not yet dominant",
+        "tier": 2
+      },
+      {
+        "dir": "up",
+        "label": "Switching",
+        "de": "chronic quarterly HCP-administered dosing; high persistence",
+        "tier": 1,
+        "fence_origin": "built",
+        "clock_type": "technical"
+      },
+      {
+        "dir": "neu",
+        "label": "Regulation",
+        "de": "first-and-only ATTR-CM + PN label vs IRA headwind",
+        "tier": 1
+      }
+    ],
+    "net": "Net structural index <b>+4<\/b> &nbsp;(4 reinforcing · 3 neutral · 0 eroding · 0 structural threat) · position: <b>integrated capturer<\/b> (inventor trending integrated)"
+  },
+  "dehype": {
+    "value": "+0",
+    "text": "Held <b>sign-only<\/b>. For ALNY it is <b>+0<\/b> here, but flagged: ALNY plausibly carries differential up-momentum (the ATTR-CM approval and first profitability) that its peers do not share, which — once the Carhart test is calibrated — would tilt the read further toward reversion (downside). Magnitude not yet calibrated, so held at 0."
+  },
+  "concordance": {
+    "text": "Raw net +5 with real opposition (industry, fragility, financial all down), so r is elevated (contested) and the rail shrinks +5 toward +3.8. A genuine but qualified up-tilt on ALNY's own fundamentals — before the challenger is considered."
+  },
+  "ledger": {
+    "vector": "0.00 / 0.66 / 0.34",
+    "railVersion": "v0.9 (λ = 0.4, g = 1, priors)",
+    "calibFalsifier": "Scored at resolution by Brier against the base-rate-only counterfactual; the full bridge must beat it on walk-forward Brier (BSS ≥ +0.02) once the bio-fc-01 ledger fills."
+  },
+  "build": {
+    "baseRate": 62,
+    "dehype": 0,
+    "lensNet": 5,
+    "probability": 66,
+    "baseexp": "<b>Strict resolution, swap-reconciled.<\/b> ALNY is the ceiling: the only informative move is being overtaken by the name below, VRTX. The empirical ceiling-hold base is ~80% (panel overtake-from-below at gap 0.18 is 20%), but the challenger VRTX carries an unusually strong lens net (+14 vs ALNY's +5). That coupled swap (see the VRTX card, 34% overtake) sets ALNY's hold at <b>66%<\/b>. The base shown (62%) is the swap-consistent hold base; ALNY's own railed net (+3.8) is the resistance that keeps VRTX's overtake at 34% rather than higher. ALNY-fall and VRTX-rise are one event.",
+    "calibClaim": "<b>Calibrated:<\/b> the seven lens deltas share one sign (up the basis) and one reference (peer-relative) and sum to the net. <b>Not yet calibrated:<\/b> the cardinal cross-lens weights, until the resolved bio-fc-01 ledger regresses outcomes on the deltas. The probability's own calibration is its Brier score at resolution."
+  },
+  "falsifier": "<b>Falsifier · strict resolution pinned.<\/b> Wrong if, at T + 12 months, ALNY has been overtaken — no longer 1st — on demeaned ln(EV / Gross-Profit), driven by realized-price compression on Amvuttra, decisive competitor share capture, or a pipeline setback that resets the growth multiple. Peer-referenced, fixed horizon.",
+  "evgp": [
+    "Why <b>EV / Gross-Profit<\/b>, not price or earnings. Enterprise value is capital-structure-neutral, so leverage and buybacks do not flatter the read. Gross profit, not revenue, is the comparable denominator across a biotech basis whose product economics and revenue mixes differ widely.",
+    "The conserved quantity is the <b>peer-relative<\/b> position (demeaned ln EV/GP), which sums to zero across the basis. The read forecasts where the name sits inside that zero-sum frame in 12 months, with a stated falsifier. A relative-position call, not a price target."
+  ],
+  "gap": "<b>Pipeline status.<\/b> GP filings-reconciled (tier 1); EV includes ~$3B of debt-like items (convertibles, the Leqvio royalty-sale liability, development-funding liabilities) applied per convention default (reversible). Metric-SENSITIVE: rich on EV/GP, weak on the ROIC cross-check. Market caps not yet pinned. Rail λ = 0.4 prior.  <b>Conservation coupling (working-grade).<\/b> Adjacent overtakes are the same swap read from two sides (VRTX-rise ↔ ALNY-fall; GILD-rise ↔ AMGN-fall). The paired probabilities are reconciled by hand here, not by a joint model; full coupling is a stamp-time step.",
+  "sources": [
+    {
+      "lens": "L1/L2",
+      "src": "10-K / 10-Q, ATTR-CM disclosure (T1–T2)"
+    },
+    {
+      "lens": "L3 moat",
+      "src": "RNAi / GalNAc IP + adherence data (T1)"
+    },
+    {
+      "lens": "L4/L5",
+      "src": "HELIOS-B, competitive landscape (T1–T2)"
+    },
+    {
+      "lens": "L7",
+      "src": "segment margin, first-profit disclosure (T1)"
+    }
+  ],
+  "stamp": {
+    "sha": "sha256(locked .md) — computed at lock",
+    "ots": "locked_read.md.ots — OpenTimestamps anchor to Bitcoin (non-retroactive)",
+    "author": "S. Guerraz, CFA, MBA",
+    "note": "The stamp binds the locked .md, never this poster. The poster is a derived rendering; re-rendering enriches the HTML without changing the stamped file or its hash. Corrections are successor cards, never edits."
+  }
+};
+// __READ_END__
+
+/* =====================================================================
+   RENDERER  —  no judgment, only layout.
+   ===================================================================== */
+const E=(t,c,h)=>{const e=document.createElement(t);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e;};
+const tier=n=>{let s='<span class="tier">';for(let i=1;i<=4;i++)s+=`<b class="${i<=n?'on':''}"></b>`;return s+'</span>';};
+const dircls={up:'up',neu:'neu',dn:'dn'}, dirglyph={up:'▲',neu:'■',dn:'▼'};
+
+// FENCE FIELDS (v1.0, E2) — enums, gate, and on-face rendering. No judgment.
+// The authoritative gate is render_card.py; this mirrors it so a hand-opened
+// poster cannot silently show a card that would have failed the pipeline.
+const FENCE_ORIGINS = ["built","granted"];
+const CLOCK_TYPES   = ["technical","commercial","regulatory-political"];
+
+// A moat dot scored reinforcing claims a fence (E1: a claim that names a broken
+// condition is a fence; one that cannot is scored "no fence").
+const claimsFence = d => d.dir === "up";
+
+// Full null-field list — every violation, not the first.
+function fenceNulls(R){
+  const out=[]; const dots=(R.moat && R.moat.dots) || [];
+  dots.forEach((d,i)=>{
+    if(!claimsFence(d)) return;
+    const at=`moat.dots[${i}] (${d.label || "unlabelled"})`;
+    if(d.fence_origin==null || d.fence_origin==="") out.push(`${at}: fence_origin is null`);
+    else if(!FENCE_ORIGINS.includes(d.fence_origin))
+      out.push(`${at}: fence_origin "${d.fence_origin}" outside enum {built | granted}`);
+    if(d.clock_type==null || d.clock_type==="") out.push(`${at}: clock_type is null`);
+    else if(!CLOCK_TYPES.includes(d.clock_type))
+      out.push(`${at}: clock_type "${d.clock_type}" outside enum {technical | commercial | regulatory-political}`);
+  });
+  return out;
+}
+
+function fenceLine(d){
+  if(!claimsFence(d)) return '';
+  return `<span class="fence"><span class="flab">fence</span>`+
+         `<span class="fchip origin ${d.fence_origin}">${d.fence_origin}</span>`+
+         `<span class="fchip clock">${d.clock_type}</span></span>`;
+}
+
+const GRANTED_LIMITATION = "Granted fence. Decays discontinuously. "+
+  "Falsifier is a political or docket event, not a market event.";
+
+// CONCORDANCE RAIL (v0.9) — derivation only, no judgment.
+const RAIL={lambda:0.4, g:1, version:"v0.9"};                  // priors
+const pd=s=>{const m=String(s).replace(/[−–—]/g,'-').match(/-?\d+(\.\d+)?/);return m?parseFloat(m[0]):0;};
+function concordance(R){
+  const deltas=R.lenses.map(l=>pd(l.tag)).concat([pd(R.moat.tag)]); // six lenses + the moat = seven
+  const raw=deltas.reduce((a,b)=>a+b,0);
+  const dir=raw>=0?1:-1; let S=0,O=0;
+  deltas.forEach(d=>{const w=d*dir; if(w>0)S+=Math.abs(d); else if(w<0)O+=Math.abs(d);});
+  const r=(S+O)>0?O/(S+O):0;
+  const factor=1-RAIL.lambda*2*r;
+  const eff=raw*RAIL.g*factor;
+  const label=r<0.15?'clean':(r<=0.30?'mixed':'contested');
+  const prob=Math.round(R.build.baseRate+R.build.dehype+eff);
+  return {deltas,raw,S,O,r,factor,eff,label,prob};
+}
+
+function render(R){
+  const c=document.getElementById('card'); c.innerHTML='';
+
+  // E2 FAIL discipline — no card is drawn while a claimed fence is incomplete.
+  // No silent default to "built". No interpolation.
+  const nulls=fenceNulls(R);
+  if(nulls.length){
+    c.appendChild(E('div','failbox',
+      `<h3>RENDER FAILED &middot; ${nulls.length} null or out-of-enum fence field${nulls.length>1?'s':''}</h3>`+
+      `<ul>${nulls.map(n=>`<li>${n}</li>`).join('')}</ul>`+
+      `<div class="why">Every L3 sub-dimension scored reinforcing claims a fence and must carry both `+
+      `fence_origin and clock_type (cn-ext-2026-08-28, E2). No default to built; no interpolation.</div>`));
+    console.error("RENDER FAILED — fence fields:\n"+nulls.join("\n"));
+    return;
+  }
+
+  const K=concordance(R);                                       // derived from locked deltas
+  if(Math.abs(K.prob - R.build.probability) > 0.5)
+    console.warn(`Concordance reconcile: locked probability ${R.build.probability}% vs railed ${K.prob}% — relock the read at the railed value.`);
+
+  // HEADER
+  const head=E('div','head');
+  head.innerHTML=`<svg class="mark" viewBox="0 0 600 600" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="300" cy="300" r="220" stroke="var(--gold)" stroke-width="5" fill="none"/>
+    <circle cx="300" cy="300" r="155" stroke="rgba(198,165,83,0.45)" stroke-width="1.5" fill="none"/>
+    <circle cx="300" cy="300" r="90" stroke="rgba(198,165,83,0.45)" stroke-width="1.5" fill="none"/>
+    <circle cx="300" cy="300" r="38" fill="rgb(105,110,70)"/></svg>
+    <div><div class="word">Constellation</div>
+      <div class="firm">${R.meta.firm} &middot; ${R.meta.ticker}</div>
+      <div class="basis">${R.meta.basis}</div></div>
+    <div class="right"><span class="pill ${R.meta.stamped?'':'unst'}">${R.meta.stamped?'Predicted: '+R.meta.predicted:'Unstamped · '+R.meta.predicted}</span></div>`;
+  c.appendChild(head);
+
+  // HERO
+  const hero=E('div','hero');
+  let rungs='';
+  R.ladder.rungs.forEach(r=>{rungs+=`<div class="rung ${r.floor?'floor':'tgt'}">
+    <div class="nm">${r.nm}</div><div class="bar"><div class="fill" style="width:${r.width}%"></div></div>
+    <div class="pos"><b>${r.turns}</b><i>${r.vsavg}</i></div></div>`;});
+  hero.appendChild(E('div','ladder',
+    `<h4>${R.ladder.h4}</h4><div class="cap">${R.ladder.cap}</div>${rungs}
+     <div class="moveline"><span class="arrowup">&#8593;</span> ${R.ladder.moveline}</div>`));
+  hero.appendChild(E('div','heroR',
+    `<div class="metricRow"><div class="bignum">${R.hero.bignum}<span>${R.hero.unit}</span></div>
+       <div class="mlabel">${R.hero.mlabel}</div></div>
+     <div class="rank"><b>${R.hero.rank}</b> &mdash; ${R.hero.rankNote}</div>
+     <div class="conf"><span class="pl">${R.meta.probLabel}</span><b>${K.prob}%</b> &nbsp;${R.hero.confText}</div>
+     <div class="plain">${R.hero.plain}</div>`));
+  c.appendChild(hero);
+
+  // READ GRID
+  const read=E('div','read');
+  let lc='<p class="secT">The six outside-in lenses · signed up the basis</p>';
+  R.lenses.forEach(l=>{lc+=`<div class="lens"><div class="lensTop">
+    <span class="ln">${l.n}</span><span class="ltitle">${l.title}</span>
+    <span class="lq">${l.q}</span><span class="tag ${l.dir}">${l.tag}</span></div>
+    <div class="lread">${l.read}</div></div>`;});
+  read.appendChild(E('div','lenscol',lc));
+
+  const right=E('div');
+  let dots='';
+  R.moat.dots.forEach(d=>{dots+=`<div class="dot"><span class="dir ${dircls[d.dir]}">${dirglyph[d.dir]}</span>
+    <span class="dl">${d.label}</span><span class="de">${d.de}</span>${tier(d.tier)}${fenceLine(d)}</div>`;});
+  // Any granted fence puts the standing limitation ON FACE, not in a footnote.
+  const grantLim=(R.moat.dots||[]).some(d=>claimsFence(d)&&d.fence_origin==="granted")
+    ? `<div class="grantlim">${GRANTED_LIMITATION}</div>` : '';
+  right.appendChild(E('div','moat',
+    `<div class="hd"><span class="ln">${R.moat.n}</span><span class="ltitle">${R.moat.title}</span>
+       <span class="tag ${R.moat.dir}">${R.moat.tag}</span></div>
+     <div class="q">${R.moat.q}</div>${dots}${grantLim}
+     <div class="net3">${R.moat.net}</div>`));
+  right.appendChild(E('div','dehype',
+    `<div class="hd"><span class="ltitle">De-hype · firewall</span><span class="z">${R.dehype.value}</span></div>
+     <p>${R.dehype.text}</p>`));
+  const sPct=(K.S+K.O)>0?(K.S/(K.S+K.O)*100):50;
+  right.appendChild(E('div','dehype conc',
+    `<div class="hd"><span class="ltitle">Concordance</span><span class="z">r ${K.r.toFixed(2)} · ${K.label}</span></div>
+     <div class="massbar"><span class="s" style="width:${sPct.toFixed(1)}%">support ${K.S}</span><span class="o" style="width:${(100-sPct).toFixed(1)}%">oppose ${K.O}</span></div>
+     <p>${R.concordance.text}</p>`));
+  read.appendChild(right);
+  c.appendChild(read);
+
+  // BRIDGE
+  const b=R.build;
+  c.appendChild(E('div','build',
+    `<div class="flow">
+       <div class="step"><div class="v">${b.baseRate}%</div><div class="l">base rate</div></div>
+       <div class="op">+</div>
+       <div class="step"><div class="v">${b.dehype>=0?'+':''}${b.dehype}</div><div class="l">de-hype (sign-only)</div></div>
+       <div class="op">+</div>
+       <div class="step"><div class="v">${K.eff>=0?'+':''}${K.eff.toFixed(1)}</div><div class="l">lens net</div><div class="sub">${K.raw>=0?'+':''}${K.raw} raw × ${K.factor.toFixed(2)} concordance</div></div>
+       <div class="op">=</div>
+       <div class="step g"><div class="v">${K.prob}%</div><div class="l">${READ.meta.probLabel}</div></div>
+     </div>
+     <div class="baseexp">${b.baseexp}</div>
+     <div class="calib">${b.calibClaim}</div>
+     <div class="calib" style="margin-top:8px"><b>Calibration ledger.</b> Three-way call rise / hold / fall: <b>${R.ledger.vector}</b>. Rail ${R.ledger.railVersion}. ${R.ledger.calibFalsifier}</div>`));
+
+  c.appendChild(E('div','fals',R.falsifier));
+
+  // EV/GP
+  const ev=E('div','evgp','<h5>The measure</h5>');
+  R.evgp.forEach(p=>ev.appendChild(E('p',null,p)));
+  c.appendChild(ev);
+
+  // GAP + SOURCES + STAMP
+  c.appendChild(E('div','gap',R.gap));
+  let s='<b>Sources by lens.</b> ';
+  s+=R.sources.map(x=>`${x.lens}: ${x.src}`).join(' &nbsp;·&nbsp; ');
+  c.appendChild(E('div','srcs',s));
+  c.appendChild(E('div','foot',
+    `<div><span class="st">${R.meta.stamped?'STAMPED':'UNSTAMPED'}</span>
+       &nbsp; ${R.stamp.sha} &nbsp;·&nbsp; ${R.stamp.ots}</div>
+     <div style="margin-top:5px">${R.meta.version} &middot; ${R.stamp.author}</div>
+     <div style="margin-top:5px;font-style:italic">${R.stamp.note}</div>`));
+}
+render(READ);
+</script>
+</body>
+</html>
