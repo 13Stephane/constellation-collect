@@ -1,0 +1,1212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Royal Schiphol Group, and the portfolio it sits in</title>
+<style>
+  :root{
+    --ground:#0F2426; --panel:#17383B; --panel2:#1D4145; --line:#2B5054;
+    --ink:#F4F0E9; --ink2:#AFC3C0; --ink3:#7E9895;
+    --gold:#C6A553; --rust:#A05B4A; --sage:#9FB3B0; --green:#8FCE9A; --pink:#E0A3A3;
+    --serif:Georgia,'Iowan Old Style',serif;
+    --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--ground);color:var(--ink);font:14px/1.55 var(--sans);-webkit-font-smoothing:antialiased}
+  a{color:var(--gold);text-decoration:none;border-bottom:1px solid rgba(198,165,83,.35)}
+  a:hover{color:var(--ink);border-bottom-color:var(--ink)}
+  ::-webkit-scrollbar{width:9px;height:9px}
+  ::-webkit-scrollbar-thumb{background:var(--line);border-radius:5px}
+  ::-webkit-scrollbar-track{background:var(--ground)}
+  .wrap{max-width:1180px;margin:0 auto;padding:26px 30px 90px}
+  .eyebrow{font:600 10.5px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--ink3)}
+  h1{font:600 25px/1.2 var(--serif);margin:9px 0 0}
+  h2{font:600 19px/1.3 var(--serif);margin:0}
+  h3{font:600 15px/1.35 var(--serif);margin:0}
+  .sub{color:var(--ink2);font-size:13px;margin:7px 0 0;max-width:780px}
+  .head{display:flex;justify-content:space-between;gap:24px;flex-wrap:wrap;align-items:flex-start;border-bottom:2px solid var(--gold);padding-bottom:16px}
+  .meta{text-align:right;font:11px/1.85 var(--mono);color:var(--ink3)}
+  .meta b{color:var(--ink);font-weight:600}
+  .chip{display:inline-block;font:700 10px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;padding:5px 10px;border-radius:3px;background:#33301F;color:var(--gold);border:1px solid rgba(198,165,83,.5);margin-bottom:9px}
+  .chip.ok{background:#18332A;color:var(--green);border-color:rgba(143,206,154,.5)}
+  .tabs{display:flex;gap:4px;margin:22px 0 0;flex-wrap:wrap}
+  button{font-family:inherit}
+  .tab{font:11px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;padding:8px 15px;cursor:pointer;border-radius:3px;background:transparent;border:1px solid var(--line);color:var(--ink3)}
+  .tab.on{background:var(--gold);border-color:var(--gold);color:var(--ground);font-weight:700}
+  .tab:hover:not(.on){color:var(--ink2);border-color:var(--ink3)}
+  .crumb{display:flex;align-items:center;gap:10px;margin:16px 0 0;font:11px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--ink3)}
+  .back{background:transparent;border:1px solid var(--line);color:var(--ink2);font:11px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;padding:6px 11px;border-radius:3px;cursor:pointer}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:16px 17px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  @media(max-width:900px){.grid2,.grid3{grid-template-columns:1fr}}
+  table{border-collapse:collapse;width:100%}
+  th{text-align:left;font:600 9.5px/1.3 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);padding:0 10px 8px 0;border-bottom:1px solid var(--line);vertical-align:bottom}
+  th.n,td.n{text-align:right;font-variant-numeric:tabular-nums;font-family:var(--mono);white-space:nowrap}
+  td{padding:9px 10px 9px 0;border-bottom:1px solid rgba(43,80,84,.55);color:var(--ink)}
+  td.lab{font-family:var(--serif);white-space:nowrap}
+  tr.sect td{background:rgba(43,80,84,.30);font:600 9.5px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--gold);padding:8px 10px 8px 0}
+  .scroll{overflow-x:auto}
+  .foot{color:var(--ink3);font-size:11.5px;margin-top:12px;font-family:var(--mono);line-height:1.7}
+  .tier{font:9.5px/1 var(--mono);letter-spacing:.08em;padding:3px 8px;border-radius:2px;border:1px solid var(--line);color:var(--ink3);white-space:nowrap;display:inline-block}
+  .tier.t1{border-color:rgba(143,206,154,.45);color:var(--green)}
+  .tier.t2{border-color:rgba(198,165,83,.5);color:var(--gold)}
+  .tier.t3{border-color:rgba(159,179,176,.45);color:var(--sage)}
+  .tier.ill{border-color:rgba(160,91,74,.55);color:var(--rust)}
+  .kv{display:flex;justify-content:space-between;gap:14px;padding:7px 0;border-bottom:1px solid rgba(43,80,84,.55)}
+  .kv:last-child{border-bottom:none}
+  .kv span:first-child{color:var(--ink2);font-size:12.5px}
+  .kv span:last-child{font-family:var(--mono);font-size:12.5px;white-space:nowrap}
+  .note{color:var(--ink2);font-size:12.5px;line-height:1.65}
+  .dim{color:var(--ink3)}
+  .mono{font-family:var(--mono)}
+  .big{font:22px/1.15 var(--serif)}
+  .modal{position:fixed;inset:0;background:rgba(15,36,38,.86);display:flex;align-items:center;justify-content:center;padding:24px;z-index:50}
+  .modal .card{max-width:640px;max-height:80vh;overflow:auto}
+  .x{background:transparent;border:1px solid var(--line);color:var(--ink2);font:11px/1 var(--mono);padding:6px 10px;border-radius:3px;cursor:pointer}
+  .pick{display:block;width:100%;background:var(--ground);border:1px solid var(--line);border-radius:3px;padding:10px 11px;margin-bottom:8px;cursor:pointer;text-align:left;color:var(--ink);font-size:13px}
+  .pick.on{border-color:var(--gold)}
+  .bar{height:11px;border-radius:2px}
+  .prov{cursor:pointer;color:var(--gold)}
+  svg{display:block;overflow:visible}
+  .lg{display:flex;gap:18px;flex-wrap:wrap;font-size:12px;color:var(--ink2);margin-top:10px}
+  .lg i{width:15px;height:3px;border-radius:2px;display:inline-block;vertical-align:middle;margin-right:6px}
+  .dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:6px}
+  .defect{border-left:2px solid var(--rust);padding-left:12px;margin:12px 0}
+  .defect b{color:var(--rust);font-family:var(--mono);font-size:11px;letter-spacing:.08em}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="head">
+    <div>
+      <div class="eyebrow">Constellation &middot; shareholder read</div>
+      <h1>Royal Schiphol Group, and the portfolio it sits in</h1>
+      <p class="sub">Prepared for the Ministry of Finance as shareholder. Group scope unless a row says AMS. Amsterdam is the regulated airport and the only one the movement cap binds.</p>
+    </div>
+    <div class="meta">
+      <span class="chip ok" id="buildchip">Ten years reported &middot; projection modelled</span><br>
+      Frame <b>shareholder</b> &middot; was regulator<br>
+      Discount rate <b>2.50% to 5.36%</b><br>
+      Evidence cutoff <b>2026-08-31</b>
+    </div>
+  </div>
+  <div class="tabs" id="tabs"></div>
+  <div id="crumb"></div>
+  <div id="view" style="margin-top:20px"></div>
+</div>
+<div id="modal"></div>
+<script id="payload" type="application/json">{"ten_year":{"meta":{"firm":"royal_schiphol_group","dataset":"schiphol_10y","version":"0.1","built":"2026-09-02","author":"S. Guerraz, CFA, MBA","scope":"Royal Schiphol Group consolidated, FY2016 to FY2025, plus Amsterdam Airport Schiphol traffic and airport-charge revenue","currency":"EUR million unless the field says otherwise","reporting":"IFRS, calendar fiscal year, by-nature income statement","canonical_registry":"fundamentals-engine/registry/canonical_items_v0_3.yaml","mapping":"fundamentals-engine/mappings/schiphol_mapping_v0_7.yaml","tier_scale":{"T1":"read off the audited financial statements or the historical summary in the annual report","T2":"read off a non-audited section of the annual report, a traffic release or a regulator document","T3":"derived on this page from T1 or T2 inputs, arithmetic shown","ILL":"illustrative, not extracted, do not cite"},"curation_state":"Single-curator extraction made for this build. FY2025 alone carries a pair reading (T2 session, 18 July 2026, 58 rows, 45 agreed, 13 to arbiter). No row here has been pair-verified against a second curator.","note":"The whole of the financial block is one source, one page. That is deliberate: RSG restates its own comparatives, and the 2025 historical summary is the only place where ten years sit on a single restated basis."},"sources":{"AR2025":{"file":"Schiphol_Group_Annual_Report_2025.pdf","published":"2026-02-13","pages_used":[3,9,10,42,251,252]},"AR2024":{"file":"Schiphol_Group_Annual_Report_2024.pdf","published":"2025","pages_used":[6,7,34]},"AR2023":{"file":"2023_Annual_Report_Schiphol_Final_Version_16-02-2024.pdf","published":"2024-02-16","pages_used":[9,10,82,141]},"AR2022":{"file":"Schiphol_Group_Annual_Report_2022.pdf","pages_used":[7,8,68]},"AR2021":{"file":"Schiphol_Annual_Report_2021.pdf","pages_used":[8,9,63]},"AR2020":{"file":"Schiphol_Annual_Report_2020.pdf","pages_used":[8,9,62]},"AR2019":{"file":"Annual_Report_2019_Royal_Schiphol_Group.pdf","pages_used":[10,11,95,190]},"AR2018":{"file":"2018_Annual_Report_FINAL.pdf","pages_used":[12,13,104,190]},"AR2017":{"file":"Annual_Report_Royal_Schiphol_Group_2017.pdf","pages_used":[16,17]},"AR2016":{"file":"Schiphol_Annual_Report_2016.pdf","pages_used":[14,20,114]},"ACM2025":{"file":"besluit-tarieven-en-voorwaarden-2025-2027-schiphol.pdf","note":"tariff and conditions decision 2025-2027"},"TOEREK2025":{"file":"toerekeningssysteem-rsg-2025-2027.pdf","note":"allocation system 2025-2027"}},"years":[2016,2017,2018,2019,2020,2021,2022,2023,2024,2025],"financials":{"_provenance":{"tier":"T1","source":"AR2025","page":251,"table":"Historical summary","basis":"as presented in the 2025 annual report; comparatives before 2020 not restated for the change in definitions (RSG footnote 1)"},"revenue":[1435,1458,1509,1615,688,816,1491,1852,2245,2761],"other_investment_property":[71,80,107,113,-64,69,-192,-151,165,-25],"total_operating_income":[1506,1538,1616,1728,624,885,1299,1701,2410,2736],"opex_before_da":[-848,-916,-981,-1039,-830,-732,-1119,-1351,-1512,-1638],"ebitda":[658,622,635,689,-206,154,179,350,898,1098],"depreciation_amortisation_impairment":[-238,-264,-267,-294,-324,-299,-331,-344,-354,-393],"operating_result":[420,359,368,395,-530,-145,-152,6,544,704],"financial_income_expense":[-91,-86,-90,-84,-92,185,-16,2,-19,-32],"tax_associates_minorities":[-18,12,8,51,55,64,91,14,-108,-121],"result_after_tax":[311,286,286,362,-568,104,-77,22,418,551],"minority_interests":[5,6,7,7,-5,-1,9,9,11,11],"net_result":[306,280,279,355,-563,105,-86,13,407,540],"non_current_assets":[5818,6040,6512,7446,7852,7512,7585,7723,8533,9198],"current_assets":[608,615,861,350,1428,2378,2019,1547,1432,985],"total_assets":[6426,6655,7373,7797,9280,9891,9604,9270,9965,10183],"total_equity":[3860,3978,4136,4372,3777,3531,3506,3499,3900,4420],"provisions":[57,79,106,104,100,82,71,68,71,72],"non_current_liabilities":[2172,2225,2474,2721,4521,5846,5436,4687,4833,4564],"current_liabilities":[337,373,656,599,883,433,591,1016,1161,1127],"cash_flow_operating":[438,267,526,523,-157,-79,353,478,684,986],"investments_intangibles_ppe":[-303,-443,-560,-811,-700,-450,-454,-662,-1057,-963],"cash_flow_after_capex":[135,-176,-34,-288,-857,-529,-101,-184,-373,23]},"ratios":{"_provenance":{"tier":"T1","source":"AR2025","page":252,"table":"Historical summary, ratios","basis":"underlying ROE and ROCE as defined by RSG; before 2020 ROE is net result attributable to shareholder over average total equity to shareholder"},"underlying_roe_pct":[8.2,7.2,7.0,8.3,-13.8,3.0,-2.5,2.9,7.9,13.2],"underlying_roce_pct":[8.2,7.2,7.2,7.5,-8.1,-1.6,-1.3,2.8,5.9,9.9],"net_leverage":[null,null,null,4.6,-18.5,null,10.1,7.6,5.7,3.8],"ffo_gross_debt_pct":[22.8,21.6,18.7,19.2,-3.0,-0.5,5.0,8.4,13.1,21.4],"ffo_interest_coverage":[6.8,6.9,6.6,7.5,-0.6,0.7,4.5,6.7,10.1,13.2],"solvency_pct":[59.5,59.1,55.4,55.4,40.2,35.2,35.9,37.0,38.4,42.6],"average_fte":[2063,2180,2324,2519,2711,2474,2487,2820,3535,3831]},"underlying_ebitda":{"_provenance":{"tier":"T1","source":"each year's own annual report, Key figures page","basis":"RSG introduced the underlying presentation with FY2021. Before 2021 no underlying line was published and the historical-summary EBITDA is the only figure."},"values":[null,null,null,null,-206,0,361,501,734,1122],"notes":{"2020":"restated to -206 in the AR2021 key figures comparative","2021":"reported as 0; the AR2021 facts page prints 0 EBITDA in million euros (underlying)","2022":"361 in the key figures table, 360.5 on the facts page","2025":"1,122 against plain EBITDA of 1,098 in the historical summary. The 24 million euro wedge is the adjustment set, not a rounding difference."}},"traffic_ams":{"_provenance":{"tier":"T1 and T2","basis":"Amsterdam Airport Schiphol only. Passengers and movements read from the year's own annual report; 2024 and 2025 from the AR2025 network narrative, which is the internally consistent pair."},"passengers_m":[63.6,68.5,71.1,71.7,20.9,25.5,52.5,61.9,66.8,68.8],"movements":[478864,496748,499444,496826,227304,266967,397646,441969,473815,477552],"cargo_kt":[1662,1752,1716,1570,1442,1670,1438,1378,1490,1430],"per_source":{"2016":{"src":"AR2016","page":"14 and 114","note":"facts page prints 63.6m passengers and 479 thousand movements; 478,864 is the flight count in the risk sensitivity table p.114"},"2017":{"src":"AR2017","page":16},"2018":{"src":"AR2018","page":12},"2019":{"src":"AR2019","page":10},"2020":{"src":"AR2020","page":8},"2021":{"src":"AR2021","page":8},"2022":{"src":"AR2022","page":7},"2023":{"src":"AR2023","page":"9 and 141; passengers 61.9m from AR2024 p.34"},"2024":{"src":"AR2025","page":42,"note":"66.8m and 473,815, stated as the 2025 comparative"},"2025":{"src":"AR2025","page":42,"note":"68.8m and 477,552. This is 99.91% of the 478,000 ceiling."}},"cargo_note":"AR2018 restates 2017 cargo to 1,761 kt against the 1,752 kt first reported. The break is shown, not smoothed.","_units":"pax count_m, movements count, cargo tonnes_k, per peer_mapping_v0_1.yaml PCF-12."},"traffic_group":{"_provenance":{"tier":"T1","basis":"Schiphol Group: Amsterdam, Rotterdam The Hague, Eindhoven. Lelystad enters the FTE definition only."},"passengers_m":[70.001,75.902,79.181,80.521,23.471,28.9,60.823,70.902,75.881,78.105],"movements":[527285,547604,553735,554947,251513,295026,454002,498156,529248,534021],"restatements":{"2022_movements":"454,002 as first reported in AR2022; 451,561 as the AR2023 comparative","2023_movements":"498,156 as first reported in AR2023; 498,194 as the AR2024 comparative","2023_passengers":"70,902 thousand as first reported; 70,946,209 as the AR2024 comparative"},"_units":"pax count_m, movements count, per peer_mapping_v0_1.yaml PCF-12. Group passengers were stored in thousands until 2026-09-03 while AMS passengers were stored in millions: one key, one file, two scales."},"airport_charges_ams":{"_provenance":{"tier":"T1","basis":"Revenue from airport charges at Amsterdam Airport Schiphol, as stated in the financial performance narrative of each annual report. This is the regulated aviation revenue line, narrower than the Aviation business area."},"values":[null,null,null,908,293,376,821,1072,1305,1779],"per_source":{"2019":{"src":"AR2020","page":62,"text":"decreased by 68% to 293 million euros (2019: 908 million euros)"},"2020":{"src":"AR2020","page":62},"2021":{"src":"AR2021","page":63},"2022":{"src":"AR2022","page":68},"2023":{"src":"AR2023","page":82},"2024":{"src":"AR2024","page":34},"2025":{"src":"AR2025","page":42}},"definitional_break":"AR2018 note (p.190) reports total airport charges of 890,287 thousand for 2018 and AR2019 (p.190) reports 972,336 thousand for 2019. The AR2020 narrative restates 2019 to 908 million on the basis carried forward. The pre-2020 figures are therefore not on the series basis and are left null rather than spliced.","not_extracted":"FY2016 to FY2018 on the post-2020 basis. The 848 and 832 million euro figures in the AR2016 and AR2017 risk tables are sensitivity inputs, not the revenue line, and are not used."},"derived":{"_provenance":{"tier":"T3","basis":"arithmetic on the T1 and T2 rows above, computed at render time; no figure in this block is read off a document"},"passengers_per_movement_ams":"traffic_ams.passengers_m * 1e6 / traffic_ams.movements","charge_yield_per_pax_ams":"airport_charges_ams.values / traffic_ams.passengers_m","ebitda_margin_pct":"financials.ebitda / financials.revenue * 100","capex_over_revenue_pct":"abs(financials.investments_intangibles_ppe) / financials.revenue * 100","net_debt_proxy":"not derived here; the historical summary gives no debt line and net leverage is taken as reported"},"defects":[{"id":"D1","state":"recorded","text":"A 40.13 euro aeronautical yield anchor was produced by dividing group aviation revenue by Amsterdam passengers. Group revenue over group passengers gives 35.35. Only Amsterdam charges over Amsterdam passengers is internally consistent, and that is 25.86 for FY2025."},{"id":"D2","state":"confirmed against the page","text":"Seats per movement is the clean gauge series and RSG does not disclose it. Passengers per movement mixes aircraft gauge with load factor, so every gauge claim on this page is a claim about the two together. Confirmed by search rather than asserted: the only load-factor reference in AR2025 is cargo load factors at p.23. Two of the three peers do disclose it. Heathrow prints seats per ATM 221.5 and seat factor 80.2% (HAL AR2025 p.6). Fraport prints seat load factor 80.7% and passengers per passenger movement 148.8, from which seats per ATM derives at 184.4 (AR2025 p.62). Groupe ADP discloses neither. The ask therefore has two named precedents at comparable European hubs and a stated formula, not a general principle. Ruled at peer_mapping_v0_1.yaml PCF-10, which adds atm_passenger, seats_per_atm and seat_factor_pct at scope both so this absence is a recorded verdict rather than a gap."},{"id":"D3","state":"shown","text":"CAPEX has two published figures for FY2025: 1,056 million before cash-flow adjustments (AR2025 p.10 footnote) and 963 million as the cash outflow in the historical summary. The dashboard uses 963 in the ten-year series and 1,056 where the key-figures basis is cited."},{"id":"D4","state":"shown","text":"FY2021 financial income of positive 185 million is not an operating event. It is the expiry of the HubLink cross-participation with Groupe ADP and related financial-instrument effects."},{"id":"D5","state":"ruled in part; 4 flags open","text":"The peer comparison is not constructible from the filings alone, because none of the three reports the object Schiphol reports. mappings/peer_mapping_v0_1.yaml now rules the construction: comparison is by panel and never by a single row per airport (PCF-1); gauge is computed on total air transport movements (PCF-2); Paris covers three airports against a two-airport denominator (PCF-3); Fraport ground handling is stripped (PCF-5); the Heathrow single till prints on every row it touches (PCF-6); and every EBITDA row names its own basis (PCF-7). Four flags stay open: the security-revenue payer question (PCF-4), the unsourced sterling rate (PCF-8), the proposed seats_per_atm registry key (PCF-10), and a traffic-unit conflict between canonical_items_v0_3 and schiphol_mapping_v0_7 CF-7 that this extraction drifted into (PCF-12). The largest open thing is that the peer file is single-curator and sits beside a target file earned through blind pairs and an arbiter."}]},"portfolio":{"meta":{"dataset":"staatsdeelnemingen_portfolio","version":"0.1","built":"2026-09-02","scope":"Twenty-two Ministry of Finance participations, ordered by total assets","tier":"T2 for stakes and balance sheets, ILL for the three scores","sources":["Ministerie van Financien, Jaarverslag Beheer Staatsdeelnemingen","NL Financial Investments annual reports for ABN AMRO and de Volksbank","Company annual reports FY2023 to FY2025 for the remainder","staatsdeelnemingen_slides_v0_1.pptx, slides 1 to 4"],"caveat":"Total assets rounded to the nearest billion euro above 10bn. Stakes as last known and several are moving, ABN AMRO's fastest. Figures were not re-verified against the filings in this pass. De Nederlandsche Bank excluded as a monetary balance sheet rather than a participation.","posture_scale":"After Strange (1988). g holds, sets terms others must accept. c participates, on equal footing and substitutable at the margin. r depends, on a route, supplier, jurisdiction or decision seat it does not control.","axes":{"value_to_nl":"Weighted composite 0-10: system criticality 25%, growth enablement 25%, Dutch employment 20%, fiscal contribution 15%, domestic retention 15%","investment_need_2035":"Capital call intensity 0-10, scored against the State's balance sheet rather than the company's","geopolitical_exposure":"Six domains (security, production, finance, knowledge, energy, semiconductors), each 0-3, rescaled to 0-10","return_to_state":"0-2 none by design, 3-4 regulated at or near WACC, 5-6 positive and cyclical, 7-10 sustained"}},"holdings":[{"id":"abn","label":"ABN","name":"ABN AMRO","stake":"~30% (NLFI)","total_assets_bn":380,"value_to_nl":7.5,"investment_need_2035":1.0,"geopolitical_exposure":2.8,"return_to_state":6.5,"posture":"r","reading":"High value, real return, no capital call. The open question is only the exit price.","posture_note":"Dollar clearing runs through correspondents no euro authority can substitute for.","steering":["Sell the residual stake, or keep it? The only remaining question is price and pace, and the exposure is a clearing dependency the State cannot fix by owning equity.","If the stake is retained, say what it buys. Nothing in the mandate currently answers that."]},{"id":"bng","label":"BNG","name":"BNG Bank","stake":"50%","total_assets_bn":110,"value_to_nl":7.0,"investment_need_2035":1.0,"geopolitical_exposure":2.2,"return_to_state":7.0,"posture":"c","reading":"Cheap to hold, pays well, unnoticed until public borrowing costs move.","posture_note":"Funds the public sector cheaply. The only live channel is wholesale funding.","steering":[]},{"id":"vb","label":"VOLKSBANK","name":"de Volksbank","stake":"100% (NLFI)","total_assets_bn":70,"value_to_nl":5.5,"investment_need_2035":3.0,"geopolitical_exposure":1.7,"return_to_state":4.5,"posture":"c","reading":"Middling on every axis. Ten years of deferred decision is itself the finding.","posture_note":"A domestic balance sheet, no external chokepoint, and no settled direction.","steering":["Ten years of deferred decision is itself the finding. Set a date, or state that permanent ownership is the policy.","Middling on every axis means there is no case either way that the mandate has made."]},{"id":"nwb","label":"NWB","name":"NWB Bank","stake":"17%","total_assets_bn":57,"value_to_nl":6.5,"investment_need_2035":1.0,"geopolitical_exposure":2.2,"return_to_state":7.0,"posture":"c","reading":"As BNG at a third of the stake. Return per euro of state capital among the best.","posture_note":"Water boards and social housing, funded in the market. Narrow and uneventful.","steering":[]},{"id":"tnt","label":"TENNET","name":"TenneT Holding","stake":"100%","total_assets_bn":45,"value_to_nl":9.2,"investment_need_2035":10.0,"geopolitical_exposure":8.3,"return_to_state":3.0,"posture":"r","reading":"Alone in the corner of both panels: maximum call, maximum exposure, capped return.","posture_note":"Three suppliers for converters and cable; the equity need exceeds the commitment.","steering":["The equity need already exceeds the commitment. Fund it, or accept a minority partner and dilute?","Maximum capital call against a capped regulated return is the same problem as Schiphol, four times the size."]},{"id":"afklm","label":"AFKLM","name":"Air France-KLM","stake":"~10%","total_assets_bn":35,"value_to_nl":7.0,"investment_need_2035":5.0,"geopolitical_exposure":4.4,"return_to_state":2.0,"posture":"r","reading":"Weakest return per euro committed. Bought for the seat, and the seat is elsewhere.","posture_note":"The stake exists because the decision seat is in Paris. A dependence paid for.","steering":["The stake was bought for a decision seat that sits in Paris. Either buy influence properly or stop paying for the appearance of it.","Weakest return per euro committed in the portfolio. What is the alternative use of 35bn euros of exposure?"]},{"id":"gasunie","label":"GASUNIE","name":"Gasunie","stake":"100%","total_assets_bn":12,"value_to_nl":7.8,"investment_need_2035":8.0,"geopolitical_exposure":5.6,"return_to_state":4.5,"posture":"g","reading":"Owns the channel that absorbed 2022. The hydrogen build will not pay this decade.","posture_note":"Repointed the Dutch gas system after 2022. It owns the channel, not just the gas.","steering":["The hydrogen build will not pay this decade. Is the shareholder funding infrastructure or a mandate?","It owns a channel. Price that separately from the return on assets."]},{"id":"fmo","label":"FMO","name":"FMO","stake":"51%","total_assets_bn":12,"value_to_nl":4.0,"investment_need_2035":3.0,"geopolitical_exposure":3.3,"return_to_state":5.0,"posture":"r","reading":"Impact is real and mostly not Dutch. That is the mandate, not a defect.","posture_note":"Country risk is the business model, so the exposure is intended rather than found.","steering":[]},{"id":"schiphol","label":"SCHIPHOL","name":"Royal Schiphol Group","stake":"70%","total_assets_bn":10,"value_to_nl":8.5,"investment_need_2035":8.0,"geopolitical_exposure":4.4,"return_to_state":3.5,"posture":"c","reading":"Employment and connectivity carry the value. Statute caps what aviation can return.","posture_note":"Hub position turns on others: alliances, slot policy, a French co-shareholder.","steering":["Approve the 10bn euro programme, or gate it on demonstrated yield?","Trade the movement cap for a step-change in passengers per movement, or hold the cap and accept a smaller airport?"]},{"id":"stedin","label":"STEDIN","name":"Stedin Holding","stake":"~12%","total_assets_bn":9,"value_to_nl":8.0,"investment_need_2035":9.0,"geopolitical_exposure":6.7,"return_to_state":3.0,"posture":"r","reading":"Regulated and thin. The state entered as capital provider, so expect further tranches.","posture_note":"The same transformer and cable queue as TenneT, one voltage level down.","steering":["The State entered as capital provider. Expect further tranches, and decide now on what terms.","Same transformer queue as TenneT, one voltage level down. Manage them as one exposure."]},{"id":"ns","label":"NS","name":"Nederlandse Spoorwegen","stake":"100%","total_assets_bn":8,"value_to_nl":8.0,"investment_need_2035":7.0,"geopolitical_exposure":4.4,"return_to_state":1.5,"posture":"c","reading":"Criticality without return. The concession decides the outcome, not the management.","posture_note":"Three rolling-stock suppliers, long lead times, traction power behind the grid queue.","steering":[]},{"id":"urenco","label":"URENCO","name":"Urenco (via UCN)","stake":"33%","total_assets_bn":7,"value_to_nl":5.5,"investment_need_2035":6.0,"geopolitical_exposure":7.2,"return_to_state":8.0,"posture":"g","reading":"Best cash return in the portfolio and the highest-salience holding. Rarely discussed.","posture_note":"Enrichment is a security, production and knowledge chokepoint held with two states.","steering":["Best cash return in the portfolio, highest salience, held with two other states. Is a third the right size?","Enrichment is a chokepoint the State holds rather than depends on. Say so explicitly in the mandate."]},{"id":"hbr","label":"HBR","name":"Havenbedrijf Rotterdam","stake":"29%","total_assets_bn":6,"value_to_nl":9.0,"investment_need_2035":7.0,"geopolitical_exposure":6.1,"return_to_state":6.0,"posture":"g","reading":"The one holding that scores well on value, return and route position at once.","posture_note":"This is the route. Cargo mix tracks other countries' sanctions decisions.","steering":["The only holding scoring well on value, return and route position at once. Why is it 29% and not more?","Cargo mix tracks other jurisdictions' sanctions decisions. That is a watch variable, not a risk to hedge."]},{"id":"ebn","label":"EBN","name":"Energie Beheer Nederland","stake":"100%","total_assets_bn":4,"value_to_nl":5.0,"investment_need_2035":6.0,"geopolitical_exposure":4.4,"return_to_state":6.0,"posture":"c","reading":"Declining production, rising liability. The fiscal contribution runs the wrong way.","posture_note":"Sits on the energy substrate as domestic production becomes an import dependency.","steering":[]},{"id":"prorail","label":"PRORAIL","name":"ProRail","stake":"100%","total_assets_bn":3,"value_to_nl":8.5,"investment_need_2035":9.0,"geopolitical_exposure":5.6,"return_to_state":0.5,"posture":"c","reading":"No return by design, and a backlog that compounds while the decision is deferred.","posture_note":"ERTMS is a standards dependency, and three signalling suppliers set the terms.","steering":[]},{"id":"gasterra","label":"GASTERRA","name":"GasTerra","stake":"10%","total_assets_bn":2,"value_to_nl":3.0,"investment_need_2035":1.0,"geopolitical_exposure":3.3,"return_to_state":5.0,"posture":"c","reading":"In wind-down. The exposure is residual, and so is everything else.","posture_note":"Energy exposure without energy capability: the trade outlived the production.","steering":[]},{"id":"investnl","label":"INVESTNL","name":"Invest-NL","stake":"100%","total_assets_bn":2,"value_to_nl":4.5,"investment_need_2035":5.0,"geopolitical_exposure":3.3,"return_to_state":2.0,"posture":"c","reading":"A positive return would be evidence of mission failure. The mandate should say so.","posture_note":"The mandate does not say whether it buys optionality or commits. Perez, unanswered.","steering":[]},{"id":"covra","label":"COVRA","name":"COVRA","stake":"100%","total_assets_bn":1.5,"value_to_nl":4.5,"investment_need_2035":5.0,"geopolitical_exposure":4.4,"return_to_state":0.5,"posture":"g","reading":"Small, essential, and the precondition for any nuclear decision the state may take.","posture_note":"A national monopoly on a function nobody else can perform, on a hundred-year clock.","steering":[]},{"id":"thales","label":"THALES","name":"Thales Nederland","stake":"1%","total_assets_bn":1,"value_to_nl":4.0,"investment_need_2035":4.0,"geopolitical_exposure":7.8,"return_to_state":4.5,"posture":"r","reading":"One per cent on the portfolio's most contested terrain. Worth revisiting the size.","posture_note":"The smallest stake on the most contested terrain. One per cent buys information.","steering":["One per cent on the most contested terrain in the portfolio. Buy more, or accept that this is an information stake only?","If the holding exists to see inside the company, say that is the return."]},{"id":"invint","label":"INVESTINT","name":"Invest International","stake":"51%","total_assets_bn":1,"value_to_nl":3.0,"investment_need_2035":3.0,"geopolitical_exposure":2.8,"return_to_state":2.5,"posture":"c","reading":"Small on every axis. The ambition attached to it exceeds the capital inside it.","posture_note":"Country exposure by design, at a scale that limits both the risk and the effect.","steering":[]},{"id":"casino","label":"HCASINO","name":"Holland Casino","stake":"100%","total_assets_bn":0.7,"value_to_nl":2.5,"investment_need_2035":2.0,"geopolitical_exposure":0.6,"return_to_state":3.0,"posture":"c","reading":"Low on all three. Privatisation deferred long enough to have become a position.","posture_note":"No external channel at all. The framework rules it out, which is a result.","steering":[]},{"id":"loterij","label":"NLOTERIJ","name":"Nederlandse Loterij","stake":"99%","total_assets_bn":0.4,"value_to_nl":3.5,"investment_need_2035":1.0,"geopolitical_exposure":0.6,"return_to_state":9.0,"posture":"c","reading":"The framework rules it out entirely, and that is the framework working.","posture_note":"Highest return on state capital, lowest exposure, smallest balance sheet.","steering":[]}]},"peers":{"meta":{"dataset":"peer_corpus","version":"0.1","built":"2026-09-03","purpose":"Filings pulled for the peer benchmark construction session. Nothing here has been extracted yet. The documents are in fundamentals-engine/corpus/peers/ and are ignored by git the way every other corpus document is.","state":"pulled, not extracted, construction not ruled"},"filings":[{"issuer":"Groupe ADP","file":"peers/groupe_adp/Groupe_ADP_Universal_Registration_Document_2025.pdf","doc":"Universal Registration Document 2025 (English), filed with the AMF as D.26-0180","pages":640,"anchor":"Group revenue EUR 6,704m, 379m passengers across 26 airports"},{"issuer":"Fraport","file":"peers/fraport/Fraport_Annual_Report_2025.pdf","doc":"Annual Report 2025","pages":302,"anchor":"Segments: Aviation, Retail & Real Estate, Ground Handling, International Activities"},{"issuer":"Heathrow Airport Limited","file":"peers/heathrow/HAL_Annual_Report_2025.pdf","doc":"Annual Report and Accounts 2025, company no. 01991017","pages":158,"anchor":"84.5m passengers in 2025"},{"issuer":"Heathrow (SP) Limited","file":"peers/heathrow/Heathrow_SP_Regulatory_Accounts_2025.pdf","doc":"Regulatory Accounts, year ended 31 December 2025","pages":32,"anchor":"the single-till regulatory detail"}],"findings_on_pull":[{"id":"P1","verified":true,"issuer":"Groupe ADP","cite":"URD 2025 p.479, p.480","text":"Paris CDG is not a reporting unit. The Aviation segment is all goods and services provided by Aeroports de Paris SA in France as an airport operator, which is CDG, Orly and Le Bourget together: EUR 2,192m of segment revenue for three airports. There is no CDG-only aeronautical line to put over CDG passengers."},{"id":"P2","verified":true,"issuer":"Groupe ADP","cite":"URD 2025 p.483","text":"ADP Aviation revenue includes airport safety and security, paid by the DGAC out of the airport security tax and recognised at 92% of eligible costs. At Schiphol, security charges sit inside airport charges paid by the airlines. The numerator is a different object before any scoping decision is taken."},{"id":"P3","verified":true,"issuer":"Fraport","cite":"AR2025 p.43","text":"Ground Handling is its own reportable segment alongside Aviation, Retail & Real Estate and International Activities. It can therefore be stripped, which corrects the earlier note on this page saying Fraport revenue per passenger necessarily measures a wider company. Fraport's Aviation segment does carry security services, so the same adjustment as ADP P2 applies."},{"id":"P4","verified":true,"issuer":"Heathrow","cite":"HAL Annual Report 2025 p.9","text":"Single till, stated in terms: revenues from all airport activities, both aeronautical and commercial, are taken into consideration when determining the level of airport charges. Schiphol is hybrid dual-till. Aeronautical yield per passenger is therefore a different regulatory construction at the two airports, not a different price for the same thing."},{"id":"P5","verified":true,"issuer":"all","cite":"URD 2025 p.480; Heathrow FY2025 results","text":"The carried anchors match nothing in the filings. ADP FY2025 recurring EBITDA margin is 34.6% at group level and 26.1% for the Aviation segment; the peer table carries 39.0%, which is neither. Heathrow carried 84.5m passengers in 2025, not the 83.9m in the table, which is the 2024 figure. The period defect is now confirmed rather than suspected."}],"next":"Rule the construction per issuer in a mapping file, the way mappings/schiphol_mapping_v0_7.yaml rules Schiphol, before extracting a single figure."},"peers_fy":{"meta":{"dataset":"peers_fy2025","version":"0.1","built":"2026-09-03","scope":"FY2025 peer extraction for the Schiphol benchmark. Single-curator, no second reading.","fx":{"gbp_eur":1.1671,"tier":"T1","basis":"ECB euro reference exchange rate, Pound sterling/Euro, annual average 2025: 0.856792 GBP per EUR. Inverted to 1.1671 EUR per GBP.","series":"EXR.A.GBP.EUR.SP00.A","source":"European Central Bank Data Portal, data-api.ecb.europa.eu, retrieved 2026-09-03","why_annual_average":"Heathrow's revenue and EBITDA accrue across the year, so an annual average is the matching rate. A year-end spot rate would translate a flow at a point, which is the wrong instrument.","supersedes":"an assumed 1.18, carried 2026-09-03 and unsourced. It was 1.1% high and overstated every Heathrow euro figure: aeronautical revenue per passenger falls from EUR 31.53 to EUR 31.19."},"rule":"No figure is placed beside another until the construction of both is stated. Where a denominator is not disclosed, the cell is empty rather than estimated.","state":"extracted, single curator, construction stated per figure, not pair-verified","units":{"ruled_by":"peer_mapping_v0_1.yaml PCF-12","pax":"count_m. Passengers are stored in millions. Lossless both ways: 78,105,329 stores as 78.105329, and Fraport's printed 63.2 million stores as 63.2 without inventing five digits.","movements":"count. Movements are stored as absolute integers, which is how all four issuers print them. count_k would need 534.021, which no document prints.","money":"EUR_m, or GBP_m where the row says so. Digits as printed on the face.","display_vs_storage":"Storage carries the precision the issuer published. Display rounds. The ten-year table shows group passengers to one decimal while the file holds three."},"comparatives":"FY2024 is carried on every row where the FY2025 filing prints a comparative, so each peer reads as a direction and not a dot. Tier is stated per figure. Heathrow's are all printed. ADP's financials are printed in the FY2024 segment column; its Paris passenger comparatives are derived from stated percentage changes and are T3. Fraport's financials are printed; its FY2024 passengers and movements are derived from stated percentage changes, and its FY2024 seat load factor is approximate because the report says 'approximately one percentage point' rather than giving the number."},"issuers":{"rsg":{"name":"Royal Schiphol Group","airport":"Amsterdam","src":"AR2025","shape":"group of 4 Dutch airports plus international interests"},"adp":{"name":"Groupe ADP","airport":"Paris","src":"URD 2025","shape":"group of 26 airports; Paris segment covers CDG, Orly and Le Bourget together"},"fraport":{"name":"Fraport AG","airport":"Frankfurt","src":"AR2025","shape":"group; Frankfurt plus Greece, Lima, Antalya and others"},"heathrow":{"name":"Heathrow Airport Limited","airport":"London Heathrow","src":"HAL ARA 2025","shape":"single airport company, not a group"}},"group_level":{"_construction":"Reported group revenue and the issuer's own headline EBITDA. Not like for like: RSG, ADP and Fraport are multi-airport groups, Heathrow Airport Limited is one airport. The EBITDA definitions differ and are named per row.","rows":[{"id":"rsg","revenue":2761,"ebitda":1098,"ebitda_basis":"EBITDA, historical summary","cite":"AR2025 p.251","cur":"EUR","revenue_2024":2245,"ebitda_2024":898},{"id":"rsg_underlying","revenue":2761,"ebitda":1122,"ebitda_basis":"underlying EBITDA, the RSG headline","cite":"AR2025 p.10","cur":"EUR","revenue_2024":2245,"ebitda_2024":734},{"id":"adp","revenue":6704,"ebitda":2322,"ebitda_basis":"recurring EBITDA","cite":"URD 2025 p.480","cur":"EUR","revenue_2024":6158,"ebitda_2024":2068},{"id":"fraport","revenue":4432.2,"ebitda":1436.9,"ebitda_basis":"EBITDA","cite":"AR2025 p.65","cur":"EUR","revenue_2024":4427.0,"ebitda_2024":1301.8},{"id":"heathrow","revenue":3547,"ebitda":1969,"ebitda_basis":"adjusted EBITDA","cite":"HAL ARA 2025 p.134","cur":"GBP","revenue_2024":3482,"ebitda_2024":1968}]},"aero_per_pax":{"_construction":"Aeronautical revenue over the passengers of the airports that revenue comes from, INCLUSIVE of security, ruled at peer_mapping_v0_1.yaml PCF-4. Rows are grouped into two tiers and compare only within a tier. The basis differs per issuer and is stated on every row.","rows":[{"label":"Amsterdam, airport charges","tier_group":"charges","rev":1779,"pax":68.8,"cur":"EUR","basis":"AMS airport-charge revenue over AMS passengers. Airline-paid. Security service charges included, roughly 605m on a pro-rata of the group note.","cite":"AR2025 p.42, note 5.1 p.179","rev_2024":1305,"pax_2024":66.8,"tier_2024":"T1, AR2025 p.42"},{"label":"Paris, airport fees plus security","tier_group":"charges","rev":1865,"pax":106.9,"cur":"EUR","basis":"Fees 1,328 plus security 537, over CDG plus Orly. The construction that matches the Amsterdam charges line. Security is DGAC-funded at 92% of eligible cost.","cite":"URD 2025 p.447, p.483","rev_2024":1764,"pax_2024":103.38,"tier_2024":"T1 revenue (fees 1,235 + security 529, URD p.447), T3 passengers"},{"label":"Amsterdam, Aviation business area","tier_group":"business_area","rev":1876,"pax":68.8,"cur":"EUR","basis":"Wider than airport charges by roughly 97m of ancillary-type revenue. The figure the projection model uses.","cite":"AR2025 note 4","rev_2024":null,"pax_2024":66.8,"tier_2024":"not extracted in this pass"},{"label":"Paris, fees plus ancillary plus security","tier_group":"business_area","rev":2167,"pax":106.9,"cur":"EUR","basis":"1,328 plus 302 ancillary plus 537 security. Three airports over two airports' passengers, per PCF-3.","cite":"URD 2025 p.447","rev_2024":2031,"pax_2024":103.38,"tier_2024":"T1 revenue, T3 passengers"},{"label":"Frankfurt, Aviation segment","tier_group":"business_area","rev":1342.0,"pax":63.2,"cur":"EUR","basis":"Aviation segment over FRA passengers. Ground handling stripped per PCF-5. Security is inside the segment and Frankfurt-level security revenue is not disclosed.","cite":"AR2025 p.66, p.45","rev_2024":1234.5,"pax_2024":61.6,"tier_2024":"T1 revenue (AR2025 p.66), T3 passengers"},{"label":"Heathrow, aeronautical income","tier_group":"business_area","rev":2258,"pax":84.5,"cur":"GBP","basis":"Movement 837 plus parking 110 plus passenger 1,311. Single till, so this is set NET of commercial income and remains a different regulatory object per PCF-6.","cite":"HAL ARA 2025 p.134, p.9","rev_2024":2229,"pax_2024":83.9,"tier_2024":"T1, both printed"}]},"gauge":{"_construction":"Passengers per aircraft movement. The denominator is the whole argument. Total air transport movements include freighters; passenger-flight counts do not. A row is left empty where the issuer does not disclose the denominator.","rows":[{"label":"Amsterdam","pax_m":68.8,"mvt":477552,"mvt_basis":"total air transport movements, cargo and passenger","cite":"AR2025 p.42","pax_m_2024":66.8,"mvt_2024":473815,"tier_2024":"T1"},{"label":"Frankfurt","pax_m":63.2,"mvt":460272,"mvt_basis":"total aircraft movements","cite":"AR2025 p.62","pax_m_2024":61.6,"mvt_2024":440874,"tier_2024":"T3, from stated +2.6% and +4.4%"},{"label":"Frankfurt, passenger flights only","pax_m":63.2,"mvt":424582,"mvt_basis":"passenger takeoffs and landings","cite":"AR2025 p.62","pax_m_2024":61.6,"mvt_2024":404364,"tier_2024":"T3, from stated +5.0%; Fraport prints 152.1 pax per passenger movement for FY2024"},{"label":"London Heathrow","pax_m":84.5,"mvt":475596,"mvt_basis":"passenger ATM; total ATM including cargo not disclosed","cite":"HAL ARA 2025 p.6","pax_m_2024":83.9,"mvt_2024":471298,"tier_2024":"T1"},{"label":"Paris CDG","pax_m":72.0,"mvt":null,"mvt_basis":"movements not disclosed in the URD","cite":"URD 2025 p.59","pax_m_2024":70.27,"mvt_2024":null,"tier_2024":"T3 pax, movements still absent"},{"label":"Paris Orly","pax_m":34.9,"mvt":216101,"mvt_basis":"aircraft movements; disclosed because a 250,000 slot cap applies","cite":"URD 2025 p.64, p.65","pax_m_2024":33.11,"mvt_2024":203757,"tier_2024":"T3 pax, T1 movements (URD p.65)"}]},"findings":[{"id":"E1","text":"On the same denominator, Amsterdam is ahead of Frankfurt, not behind it. Total air transport movements give Amsterdam 144.07 passengers per movement and Frankfurt 137.31. The 148 in the carried anchor is Frankfurt on passenger flights only, 63.2m over 424,582, which is 148.85. Two denominators, and the wrong one was put beside Amsterdam."},{"id":"E2","text":"Heathrow is 177.67, not 190, and that is on passenger ATM. Heathrow does not disclose total ATM including freighters, so the true like-for-like figure is lower again. The gap Amsterdam has to close is roughly 34 passengers per movement, not 46, and recommendation 01 should be restated on the smaller number."},{"id":"E3","text":"Heathrow publishes seats per ATM, 221.5, and seat factor, 80.2%. That is exactly the clean gauge series defect D2 records Schiphol as not disclosing. The shareholder ask now has a named precedent at a directly comparable European hub rather than a general principle."},{"id":"E4","text":"Paris CDG cannot be placed in the gauge panel at all. The URD discloses Orly movements, because Orly carries a 250,000 slot cap, and does not disclose CDG movements. The cell is empty rather than estimated."},{"id":"E5","text":"Heathrow operates under a 480,000 air transport movement cap, against Amsterdam's 478,000. The nearest structural parallel in the peer set is a cap, not a tariff, and it sits at almost the same number."},{"id":"E6","text":"Three of the four carried anchors were wrong and one was sound. ADP group EBITDA margin is 34.6% and Fraport's is 32.4%, against the 39.0% and 38.0% carried. Heathrow's 55.5% and roughly EUR 31.5 per passenger were close to right. The peer table was not uniformly invented, which is why it read as plausible."},{"id":"E7","text":"Heathrow states it has largely exhausted the lever Schiphol is being asked to pull. At 221.5 seats per ATM and an 80.2% seat factor under a 480,000 movement cap, HAL AR2025 p.24 says growth came from seats per movement and higher seat factors, then that further growth through larger or fuller aircraft is now significantly limited by TERMINAL capacity. That reframes the ask rather than weakening it: gauge is a real lever with a ceiling, and the ceiling is the building. Schiphol's 10bn euro programme is largely terminal and pier reconstruction, so the capital and the lever are the same object, and recommendation 03 cannot gate the capital on gauge that the capital is what makes possible. Sequence the gate, do not just impose it."},{"id":"E8","text":"Fraport publishes passengers per passenger movement directly, 148.8 for 2025 against 152.1 for 2024, AR2025 p.62. The carried anchors were Paris CDG 152.0 and Frankfurt 148.0. Two Fraport figures from two different years, one of them labelled CDG, and ADP publishes no such metric so 152 cannot be a Paris number. Inference rather than finding, and recorded because it explains how a table looks plausible while being wrong: the numbers were real, they were simply not that airport's and not that year's."},{"id":"E9","text":"Schiphol levies an airline nitrogen fee, 28,965 thousand euros in FY2025, AR2025 note 5.1 p.179. No peer in this set has an analogue. It is the nitrogen constraint expressed as a tariff line, which links constraint c3 on the Schiphol tab directly to the charges the airlines pay. The same note shows group airport charges of 1,888.1m against the 1,779m AMS line used on this page: the 109m difference is Rotterdam and Eindhoven. And it gives the composition: passenger service 794.3, security 641.9, aircraft-related 412.6, parking 10.4, nitrogen 29.0."},{"id":"E10","text":"With the FY2024 comparative in, the gauge argument becomes directional and it moves Amsterdam's way. Amsterdam went 140.98 to 144.07 passengers per movement, plus 3.09. Heathrow went 178.02 to 177.67, minus 0.35, and its seats per ATM rose only 220.6 to 221.5 on a falling seat factor. Frankfurt went 152.1 to 148.8 on passenger flights, minus 3.3, and its seats per ATM FELL from about 186 to 184. So in FY2025 Amsterdam was the only airport of the four that gained gauge, and it did so while movements were capped. The single-year snapshot said Amsterdam trails. The two-year direction says Amsterdam is the one closing, which is a materially stronger version of recommendation 01 and rests on reported figures rather than on the model."},{"id":"E11","text":"The 2019 anchor reverses the one-year reading, and it confirms what this page already said. Over FY2019 to FY2025, Amsterdam went 144.32 to 144.07 passengers per movement, minus 0.25. Frankfurt went 137.30 to 137.28, flat. Heathrow went 170.95 to 177.67, plus 6.72, and its seats per ATM rose 213.7 to 221.5 on a load factor that barely moved, 80.0% to 80.2%. So Heathrow's gain is gauge and not fuller aircraft. Over one year Amsterdam was the only airport gaining. Over six it is the only major peer that has not. Both are true: FY2025 recovered ground Amsterdam lost in 2023 and 2024, it did not extend a trend, which is exactly the 'return rather than a gain' this page has said since the ten-year panel was built. Heathrow is the proof the lever exists and the measure of what pulling it is worth."},{"id":"E12","text":"Movements against 2019: Amsterdam 96.1, Frankfurt 89.6, Heathrow 100.5, Paris Orly 99.0. This sharpens a claim the page made without evidence. Amsterdam is NOT the most depressed against its own baseline; Frankfurt is, by six points, and Frankfurt has no cap. The right statement is not that Amsterdam alone is bounded by statute, it is that Amsterdam and Heathrow are both cap-bound, at 99.91% and roughly 99% of their respective ceilings, while Frankfurt's shortfall is demand. Heathrow's cap is 480,000 against Amsterdam's 478,000, so the closest structural peer is running the same instrument and has recovered past its 2019 movement count while Amsterdam has not."},{"id":"E13","text":"Being below the 2019 EBITDA margin is a sector condition, not an Amsterdam failing, and this page had implied otherwise. FY2019 to FY2025: Amsterdam 42.7% to 39.8%, down 2.9 points. Heathrow 61.4% to 55.5%, down 5.9. Fraport 31.9% to 32.4%, roughly flat but on a group that is mostly not Frankfurt. Amsterdam's margin shrank by half what Heathrow's did. The earlier reading, that FY2025 remains below every pre-pandemic year, is still true and is no longer a criticism that singles Amsterdam out."},{"id":"E14","text":"The tariff series is the strongest single argument on this page and six years make it. Aeronautical revenue per passenger, FY2019 to FY2025: Amsterdam 12.66 to 25.86 euros, up 104%. Frankfurt 14.56 to 21.24, up 46%. Heathrow 26.41 to 31.19 euros, up 18%, and Heathrow PEAKED at 36.44 in 2023 before the H7 settlement cut it to 31.01 in 2024. Amsterdam started the period as the cheapest of the three and has doubled. Heathrow shows what a regulator forcing a settlement looks like on this line, and it is the same shape as the 12.5% cut scheduled at Schiphol for 2027. The ceiling is not theoretical; a comparable hub has already hit one and been pulled back from it."},{"id":"E15","text":"With ADP added, all three peers carry a FY2019 to FY2025 margin line and the sector reading firms up. EBITDA margin 2019 to 2025: Amsterdam 42.7% to 39.8%, Groupe ADP 37.7% to 34.6%, Heathrow 61.4% to 55.5%, Fraport 31.9% to 32.4%. Three of four are below their 2019 margin six years on, and Amsterdam's 2.9-point fall is the smallest of the three. E13 said this was a sector condition on two peers; on three it is no longer arguable. ADP's yield line carries only four of seven points because Paris Aéroport passenger totals for FY2021 to FY2023 were searched for and not found, so those years are blank rather than estimated."}],"nonaero_per_pax":{"_construction":"Commercial revenue over the same passengers as the aeronautical row above it. Scope follows the issuer's own segment, so the airports covered differ exactly as they do above.","rows":[{"label":"Amsterdam","rev":620,"pax":68.8,"cur":"EUR","basis":"AMS non-aeronautical revenue. Tier 2, carried from the model constants rather than re-extracted in this pass.","cite":"AR2025 note 4"},{"label":"Paris","rev":1933,"pax":106.9,"cur":"EUR","basis":"Retail and Services segment, net external revenue, over CDG plus Orly passengers.","cite":"URD 2025 p.480"},{"label":"Frankfurt","rev":551.3,"pax":63.2,"cur":"EUR","basis":"Retail & Real Estate segment over FRA passengers. Excludes Ground Handling and International Activities.","cite":"AR2025 p.66"},{"label":"London Heathrow","rev":1289,"pax":84.5,"cur":"GBP","basis":"Retail 791 plus other 498. Under a single till this revenue reduces the aeronautical charge the CAA allows.","cite":"HAL ARA 2025 p.134"}]},"seats":{"_construction":"Seats per passenger movement, which separates aircraft gauge from load factor where passengers per movement cannot. Ruled at peer_mapping_v0_1.yaml PCF-10. The denominator is PASSENGER ATM and never total ATM, because freighters carry no seats.","rows":[{"label":"London Heathrow","seats_per_atm":221.5,"seat_factor_pct":80.2,"pax_per_atm":177.67,"tier":"T1","basis":"Both disclosed directly in the traffic KPI table. 2024 comparatives 220.6 and 80.7%.","cite":"HAL ARA 2025 p.6","seats_per_atm_2024":220.6,"seat_factor_pct_2024":80.7,"tier_2024":"T1, both printed"},{"label":"Frankfurt","seats_per_atm":184.4,"seat_factor_pct":80.7,"pax_per_atm":148.8,"tier":"T3 on T1","basis":"Seat load factor 80.7% and passengers per passenger movement 148.8 are both printed. Seats per ATM is derived: 148.8 / 0.807.","cite":"AR2025 p.62","seats_per_atm_2024":186.2,"seat_factor_pct_2024":81.7,"tier_2024":"T3; seat factor stated only as 'approximately one percentage point' above FY2025"},{"label":"Amsterdam","seats_per_atm":null,"seat_factor_pct":null,"pax_per_atm":144.07,"tier":"absent","basis":"Neither is disclosed. The only load-factor reference in AR2025 is cargo load factors at p.23. This is defect D2 confirmed against the page rather than asserted.","cite":"AR2025, searched","seats_per_atm_2024":null,"seat_factor_pct_2024":null,"tier_2024":"absent in both years"},{"label":"Paris CDG","seats_per_atm":null,"seat_factor_pct":null,"pax_per_atm":null,"tier":"absent","basis":"Neither is disclosed anywhere in the 640-page URD, and CDG movements are not disclosed either, so no gauge metric of any kind is constructible for Paris.","cite":"URD 2025, searched","seats_per_atm_2024":null,"seat_factor_pct_2024":null,"tier_2024":"absent in both years"}]},"security":{"_construction":"How much of each headline aeronautical line is security, and therefore cost-recovery that carries no return for the shareholder. Disclosed by two of four issuers. Ruled at PCF-4.","rows":[{"label":"Amsterdam","amount":641.9,"of_line":1888.1,"cur":"EUR","scope":"group airport charges; the AMS-only split is not disclosed","regime":"Cost-plus under the Wet luchtvaart with a statutorily capped margin.","cite":"AR2025 note 5.1 p.179"},{"label":"Paris","amount":537,"of_line":1865,"cur":"EUR","scope":"Aviation segment, CDG plus Orly plus Le Bourget","regime":"Paid by the DGAC out of the airport security tax, recognised at 92% of eligible costs, so loss-making by construction.","cite":"URD 2025 p.447, p.483"},{"label":"Frankfurt","amount":null,"of_line":1342.0,"cur":"EUR","scope":"not disclosed for Frankfurt","regime":"Inside the Aviation segment. The 785.3m security figure at p.220 is the International Activities segment, not Frankfurt.","cite":"AR2025 p.220"},{"label":"London Heathrow","amount":null,"of_line":2258,"cur":"GBP","scope":"not disclosed separately","regime":"Single till. The question does not arise in the same form.","cite":"HAL ARA 2025 p.134"}]},"traffic_history":{"_construction":"Traffic only, FY2019 to FY2025, ruled at peer_mapping_v0_1.yaml PCF-14. Financials are NOT carried back: Heathrow crosses the Q6 to H7 regulatory boundary, ADP changed consolidation and restructured segments after the HubLink expiry, Fraport changed segment structure, and IFRS 16 lands at the 2019 boundary. Passenger and movement counts do not get restated the way segment revenue does, which is why this series is defensible and a financial one would not be.","_years":[2019,2020,2021,2022,2023,2024,2025],"airports":[{"label":"Amsterdam","basis":"total air transport movements","pax_m":[71.7,20.9,25.5,52.5,61.9,66.8,68.8],"mvt":[496826,227304,266967,397646,441969,473815,477552],"tier":"T1 throughout, from the ten-year panel","cite":"AR2016-AR2025"},{"label":"Frankfurt","basis":"total aircraft movements","pax_m":[70.559,18.769,24.819,48.918,59.365,61.561,63.186],"mvt":[513886,212235,261968,382211,430521,440853,460272],"tier":"T1 for 2020, 2022, 2024, 2025 from the group-sites table; T3 for 2019, 2021, 2023 derived from the stated percentage changes in the same tables","cite":"AR2020 p.2, AR2022 p.66, AR2024 p.62, AR2025 p.63"},{"label":"London Heathrow","basis":"passenger ATM; total ATM not disclosed","pax_m":[80.9,22.1,19.4,61.6,79.2,83.9,84.5],"mvt":[473233,177285,160744,367160,450193,471298,475596],"tier":"T1 throughout, printed in each year's traffic KPI table","cite":"HAL ARA 2020 p.30, 2021 p.30, 2022 p.30, 2023 p.32, 2025 p.6"},{"label":"Paris Aéroport, CDG and Orly","basis":"passengers only; movements not disclosed in any year","pax_m":[108.04,33.1,null,null,null,103.38,106.96],"mvt":[null,null,null,null,null,null,null],"tier":"Passengers only, and three years short. FY2020 is T1 (URD2020 p.6). FY2019 is T3, derived from the 99.0%-of-2019 disclosure in the full-year 2025 traffic release. FY2024 T3 and FY2025 T1. FY2021 to FY2023 were searched for and not found as a Paris Aéroport total, so they are absent rather than estimated. Movements are absent in every year per PCF-11.","cite":"URD2020 p.6; ADP full-year 2025 traffic release; URD 2025 p.59, p.64"}],"seats":{"label":"London Heathrow","years":[2019,2020,2021,2022,2023,2024,2025],"seats_per_atm":[213.7,216.2,216.3,218.0,221.0,220.6,221.5],"seat_factor_pct":[80.0,57.7,61.8,77.0,79.6,80.7,80.2],"note":"The only issuer publishing this back to 2019. The FY2021 load factor is 61.8% in the 2021 report and 55.8% as the 2022 report's comparative, a restatement carried rather than smoothed.","cite":"HAL ARA 2020 p.30 through 2025 p.6"}},"financial_history":{"_construction":"FY2019 to FY2025 revenue, EBITDA and aeronautical revenue for the two peers whose own filings carry the series. Ruled at peer_mapping_v0_1.yaml PCF-14, amended. Each year is the reported figure from that year's own report and cross-checks against the following report's comparative. Discontinuities are MARKED at the year they occur rather than used to suppress the series.","_years":[2019,2020,2021,2022,2023,2024,2025],"issuers":[{"label":"London Heathrow","cur":"GBP","revenue":[2976,1208,1248,2838,3602,3482,3547],"ebitda":[1828,254,345,1596,2153,1968,1969],"aero":[1831,647,554,1879,2473,2229,2258],"ebitda_basis":"adjusted EBITDA, an APM","tier":"T1 throughout; every year appears twice, once as current and once as the next report's comparative, and all seven agree","discontinuity":"The CAA H7 period begins in 2022 and the settlement cuts charges from 2024: aeronautical revenue falls 2,473 to 2,229 while passengers rise. Any line drawn across 2023-2024 crosses a regulatory decision, not a performance change.","cite":"HAL ARA 2020 p.147, 2021 p.155, 2022 p.160, 2023 p.180, 2024 p.167, 2025 p.134"},{"label":"Frankfurt","cur":"EUR","revenue":[3705.8,1677.0,2143.3,3194.4,4000.5,4427.0,4432.2],"ebitda":[1180.3,-250.6,757.0,1029.8,1204.0,1301.8,1436.9],"aero":[1027.0,440.9,587.5,828.1,1098.8,1234.5,1342.0],"ebitda_basis":"EBITDA; FY2020 also reported 48.4 before special items against -250.6 reported","tier":"T1 throughout, from the group key figures and the Aviation segment table in each report","discontinuity":"Group revenue and EBITDA are Fraport group, which includes Greece, Lima, Antalya and others, so the margin line is not Frankfurt's. The aeronautical line is the Frankfurt Aviation segment and is.","cite":"AR2020 p.2 and p.81, AR2022 p.2 and p.70, AR2024 p.64 and p.65, AR2025 p.65 and p.66"},{"label":"Groupe ADP","cur":"EUR","revenue":[4700,2137,2777,4688,5495,6158,6704],"ebitda":[1772,168,751,1704,1956,2068,2322],"aero":[1929,860,1028,1675,1910,2054,2192],"ebitda_basis":"EBITDA to FY2022, recurring EBITDA from FY2023. The 2020-2022 values are identical in both labellings (168, 751, 1,704), so the series is continuous through the rename.","tier":"T1 throughout. Revenue and EBITDA from URD2020 p.196, URD2022 p.276 and URD2024 p.533; the five-year EBITDA table at URD2024 p.146 cross-checks 2020 to 2024 and agrees. Aviation segment revenue from URD2020 p.96, URD2022 p.276, URD2024 p.533.","discontinuity":"Consolidation changed materially through TAV and GMR, and segments were restructured after the HubLink expiry in 2021, so the group margin line spans a changing portfolio. The aeronautical line is the Paris Aviation segment throughout and is the more stable of the two. Note the Aviation segment figure (2,192 in FY2025) is 25 wider than the fees-plus-ancillary-plus-security construction used in the FY2025 panel (2,167), the difference being other income.","cite":"URD2020 pp.96, 196; URD2022 pp.122, 276; URD2024 pp.146, 533; URD2025 pp.447, 480"}]}}}</script>
+<script>
+/* =====================================================================
+   Schiphol shareholder dashboard - standalone build
+   Constellation / fundamentals-engine. No framework, no network.
+   Every reported figure comes from data/schiphol_10y.json, inlined at
+   build time by build.py. Anything modelled is computed in MODEL below
+   and is labelled as modelled wherever it is shown.
+   ===================================================================== */
+'use strict';
+var D = JSON.parse(document.getElementById('payload').textContent);
+var TEN = D.ten_year, PF = D.portfolio, PEERS = D.peers, PX = D.peers_fy;
+var Y = TEN.years;
+
+/* ---------------- helpers ---------------- */
+function n(v, d) {
+  if (v === null || v === undefined || (typeof v === 'number' && isNaN(v))) return '—';
+  return v.toLocaleString('en-GB', {minimumFractionDigits: d || 0, maximumFractionDigits: d || 0});
+}
+function par(v, d) { return v < 0 ? '(' + n(Math.abs(v), d) + ')' : n(v, d); }
+function eur(v, d) { return v === null ? '—' : (v < 0 ? '−€' : '€') + n(Math.abs(v), d); }
+// FY2024 sits beside FY2025 so each peer reads as a direction, not a dot.
+function delta(now, then, dp, unit) {
+  if (now === null || then === null || then === undefined) return '<span class="dim">\u2014</span>';
+  var v = now - then, up = v >= 0;
+  return '<span style="color:' + (Math.abs(v) < 1e-9 ? 'var(--ink3)' : (up ? 'var(--green)' : 'var(--pink)')) + '">' +
+    (up ? '\u25b2' : '\u25bc') + ' ' + n(Math.abs(v), dp) + (unit || '') + '</span>';
+}
+function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+function el(id) { return document.getElementById(id); }
+
+/* derived series, computed once, never read off a document */
+var DER = (function () {
+  var t = TEN.traffic_ams, f = TEN.financials, ac = TEN.airport_charges_ams.values;
+  return {
+    ppm: t.passengers_m.map(function (p, i) { return p * 1e6 / t.movements[i]; }),
+    yld: ac.map(function (v, i) { return v === null ? null : v / t.passengers_m[i]; }),
+    margin: f.ebitda.map(function (e, i) { return e / f.revenue[i] * 100; }),
+    capexPct: f.investments_intangibles_ppe.map(function (c, i) { return Math.abs(c) / f.revenue[i] * 100; })
+  };
+})();
+
+/* ---------------- state ---------------- */
+var S = {
+  tab: 'portfolio', hold: null, hover: null,
+  scen: 'base', metric: 'ebitda', bench: 'yield', series: 'revenue',
+  yieldPick: null, driverPick: null, prov: null
+};
+function set(patch) { for (var k in patch) S[k] = patch[k]; render(); }
+
+/* ---------------- forward model ----------------
+   FY2025 actuals are the base. Everything from FY2026 is modelled from
+   three levers: movements, passengers per movement, aeronautical yield. */
+var A = {
+  amsPax: 68.8, amsMvt: 477552, perMvt: 144.07, cap: 478000,
+  aeroRev: 1876, aeroYield: 27.27, amsNonAero: 620, otherGroup: 265,
+  groupRev: 2761, ebitda: 1122, da: 393, ebit: 729, net: 583, int0: 120, tax0: 26,
+  capex: 1056, fcf: -22, netDebt: 4264, equity: 4420,
+  wacc: 0.0536, coc: 0.025, taxRate: 0.258, exit: 12, stake: 0.70
+};
+var SC = {
+  base: {name: 'Base', tag: 'as approved',
+    note: 'Cap held at 470,000 movements. Gauge improving on trend. The 2027 tariff cut taken and never recovered.',
+    mvt: function () { return 470000; }, pm: function (y) { return 146.2 + (y - 2026) * 0.65; },
+    yld: function (y) { return y < 2027 ? 26.86 : 23.50 * Math.pow(1.016, y - 2027); },
+    capex: function () { return 1000; }, naG: 0.020, infl: 0.012,
+    levers: ['gauge 146.2 → 152.1 pax per movement', 'tariff −12.5% in 2027, +1.6% a year after', 'capex €1.0bn a year, flat to 2035']},
+  constrained: {name: 'Constrained', tag: 'nothing moves',
+    note: 'Movements drift below the cap as fuel and geopolitics bite. Tariff frozen in nominal terms after the cut. Capital tranche-gated and slowed.',
+    mvt: function (y) { return 447000 - (y - 2026) * 800; }, pm: function (y) { return 146.2 + (y - 2026) * 0.31; },
+    yld: function (y) { return y < 2027 ? 26.86 : 23.50 * Math.pow(1.008, y - 2027); },
+    capex: function () { return 600; }, naG: 0.010, infl: 0.016,
+    levers: ['gauge 146.2 → 149.0, barely above 2019', 'tariff frozen in nominal terms', 'capex held to €0.6bn a year, tranche-gated']},
+  stretch: {name: 'Stretch', tag: 'cap traded for gauge',
+    note: 'The replacement instrument lifts movements to 500,000, but only against a step-change in gauge. The statutory return cap is renegotiated first.',
+    mvt: function (y) { return 470000 + (y - 2026) * 3333; }, pm: function (y) { return 146.2 + (y - 2026) * 1.53; },
+    yld: function (y) { return y < 2027 ? 26.86 : 23.50 * Math.pow(1.042, y - 2027); },
+    capex: function () { return 1300; }, naG: 0.035, infl: 0.010,
+    levers: ['gauge 146.2 → 160.0, the price of the cap', 'return cap renegotiated, tariff +4.2% a year', 'capex €1.3bn a year, front-loaded']}
+};
+var _mc = {};
+function model(k) {
+  if (_mc[k]) return _mc[k];
+  var s = SC[k];
+  var rows = [{y: 2025, mvt: A.amsMvt, pm: A.perMvt, pax: A.amsPax, yld: A.aeroYield, aero: A.aeroRev,
+    nonAero: A.amsNonAero, other: A.otherGroup, rev: A.groupRev, opex: A.groupRev - A.ebitda,
+    ebitda: A.ebitda, da: A.da, ebit: A.ebit, int: A.int0, tax: A.tax0, net: A.net,
+    capex: A.capex, fcf: A.fcf, nd: A.netDebt}];
+  var nd = A.netDebt, cum = 0;
+  for (var y = 2026; y <= 2035; y++) {
+    var t = y - 2025, mvt = s.mvt(y), pm = s.pm(y), pax = mvt * pm / 1e6, yld = s.yld(y);
+    var aero = pax * yld;
+    var nonAero = pax * (A.amsNonAero / A.amsPax) * Math.pow(1 + s.naG, t);
+    var other = A.otherGroup * Math.pow(1.03, t);
+    var rev = aero + nonAero + other;
+    var opex = (A.groupRev - A.ebitda) * Math.pow(1 + s.infl, t) * Math.pow(pax / A.amsPax, 0.75);
+    var ebitda = rev - opex, da = A.da + 0.058 * cum, ebit = ebitda - da, int = 0.036 * nd;
+    var tax = Math.max(0, (ebit - int) * A.taxRate), net = ebit - int - tax, capex = s.capex(y);
+    var fcf = ebitda - tax - int - capex, div = net > 0 ? 0.4 * net : 0, nd2 = nd - fcf + div;
+    rows.push({y: y, mvt: mvt, pm: pm, pax: pax, yld: yld, aero: aero, nonAero: nonAero, other: other,
+      rev: rev, opex: opex, ebitda: ebitda, da: da, ebit: ebit, int: int, tax: tax, net: net,
+      capex: capex, fcf: fcf, nd: nd2});
+    cum += capex; nd = nd2;
+  }
+  _mc[k] = rows; return rows;
+}
+function dcfOf(k) {
+  var rows = model(k), last = rows[rows.length - 1];
+  function eq(r) {
+    var pv = 0;
+    for (var i = 1; i < rows.length; i++) pv += rows[i].fcf / Math.pow(1 + r, i);
+    pv += A.exit * last.ebitda / Math.pow(1 + r, 10);
+    return (pv - A.netDebt) / 1000;
+  }
+  return {hi: eq(A.coc), lo: eq(A.wacc)};
+}
+
+/* ---------------- provenance cards ---------------- */
+var PROVD = {
+  mvt: {tier: 'Tier 2', title: '477,552 AMS air transport movements, FY2025',
+    text: '99.91% of the 478,000 ceiling. The decree setting that ceiling was annulled by the Raad van State on 11 March 2026, on the ground that a flight number is not a noise norm and the minister had not tied it to the enforcement points. The 2008 Luchthavenverkeerbesluit revives; the Ministry maintains 478,000 administratively and is drafting a replacement for November 2026. The court struck the decree for being under-justified, not for being too tight, so the direction of the replacement is genuinely unknown.',
+    where: 'AR2025 p.42 · Raad van State, 11 March 2026 · ministry record, 24 March 2026'},
+  pm: {tier: 'Tier 3', title: '144.07 passengers per movement, AMS, FY2025',
+    text: 'Derived: 68.8m AMS passengers over 477,552 AMS movements. The ten-year series on this page puts FY2019 at 144.32, so FY2025 is a return to the 2019 level rather than a gain. H1 2026 reported 146.24, the first observation above it, and it arrived while movements fell 4%. Passengers per movement mixes aircraft gauge with load factor. Seats per movement is the clean series and it is not disclosed.',
+    where: 'derived from AR2025 p.42 · H1 2026 release, 28 July 2026'},
+  yld: {tier: 'Tier 3 on Tier 1', title: '€25.86 of AMS airport charges per AMS passenger, FY2025',
+    text: '€1,779m of AMS airport-charge revenue over 68.8m AMS passengers. FY2024 was €19.54 on the same construction, a rise of 32.3%. The tariff rose 41.4% on 1 April 2025, and 41.4% applied for nine months of twelve is 31.1%, so essentially the whole increase is tariff and none of it is volume. The ceiling is not a regulator’s number and not ours: it is the level at which Schiphol withdrew its own next increase and then discounted.',
+    where: 'AR2025 p.42 (charges) · AR2025 p.42 (passengers). Both Tier 1, the ratio is Tier 3.'},
+  fy25: {tier: 'Tier 1 · pair-verified', title: 'The FY2025 column',
+    text: 'FY2025 is pair-compared at T2 on 18 July 2026: 58 rows, 45 agreed, 13 referred to arbiter. The ten-year panel on this build is a single-curator extraction from the AR2025 historical summary and carries no second reading. Everything from FY2026 onward is modelled from three levers, not reported. The capital expenditure row carries a definitional break shown rather than smoothed.',
+    where: 'AR2025 pp.9–10, 251–252 · t2_fy2025_comparison_2026-07-18.txt'},
+  hist: {tier: 'Tier 1', title: 'The ten-year panel',
+    text: 'One source, one page. The AR2025 historical summary is the only place where ten years of Royal Schiphol Group sit on a single restated basis. RSG restates its own comparatives, so splicing ten annual reports would produce a series no filing supports. The cost of the choice is that comparatives before 2020 are not restated for the change in definitions, which RSG flags in its own footnote and this page carries forward.',
+    where: 'AR2025 pp.251–252, Historical summary'},
+  peerAms: {tier: 'Tier 1 and Tier 2', title: 'Amsterdam, FY2025',
+    text: 'Revenue, EBITDA and the aviation business area are Tier 1 from AR2025. AMS passengers and movements are Tier 1 from the AR2025 network narrative on p.42. The €27.27 aeronautical yield used in the projection is AMS aviation business-area revenue over AMS passengers; the €25.86 used in the ten-year series is AMS airport charges over AMS passengers, which is the narrower and cleaner construction. Group revenue over group passengers gives €35.35, and mixing the two gives the €40.13 anchor recorded as defect D1.',
+    where: 'AR2025 note 4 · AR2025 p.42'}
+};
+
+/* ---------------- shell ---------------- */
+var TABS = [['portfolio', 'Portfolio'], ['schiphol', 'Schiphol'], ['tenyears', 'Ten years'],
+            ['benchmark', 'Benchmark'], ['scenarios', 'Scenarios'], ['recommendation', 'Recommendation'],
+            ['background', 'Background']];
+var CRUMB = {portfolio: null, schiphol: 'Portfolio → Schiphol', tenyears: 'Schiphol → Ten years',
+  benchmark: 'Ten years → Benchmark', scenarios: 'Schiphol → Scenarios',
+  recommendation: 'Scenarios → Recommendation', background: 'Background and provenance'};
+var BACKTO = {schiphol: 'portfolio', tenyears: 'schiphol', benchmark: 'tenyears',
+  scenarios: 'schiphol', recommendation: 'scenarios', background: 'portfolio'};
+
+var FILL = {g: '#C6A553', c: '#9FB3B0', r: '#A05B4A'};
+// One colour per airport, everywhere. Amsterdam is white on both sides of the
+// FY2025/FY2026 boundary: the dash carries reported-versus-modelled, colour
+// carries identity, and the two jobs no longer share a channel.
+var AIRPORT_COLOUR = {
+  'Amsterdam': '#F4F0E9', 'Groupe ADP': '#C6A553', 'Paris, all fees': '#C6A553',
+  'Paris A\u00e9roport, CDG and Orly': '#C6A553', 'Frankfurt': '#9FB3B0',
+  'Frankfurt, total ATM': '#9FB3B0', 'Fraport': '#9FB3B0',
+  'Heathrow': '#A05B4A', 'London Heathrow': '#A05B4A', 'Heathrow, pax ATM': '#A05B4A'
+};
+function airportColour(name) { return AIRPORT_COLOUR[name] || '#7E9895'; }
+var WORD = {g: 'holds', c: 'participates', r: 'depends'};
+
+function render() {
+  el('tabs').innerHTML = TABS.map(function (t) {
+    return '<button class="tab' + (S.tab === t[0] ? ' on' : '') + '" data-go="' + t[0] + '">' + t[1] + '</button>';
+  }).join('');
+  var cr = S.hold ? ('Portfolio → ' + PF.holdings.filter(function (h) { return h.id === S.hold; })[0].name) : CRUMB[S.tab];
+  el('crumb').innerHTML = cr ? '<div class="crumb"><button class="back" data-back="1">← back</button><span>' + esc(cr) + '</span></div>' : '';
+  var v = el('view');
+  if (S.hold) v.innerHTML = viewHold();
+  else v.innerHTML = ({portfolio: viewPortfolio, schiphol: viewSchiphol, tenyears: viewTenYears,
+    benchmark: viewBenchmark, scenarios: viewScenarios, recommendation: viewRec, background: viewBackground})[S.tab]();
+  el('modal').innerHTML = S.prov && PROVD[S.prov] ? modalProv(PROVD[S.prov]) : '';
+}
+
+document.addEventListener('click', function (e) {
+  var t = e.target.closest('[data-go],[data-back],[data-hold],[data-prov],[data-set],[data-close]');
+  if (!t) return;
+  if (t.dataset.go) return set({tab: t.dataset.go, hold: null, yieldPick: null, driverPick: null});
+  if (t.dataset.back) return set(S.hold ? {hold: null} : {tab: BACKTO[S.tab] || 'portfolio'});
+  if (t.dataset.hold) return set({tab: 'portfolio', hold: t.dataset.hold});
+  if (t.dataset.prov) { e.stopPropagation(); return set({prov: t.dataset.prov}); }
+  if (t.dataset.close) return set({prov: null});
+  if (t.dataset.set) { var p = JSON.parse(t.dataset.set); return set(p); }
+});
+document.addEventListener('mouseover', function (e) {
+  var t = e.target.closest('[data-hov]');
+  if (t && S.hover !== t.dataset.hov) set({hover: t.dataset.hov});
+});
+document.addEventListener('mouseout', function (e) {
+  var t = e.target.closest('[data-hov]');
+  if (t && !e.relatedTarget?.closest?.('[data-hov]')) set({hover: null});
+});
+
+function modalProv(p) {
+  return '<div class="modal" data-close="1"><div class="card" onclick="event.stopPropagation()">' +
+    '<div style="display:flex;justify-content:space-between;gap:14px;align-items:flex-start">' +
+    '<div><span class="tier t2">' + esc(p.tier) + '</span><h3 style="margin-top:9px">' + esc(p.title) + '</h3></div>' +
+    '<button class="x" data-close="1">close</button></div>' +
+    '<p class="note" style="margin-top:12px">' + esc(p.text) + '</p>' +
+    '<p class="foot">Where it comes from: ' + esc(p.where) + '</p></div></div>';
+}
+
+/* ---------------- 1. portfolio ---------------- */
+function scatter(xk, yk, xlab, ylab, hi, lo) {
+  var px = function (v) { return 52 + (v / 11) * 496; };
+  var py = function (v) { return 352 - (v / 11) * 328; };
+  var ticks = [0, 2, 4, 6, 8, 10];
+  var g = ticks.map(function (v) {
+    return '<line x1="' + px(v) + '" y1="24" x2="' + px(v) + '" y2="352" stroke="#2B5054" stroke-width="1"/>' +
+           '<line x1="52" y1="' + py(v) + '" x2="548" y2="' + py(v) + '" stroke="#2B5054" stroke-width="1"/>';
+  }).join('');
+  var lab = ticks.map(function (v) {
+    return '<text x="' + px(v) + '" y="368" fill="#7E9895" font-size="9.5" font-family="ui-monospace,Menlo,monospace" text-anchor="middle">' + v + '</text>' +
+           '<text x="44" y="' + (py(v) + 3.5) + '" fill="#7E9895" font-size="9.5" font-family="ui-monospace,Menlo,monospace" text-anchor="end">' + v + '</text>';
+  }).join('');
+  var dots = PF.holdings.map(function (h) {
+    var cx = px(h[xk]), cy = py(h[yk]), r = 2.4 + Math.sqrt(h.total_assets_bn) * 0.95;
+    var hot = S.hover === h.id, dim = S.hover && !hot, end = h[xk] > 7.2;
+    return '<g data-hov="' + h.id + '" data-hold="' + h.id + '" style="cursor:pointer" opacity="' + (dim ? 0.22 : 0.92) + '">' +
+      '<circle cx="' + cx + '" cy="' + cy + '" r="' + r.toFixed(1) + '" fill="' + FILL[h.posture] + '"' +
+      (hot ? ' stroke="#F4F0E9" stroke-width="1.6"' : '') + '/>' +
+      '<text x="' + (cx + (end ? -(r + 6) : (r + 6))).toFixed(1) + '" y="' + (cy + 4).toFixed(1) + '" ' +
+      'text-anchor="' + (end ? 'end' : 'start') + '" fill="' + (hot ? '#F4F0E9' : '#AFC3C0') + '" ' +
+      'font-size="' + (hot ? 12.5 : 10.5) + '" font-family="ui-monospace,Menlo,monospace">' + esc(h.label) + '</text></g>';
+  }).join('');
+  return '<svg viewBox="0 0 560 412" width="100%" role="img">' + g + lab +
+    '<text x="300" y="392" fill="#7E9895" font-size="10" font-family="ui-monospace,Menlo,monospace" text-anchor="middle" letter-spacing="1">' + esc(xlab) + '</text>' +
+    '<text transform="rotate(-90 14 188)" x="14" y="188" fill="#7E9895" font-size="10" font-family="ui-monospace,Menlo,monospace" text-anchor="middle" letter-spacing="1">' + esc(ylab) + '</text>' +
+    '<text x="546" y="18" fill="#7E9895" font-size="9.5" font-family="ui-monospace,Menlo,monospace" text-anchor="end">' + esc(hi) + '</text>' +
+    '<text x="54" y="366" fill="#7E9895" font-size="9.5" font-family="ui-monospace,Menlo,monospace">' + esc(lo) + '</text>' +
+    dots + '</svg>';
+}
+function viewPortfolio() {
+  var legend = [['g', 'holds', 'sets terms others must accept'],
+                ['c', 'participates', 'on equal footing, substitutable at the margin'],
+                ['r', 'depends', 'on a route, supplier or decision seat it does not control']]
+    .map(function (l) {
+      return '<div><span class="dot" style="background:' + FILL[l[0]] + '"></span>' +
+        '<b style="color:' + FILL[l[0]] + '">' + l[1] + '</b> <span class="dim">' + l[2] + '</span></div>';
+    }).join('');
+  return '<h2>Where the Dutch state’s money sits, and what it is exposed to</h2>' +
+    '<p class="sub">Twenty-two Ministry of Finance participations. Dot area proportional to total assets. Hover to link the two readings, click to open the holding.</p>' +
+    '<div class="grid2" style="margin-top:18px">' +
+      '<div class="card"><div class="eyebrow">Reading one &middot; value against return</div>' + scatter('value_to_nl', 'return_to_state', 'Value to the Netherlands', 'Return to the state', 'earns its keep twice', 'the mandate, priced') + '</div>' +
+      '<div class="card"><div class="eyebrow">Reading two &middot; capital call against geopolitical exposure</div>' + scatter('investment_need_2035', 'geopolitical_exposure', 'Investment need to 2035', 'Geopolitical exposure', 'expensive and exposed', 'cheap to hold') + '</div>' +
+    '</div><div class="lg">' + legend + '</div>' +
+    '<p class="foot">Scores are analyst judgements against the rubric, not measurements, and each is meant to be argued with. ' +
+    'Balance sheets and stakes are Tier 2 and were not re-verified against the filings in this pass. ' +
+    '<span class="prov" data-go="background">See the background tab</span> for what is reported and what is asserted.</p>';
+}
+
+/* ---------------- 1b. holding drill ---------------- */
+function spark(label, arr, color, years) {
+  var mn = Math.min.apply(null, arr), mx = Math.max.apply(null, arr), sp = (mx - mn) || 1;
+  var w = 150, h = 40, step = (w - 12) / (arr.length - 1);
+  var pts = arr.map(function (v, t) { return (6 + t * step).toFixed(1) + ',' + (h - 6 - ((v - mn) / sp) * 28).toFixed(1); });
+  return '<div style="margin-bottom:14px"><div class="kv" style="border:none;padding-bottom:2px">' +
+    '<span>' + esc(label) + '</span><span style="color:' + color + '">' + n(arr[arr.length - 1], 0) + '</span></div>' +
+    '<svg viewBox="0 0 ' + w + ' ' + h + '" width="100%">' +
+    '<polyline points="' + pts.join(' ') + '" fill="none" stroke="' + color + '" stroke-width="1.6"/>' +
+    '<circle cx="' + pts[pts.length - 1].split(',')[0] + '" cy="' + pts[pts.length - 1].split(',')[1] + '" r="2.6" fill="' + color + '"/></svg>' +
+    '<div class="foot" style="margin-top:2px">' + years[0] + ' to ' + years[years.length - 1] + '</div></div>';
+}
+function viewHold() {
+  var h = PF.holdings.filter(function (x) { return x.id === S.hold; })[0];
+  var rank = PF.holdings.map(function (x) { return x.id; }).indexOf(h.id) + 1;
+  var isS = h.id === 'schiphol';
+  var sparks, sparkNote, years;
+  if (isS) {
+    years = Y;
+    sparks = spark('Revenue, €m', TEN.financials.revenue, '#C6A553', years) +
+      spark('EBITDA, €m', TEN.financials.ebitda, '#8FCE9A', years) +
+      spark('Capex, €m', TEN.financials.investments_intangibles_ppe.map(Math.abs), '#9FB3B0', years) +
+      spark('Total assets, €m', TEN.financials.total_assets, '#E0A3A3', years);
+    sparkNote = 'Ten years, reported. AR2025 historical summary p.251.';
+  } else {
+    years = [2021, 2022, 2023, 2024, 2025];
+    var b = h.total_assets_bn * 1000 * 0.09, seed = (rank + 2) * 7;
+    var f = function (t) { return 0.72 + 0.07 * t + ((seed * (t + 2)) % 11) / 100; };
+    var mk = function (m) { return [0, 1, 2, 3, 4].map(function (t) { return Math.round(b * f(t) * m(t)); }); };
+    sparks = spark('Revenue, €m', mk(function () { return 1; }), '#C6A553', years) +
+      spark('EBITDA, €m', mk(function () { return 0.22 + h.return_to_state / 60; }), '#8FCE9A', years) +
+      spark('Capex, €m', mk(function () { return 0.10 + h.investment_need_2035 / 48; }), '#9FB3B0', years) +
+      spark('Net debt, €m', [0, 1, 2, 3, 4].map(function (t) { return Math.round(h.total_assets_bn * 1000 * (0.30 + 0.018 * t)); }), '#E0A3A3', years);
+    sparkNote = 'Shape only. Not extracted from any filing. Do not cite.';
+  }
+  var axes = [['Value to the Netherlands', h.value_to_nl, '#C6A553'],
+              ['Investment need to 2035', h.investment_need_2035, '#9FB3B0'],
+              ['Geopolitical exposure', h.geopolitical_exposure, '#A05B4A'],
+              ['Return to the state', h.return_to_state, '#8FCE9A']]
+    .map(function (a) {
+      return '<div style="margin-bottom:12px"><div class="kv" style="border:none;padding:0 0 5px">' +
+        '<span>' + a[0] + '</span><span>' + a[1].toFixed(1) + '</span></div>' +
+        '<div style="background:#0F2426;border-radius:2px;height:11px"><div class="bar" style="background:' + a[2] + ';width:' + (a[1] * 10) + '%"></div></div></div>';
+    }).join('');
+  var steer = (h.steering.length ? h.steering : ['No steering question recorded in this pass. The reading above is the whole of the file on this holding.'])
+    .map(function (t) { return '<li style="margin-bottom:9px">' + esc(t) + '</li>'; }).join('');
+  return '<div style="display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;align-items:flex-start">' +
+    '<div><div class="eyebrow">#' + rank + ' by total assets &middot; stake ' + esc(h.stake) + ' &middot; €' + n(h.total_assets_bn, h.total_assets_bn < 10 ? 1 : 0) + 'bn</div>' +
+    '<h2 style="margin-top:9px">' + esc(h.name) + '</h2></div>' +
+    '<div><span class="chip" style="background:' + FILL[h.posture] + ';color:#0F2426;border-color:' + FILL[h.posture] + '">' + WORD[h.posture] + '</span> ' +
+    '<span class="tier ' + (isS ? 't1' : 'ill') + '">' + (isS ? 'Tier 1 · reported' : 'illustrative, not extracted') + '</span></div></div>' +
+    '<p class="sub" style="font-size:14px;color:var(--ink)">' + esc(h.reading) + '</p>' +
+    '<p class="sub">' + esc(h.posture_note) + '</p>' +
+    '<div class="grid3" style="margin-top:20px">' +
+      '<div class="card">' + axes + '</div>' +
+      '<div class="card">' + sparks + '<div class="foot" style="margin-top:-4px">' + sparkNote + '</div></div>' +
+      '<div class="card"><div class="eyebrow">What the shareholder has to decide</div><ul style="margin:12px 0 0 16px;font-size:13px;line-height:1.6;color:var(--ink2)">' + steer + '</ul>' +
+      (isS ? '<button class="tab" style="margin-top:14px" data-set=\'{"hold":null,"tab":"schiphol"}\'>open the Schiphol read →</button>' : '') +
+      '</div></div>';
+}
+
+/* ---------------- 2. schiphol ---------------- */
+var TERMS = [
+  {term: 'movements', owner: 'the State', value: '477,552', prov: 'mvt',
+   unit: 'AMS air transport movements, FY2025 · 99.91% of the ceiling',
+   state: 'The decree setting the 478,000 ceiling was annulled by the Raad van State on 11 March 2026. The Ministry maintains it administratively and is drafting a replacement for November 2026.',
+   ceiling: '478,000, administrative, no longer statutory'},
+  {term: 'passengers per movement', owner: 'Schiphol and the airlines', value: '144.07', prov: 'pm',
+   unit: 'AMS, FY2025 · 146.24 at H1 2026',
+   state: 'The only volume lever left. The ten-year series puts FY2019 at 144.32, so FY2025 was not a gain, it was a return. H1 2026 is the first observation above it.',
+   ceiling: 'physical: stand size, pier width, runway wake separation'},
+  {term: 'yield per passenger', owner: 'Schiphol, ACM adjudicating', value: '€25.86', prov: 'yld',
+   unit: 'AMS airport charges per AMS passenger, FY2025',
+   state: 'Raised 41.4% on 1 April 2025. The 2026 increase was withdrawn, a daytime discount of more than 10% introduced from 27 April 2026 at a cost of €37m in H1, and a 12.5% cut is scheduled for 2027.',
+   ceiling: 'competitive, and found empirically: the airport discounted its own tariff within thirteen months of raising it'}
+];
+var YB = (function () {
+  var fx = PX.meta.fx.gbp_eur;
+
+  var ids = {'Amsterdam': 'ams', 'Paris': 'cdg', 'Frankfurt': 'fra', 'London Heathrow': 'lhr'};
+  var aeroFor = {
+    'Amsterdam': 'Amsterdam, airport charges', 'Paris': 'Paris, fees plus ancillary plus security',
+    'Frankfurt': 'Frankfurt, Aviation segment', 'London Heathrow': 'Heathrow, aeronautical income'
+  };
+  return PX.nonaero_per_pax.rows.map(function (na) {
+    var ar = PX.aero_per_pax.rows.filter(function (x) { return x.label === aeroFor[na.label]; })[0];
+    var k = function (r) { return r.rev / r.pax * (r.cur === 'GBP' ? fx : 1); };
+    return {id: ids[na.label], name: na.label === 'Paris' ? 'Paris CDG and Orly' : na.label,
+      aero: k(ar), na: k(na), pax: n(na.pax, 1) + 'm',
+      note: 'Aeronautical: ' + ar.basis + ' (' + ar.cite + ')  Non-aeronautical: ' + na.basis + ' (' + na.cite + ')' +
+        (na.cur === 'GBP' ? '  Converted from sterling at ' + fx + ', the ECB 2025 annual average (' + PX.meta.fx.series + ').' : '')};
+  });
+})();
+var DRV = [
+  {id: 'd1', name: 'Hub connectivity and transfer share', w: 9, tab: 'benchmark', jl: 'see the benchmark', note: 'The network is the asset, and it is not on the balance sheet. It also turns on decisions the airport does not take: alliance strategy, slot policy, and a French co-shareholder in the home carrier.'},
+  {id: 'd2', name: 'Up-gauging headroom', w: 7, tab: 'tenyears', jl: 'see the ten-year gauge series', note: '146.24 passengers per movement at H1 2026, the first observation above the FY2019 figure of 144.32, and it arrived while movements fell 4%. The €10bn programme rebuilds Piers B, C, D and H/M explicitly for larger aircraft, so the capex and this lever are the same object.'},
+  {id: 'd3', name: 'Non-aeronautical estate and land', w: 6, tab: 'benchmark', jl: 'compare the yield', note: 'Unregulated, and the land is owned. But concession revenue fell 11.5% in FY2025 while passengers rose 3.0%, because the retail estate moved into a Lagardère joint venture. The natural hedge against a capped aviation business has been converted into associate income below the operating line.'},
+  {id: 'd4', name: 'Employment and the regional economy', w: 8, tab: 'portfolio', jl: 'back to the portfolio', note: 'This is the value the State actually holds, and it is what makes 70% a policy instrument rather than a financial position. It is also why the return the shareholder can ask for is capped by design. Average FTE went from 2,063 in 2016 to 3,831 in 2025.'},
+  {id: 'd5', name: 'International participations', w: 3, tab: 'benchmark', jl: 'see the benchmark', note: 'Alliances and Participations delivered €39m of operating result in FY2025. Small, and now carrying the retail joint venture earnings.'}
+];
+var CON = [
+  {id: 'c1', name: 'Wet luchtvaart cost-plus capped margin', w: 9, tab: 'scenarios', jl: 'see the scenarios', note: 'Airlines bear the cost of the airport with a statutorily limited margin, and surpluses or deficits settle through the regulatory settlement mechanism. Capex therefore enters the regulated asset base and mechanically raises future allowed revenue. This is the constraint that makes the €10bn a shareholder question rather than a management one.'},
+  {id: 'c2', name: 'The 478,000 movement cap', w: 8, tab: 'scenarios', jl: 'trade the cap', note: 'FY2025 ran 477,552, or 99.91% of the ceiling. The decree was annulled on 11 March 2026 because a flight number is not a noise norm. The court struck it for being under-justified, not for being too tight, so the replacement can be tighter or looser. This is the only asset in the file the State can trade for something.'},
+  {id: 'c3', name: 'Nature permit, nitrogen', w: 10, tab: 'recommendation', jl: 'see the recommendation', note: 'The constraint that contains a zero. The permit was annulled by the District Court of The Hague. A non-enforcement order of 19 December 2025 runs 24 months, and environmental organisations objected on 22 January 2026. It sits inside the going-concern discussion of the FY2025 statements. A cap reduces movements. A permit failure stops them.'},
+  {id: 'c4', name: 'The airline price ceiling', w: 7, tab: 'schiphol', jl: 'see the yield map', note: 'Found empirically, not argued. KLM stated the increase would make Schiphol the second most expensive airport in Europe. Schiphol then withdrew the 2026 increase and discounted daytime charges by more than 10%, priced at €37m in one half-year. Add that €37m back and H1 2026 EBITDA grew 9.5% rather than 1.7%.'},
+  {id: 'c5', name: 'Noise-differentiated tariff', w: 5, tab: 'schiphol', jl: 'see the loop', note: 'The share of flights in the quietest categories rose from 23.6% in 2024 to 31.6% between April and December 2025, and quieter aircraft pay less. The same fleet renewal that lifts passengers per movement lowers the charge per movement. The airport’s only route out of the cap runs through its own yield.'},
+  {id: 'c6', name: 'The regulated asset base is redacted', w: 6, tab: 'recommendation', jl: 'see the ask', note: 'Defined at art. 29 elfde lid Bels and quantified nowhere. The only tabular appearance is building block D, where every cell reads [vertr.]. The shareholder therefore cannot check whether the return earned on the regulated asset base is the return the regime allows. Group ROCE was 9.9% in FY2025 against a regulated WACC of 5.36%, and the two are not comparable.'}
+];
+function viewSchiphol() {
+  var terms = TERMS.map(function (t) {
+    return '<div class="card"><div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline">' +
+      '<h3>' + esc(t.term) + '</h3><span class="eyebrow" style="white-space:nowrap">' + esc(t.owner) + '</span></div>' +
+      '<div class="big prov" data-prov="' + t.prov + '" style="margin-top:10px;color:var(--gold)">' + t.value + '</div>' +
+      '<div class="foot" style="margin-top:2px">' + esc(t.unit) + '</div>' +
+      '<p class="note" style="margin-top:11px">' + esc(t.state) + '</p>' +
+      '<p class="foot">Ceiling: ' + esc(t.ceiling) + '</p></div>';
+  }).join('');
+  var yx = function (v) { return 112 + (v / 50) * 388; };
+  var gridl = [0, 10, 20, 30, 40, 50].map(function (v) {
+    return '<line x1="' + yx(v) + '" y1="16" x2="' + yx(v) + '" y2="200" stroke="#2B5054"/>' +
+      '<text x="' + yx(v) + '" y="214" fill="#7E9895" font-size="9.5" font-family="ui-monospace,Menlo,monospace" text-anchor="middle">€' + v + '</text>';
+  }).join('');
+  var bars = YB.map(function (b, i) {
+    var y = 24 + i * 44, tot = b.aero + b.na, op = S.yieldPick && S.yieldPick !== b.id ? 0.35 : 1;
+    return '<g opacity="' + op + '" style="cursor:pointer" data-set=\'{"yieldPick":' + (S.yieldPick === b.id ? 'null' : '"' + b.id + '"') + '}\'>' +
+      '<text x="106" y="' + (y + 15) + '" fill="' + (b.id === 'ams' ? '#F4F0E9' : '#AFC3C0') + '" font-size="11.5" font-family="ui-monospace,Menlo,monospace" text-anchor="end">' + esc(b.name) + '</text>' +
+      '<rect x="112" y="' + y + '" width="' + ((b.aero / 50) * 388).toFixed(1) + '" height="21" fill="#C6A553"/>' +
+      '<rect x="' + (112 + (b.aero / 50) * 388).toFixed(1) + '" y="' + y + '" width="' + ((b.na / 50) * 388).toFixed(1) + '" height="21" fill="#2B5054"/>' +
+      '<text x="' + (yx(tot) + 8).toFixed(1) + '" y="' + (y + 15) + '" fill="#7E9895" font-size="10.5" font-family="ui-monospace,Menlo,monospace">€' + tot.toFixed(2) +
+      '</text></g>';
+  }).join('');
+  var yp = YB.filter(function (b) { return b.id === S.yieldPick; })[0];
+  var ypBox = yp ? '<div class="card" style="margin-top:12px"><h3>' + esc(yp.name) + ' &middot; €' + (yp.aero + yp.na).toFixed(2) + ' a passenger</h3>' +
+    '<div style="display:flex;gap:24px;margin-top:9px;flex-wrap:wrap" class="mono" style="font-size:12px">' +
+    '<span class="dim">aeronautical</span> <b>€' + yp.aero.toFixed(2) + '</b>' +
+    '<span class="dim">non-aeronautical</span> <b>€' + yp.na.toFixed(2) + '</b>' +
+    '<span class="dim">passengers</span> <b>' + yp.pax + '</b></div>' +
+    '<p class="note" style="margin-top:10px">' + esc(yp.note) + '</p></div>' : '';
+  function items(list) {
+    return list.map(function (d) {
+      return '<button class="pick' + (S.driverPick === d.id ? ' on' : '') + '" data-set=\'{"driverPick":' + (S.driverPick === d.id ? 'null' : '"' + d.id + '"') + '}\'>' +
+        '<div style="display:flex;justify-content:space-between;gap:10px"><span>' + esc(d.name) + '</span>' +
+        '<span class="mono dim" style="font-size:11px">' + d.w + '/10</span></div>' +
+        '<div style="background:#0F2426;height:4px;border-radius:2px;margin-top:6px"><div style="height:4px;border-radius:2px;background:' + (list === DRV ? '#C6A553' : '#A05B4A') + ';width:' + (d.w * 10) + '%"></div></div></button>';
+    }).join('');
+  }
+  var dsel = DRV.concat(CON).filter(function (d) { return d.id === S.driverPick; })[0];
+  var dBox = dsel ? '<div class="card" style="margin-top:12px"><h3>' + esc(dsel.name) + '</h3>' +
+    '<p class="note" style="margin-top:9px">' + esc(dsel.note) + '</p>' +
+    '<button class="tab" style="margin-top:12px" data-go="' + dsel.tab + '">' + esc(dsel.jl) + ' →</button></div>' : '';
+  var loop = ['capex', 'regulated asset base', 'allowed revenue', 'tariff', 'airline resistance', 'voluntary discount', 'settlement deficit', 'a larger tariff next period']
+    .map(function (t, i, a) { return '<span>' + esc(t) + '</span><span style="color:var(--gold)">' + (i === a.length - 1 ? '↺' : '→') + '</span>'; }).join(' ');
+  return '<h2>What binds Schiphol</h2>' +
+    '<p class="sub">Three terms decide the file, and each one is owned by someone different. Click a figure for where it comes from.</p>' +
+    '<div class="grid3" style="margin-top:18px">' + terms + '</div>' +
+    '<h2 style="margin-top:34px">The yield map</h2>' +
+    '<p class="sub">Revenue per passenger, gold aeronautical and dark non-aeronautical, all four extracted from FY2025 filings. The scope of each bar differs and the note under it says how. Click a bar.</p>' +
+    '<div class="card" style="margin-top:14px"><svg viewBox="0 0 520 228" width="100%">' + gridl + bars + '</svg></div>' + ypBox +
+    '<div class="grid2" style="margin-top:30px">' +
+      '<div><h3>What drives the value</h3><div style="margin-top:12px">' + items(DRV) + '</div></div>' +
+      '<div><h3>What constrains it</h3><div style="margin-top:12px">' + items(CON) + '</div></div>' +
+    '</div>' + dBox +
+    '<div class="card" style="margin-top:24px"><div class="eyebrow">The tariff loop</div>' +
+    '<div class="mono" style="margin-top:10px;font-size:12px;line-height:2.2;color:var(--ink2);display:flex;gap:8px;flex-wrap:wrap;align-items:center">' + loop + '</div>' +
+    '<p class="foot">Capex enters the regulated asset base, the base raises allowed revenue, allowed revenue raises the tariff, the tariff meets the airlines, and the discount lands back in the settlement. The loop closes on itself.</p></div>';
+}
+
+/* ---------------- 3. ten years (reported) ---------------- */
+var SERIES = {
+  revenue:   {label: 'Revenue', unit: '€m', dp: 0, get: function () { return TEN.financials.revenue; }, kind: 'bar', tier: 't1',
+    read: 'Revenue rose 71% between FY2019 and FY2025, and almost none of that is more people. FY2025 group revenue of €2,761m sits on 68.8m Amsterdam passengers against 71.7m in FY2019. The airport is charging much more for slightly fewer passengers.'},
+  ebitda:    {label: 'EBITDA', unit: '€m', dp: 0, get: function () { return TEN.financials.ebitda; }, kind: 'bar', tier: 't1',
+    read: 'FY2025 EBITDA of €1,098m is the first year materially above the pre-pandemic band of €620m to €690m. It took six years and a 41.4% tariff rise to clear it. Note this is the historical-summary EBITDA; the underlying figure RSG headlines is €1,122m.'},
+  underlying_ebitda: {label: 'Underlying EBITDA', unit: '€m', dp: 0, get: function () { return TEN.underlying_ebitda.values; }, kind: 'bar', tier: 't1',
+    read: 'RSG introduced the underlying presentation with FY2021, so this series does not exist before 2020. The four-year climb from zero to €1,122m is the whole of the post-pandemic recovery, and the last step of it is a tariff decision rather than an operating one.'},
+  net_result: {label: 'Net result', unit: '€m', dp: 0, get: function () { return TEN.financials.net_result; }, kind: 'bar', tier: 't1',
+    read: 'Two loss-making years out of ten, FY2020 and FY2022, and the FY2021 positive of €105m is not an operating event: it carries the expiry of the HubLink cross-participation with Groupe ADP. Recorded as defect D4.'},
+  cash_flow_after_capex: {label: 'Cash flow after capex', unit: '€m', dp: 0, get: function () { return TEN.financials.cash_flow_after_capex; }, kind: 'bar', tier: 't1',
+    read: 'This is the row the shareholder should read first. Eight of the last ten years are negative, cumulatively minus €2,384m, and only FY2016 and FY2025 are positive. The €10bn programme is proposed against a decade that has not funded itself.'},
+  investments_intangibles_ppe: {label: 'Capital expenditure', unit: '€m', dp: 0, get: function () { return TEN.financials.investments_intangibles_ppe.map(Math.abs); }, kind: 'bar', tier: 't1',
+    read: 'Capex tripled from €303m in FY2016 to €963m in FY2025 on the cash-outflow basis. The key-figures basis prints €1,056m for the same year. Both are published; the difference is cash-flow adjustments, and it is recorded as defect D3.'},
+  total_assets: {label: 'Total assets', unit: '€m', dp: 0, get: function () { return TEN.financials.total_assets; }, kind: 'bar', tier: 't1',
+    read: 'The balance sheet grew 58% in ten years while passengers grew 8%. Assets under construction are the reason, and they enter the tariff base as they commission.'},
+  total_equity: {label: 'Total equity', unit: '€m', dp: 0, get: function () { return TEN.financials.total_equity; }, kind: 'bar', tier: 't1',
+    read: 'Equity fell from €4,372m in FY2019 to €3,499m in FY2023 and has since recovered to €4,420m. The State holds 70% of it, which is the €3.1bn book against which any valuation of the stake is judged.'},
+  underlying_roce_pct: {label: 'Underlying ROCE', unit: '%', dp: 1, get: function () { return TEN.ratios.underlying_roce_pct; }, kind: 'line', tier: 't1',
+    read: 'FY2025 at 9.9% is the highest in the series and sits well above the 5.36% regulated WACC. The two are not comparable: ROCE is a group number and the WACC applies to the aviation regulated asset base, which is redacted. That gap is the single most important thing the shareholder cannot currently check.'},
+  solvency_pct: {label: 'Solvency', unit: '%', dp: 1, get: function () { return TEN.ratios.solvency_pct; }, kind: 'line', tier: 't1',
+    read: 'From 59.5% in FY2016 to 35.2% in FY2021, and back to 42.6%. The pandemic was funded with debt and the balance sheet has not returned to where it started. The €10bn programme starts from here, not from 2016.'},
+  average_fte: {label: 'Average FTE', unit: 'FTE', dp: 0, get: function () { return TEN.ratios.average_fte; }, kind: 'bar', tier: 't1',
+    read: 'Up 86% since FY2016 and up 36% since FY2023, against group passengers up 10% over the same two years. The operating leverage currently runs the wrong way, and this is the row that shows it.'},
+  ams_pax: {label: 'AMS passengers', unit: 'm', dp: 1, get: function () { return TEN.traffic_ams.passengers_m; }, kind: 'bar', tier: 't1',
+    read: 'FY2025 at 68.8m is still 4% below the FY2019 peak of 71.7m. Six years after the pandemic, Amsterdam has not recovered its own passenger record, and the movement cap means it is not designed to.'},
+  ams_mvt: {label: 'AMS movements', unit: 'count', dp: 0, get: function () { return TEN.traffic_ams.movements; }, kind: 'bar', tier: 't1',
+    read: 'FY2025 ran 477,552, or 99.91% of the 478,000 ceiling, and FY2019 ran 496,826 with no ceiling at all. The airport is now flying 4% fewer movements than at its peak and has no headroom left.'},
+  ppm: {label: 'Passengers per movement, AMS', unit: 'pax', dp: 2, get: function () { return DER.ppm; }, kind: 'line', tier: 't3',
+    read: 'Derived, not reported. FY2025 at 144.07 is a return to the FY2019 figure of 144.32, not a gain. Ten years produced 11 more passengers per movement and every one of them had arrived by FY2019; the six years since have given a fraction back. This is the lever the €10bn programme is meant to move.'},
+  yld: {label: 'AMS charge yield per passenger', unit: '€', dp: 2, get: function () { return DER.yld; }, kind: 'line', tier: 't3',
+    read: 'Derived from AMS airport-charge revenue over AMS passengers. €12.66 in FY2019, €25.86 in FY2025: the charge per passenger has doubled in six years. FY2016 to FY2018 are left blank because the pre-2020 basis is not the same one and splicing it would invent a trend.'},
+  margin: {label: 'EBITDA margin', unit: '%', dp: 1, get: function () { return DER.margin; }, kind: 'line', tier: 't3',
+    read: 'Derived. This is the row that does not recover. FY2025 at 39.8% is below every pre-pandemic year in the series, which ran 42.1% to 45.9%. Revenue is up 71% on FY2019 and the margin is 2.9 points lower. RSG headlines 40.6% on the underlying basis, which is still below FY2019.'}
+};
+var SERIES_GROUPS = [
+  ['Income', ['revenue', 'ebitda', 'underlying_ebitda', 'net_result', 'margin']],
+  ['Capital', ['investments_intangibles_ppe', 'cash_flow_after_capex', 'total_assets', 'total_equity', 'solvency_pct', 'underlying_roce_pct']],
+  ['Operations', ['ams_pax', 'ams_mvt', 'ppm', 'yld', 'average_fte']]
+];
+function chart(sd) {
+  var v = sd.get(), W = 900, H = 300, L = 62, R = 16, T = 18, B = 34;
+  var vals = v.filter(function (x) { return x !== null; });
+  var lo = Math.min.apply(null, vals), hi = Math.max.apply(null, vals);
+  if (lo > 0) lo = 0;
+  if (hi < 0) hi = 0;
+  var pad = (hi - lo) * 0.08 || 1; hi += pad; if (lo < 0) lo -= pad;
+  var sx = function (i) { return L + (i + 0.5) * (W - L - R) / v.length; };
+  var sy = function (x) { return T + (hi - x) / (hi - lo) * (H - T - B); };
+  var ticks = [0, 1, 2, 3, 4].map(function (k) { return lo + (hi - lo) * k / 4; });
+  var g = ticks.map(function (t) {
+    return '<line x1="' + L + '" y1="' + sy(t).toFixed(1) + '" x2="' + (W - R) + '" y2="' + sy(t).toFixed(1) + '" stroke="#2B5054"/>' +
+      '<text x="' + (L - 8) + '" y="' + (sy(t) + 3.5).toFixed(1) + '" fill="#7E9895" font-size="10" font-family="ui-monospace,Menlo,monospace" text-anchor="end">' + n(t, sd.dp > 1 ? 1 : sd.dp) + '</text>';
+  }).join('');
+  var xl = Y.map(function (y, i) {
+    return '<text x="' + sx(i).toFixed(1) + '" y="' + (H - 14) + '" fill="#7E9895" font-size="10" font-family="ui-monospace,Menlo,monospace" text-anchor="middle">' + y + '</text>';
+  }).join('');
+  var body;
+  if (sd.kind === 'bar') {
+    var bw = Math.min(46, (W - L - R) / v.length * 0.62);
+    body = v.map(function (x, i) {
+      if (x === null) return '<text x="' + sx(i).toFixed(1) + '" y="' + sy(0).toFixed(1) + '" fill="#7E9895" font-size="11" text-anchor="middle">—</text>';
+      var y0 = sy(0), y1 = sy(x);
+      return '<rect x="' + (sx(i) - bw / 2).toFixed(1) + '" y="' + Math.min(y0, y1).toFixed(1) + '" width="' + bw.toFixed(1) +
+        '" height="' + Math.max(1.5, Math.abs(y1 - y0)).toFixed(1) + '" fill="' + (x < 0 ? '#A05B4A' : '#C6A553') + '"/>' +
+        '<text x="' + sx(i).toFixed(1) + '" y="' + (x < 0 ? Math.max(y0, y1) + 13 : Math.min(y0, y1) - 6).toFixed(1) + '" fill="' + (x < 0 ? '#E0A3A3' : '#F4F0E9') +
+        '" font-size="10" font-family="ui-monospace,Menlo,monospace" text-anchor="middle">' + n(x, sd.dp) + '</text>';
+    }).join('');
+  } else {
+    var segs = [], cur = [];
+    v.forEach(function (x, i) {
+      if (x === null) { if (cur.length) segs.push(cur); cur = []; }
+      else cur.push(sx(i).toFixed(1) + ',' + sy(x).toFixed(1));
+    });
+    if (cur.length) segs.push(cur);
+    body = segs.map(function (s) { return '<polyline points="' + s.join(' ') + '" fill="none" stroke="#C6A553" stroke-width="2.2"/>'; }).join('') +
+      v.map(function (x, i) {
+        if (x === null) return '';
+        return '<circle cx="' + sx(i).toFixed(1) + '" cy="' + sy(x).toFixed(1) + '" r="3.2" fill="#C6A553"/>' +
+          '<text x="' + sx(i).toFixed(1) + '" y="' + (sy(x) - 10).toFixed(1) + '" fill="#F4F0E9" font-size="10" font-family="ui-monospace,Menlo,monospace" text-anchor="middle">' + n(x, sd.dp) + '</text>';
+      }).join('');
+  }
+  var zero = (lo < 0 ? '<line x1="' + L + '" y1="' + sy(0).toFixed(1) + '" x2="' + (W - R) + '" y2="' + sy(0).toFixed(1) + '" stroke="#7E9895" stroke-width="1.2"/>' : '');
+  return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%">' + g + zero + body + xl + '</svg>';
+}
+var TABLE_ROWS = [
+  ['sect', 'Income statement, € million'],
+  ['revenue', 'Revenue', function () { return TEN.financials.revenue; }, 0],
+  ['other_investment_property', 'Other results from investment property', function () { return TEN.financials.other_investment_property; }, 0],
+  ['total_operating_income', 'Total operating income', function () { return TEN.financials.total_operating_income; }, 0],
+  ['opex_before_da', 'Operating expenses before D&A', function () { return TEN.financials.opex_before_da; }, 0],
+  ['ebitda', 'EBITDA', function () { return TEN.financials.ebitda; }, 0],
+  ['underlying_ebitda', 'Underlying EBITDA', function () { return TEN.underlying_ebitda.values; }, 0],
+  ['depreciation_amortisation_impairment', 'Depreciation, amortisation, impairment', function () { return TEN.financials.depreciation_amortisation_impairment; }, 0],
+  ['operating_result', 'Operating result', function () { return TEN.financials.operating_result; }, 0],
+  ['financial_income_expense', 'Financial income and expenses', function () { return TEN.financials.financial_income_expense; }, 0],
+  ['net_result', 'Net result', function () { return TEN.financials.net_result; }, 0],
+  ['sect', 'Balance sheet, € million'],
+  ['non_current_assets', 'Non-current assets', function () { return TEN.financials.non_current_assets; }, 0],
+  ['total_assets', 'Total assets', function () { return TEN.financials.total_assets; }, 0],
+  ['total_equity', 'Total equity', function () { return TEN.financials.total_equity; }, 0],
+  ['non_current_liabilities', 'Non-current liabilities', function () { return TEN.financials.non_current_liabilities; }, 0],
+  ['sect', 'Cash flow, € million'],
+  ['cash_flow_operating', 'Cash flow from operating activities', function () { return TEN.financials.cash_flow_operating; }, 0],
+  ['investments_intangibles_ppe', 'Investments in intangibles and PP&E', function () { return TEN.financials.investments_intangibles_ppe; }, 0],
+  ['cash_flow_after_capex', 'Cash flow after capex', function () { return TEN.financials.cash_flow_after_capex; }, 0],
+  ['sect', 'Ratios'],
+  ['underlying_roe_pct', 'Underlying return on equity, %', function () { return TEN.ratios.underlying_roe_pct; }, 1],
+  ['underlying_roce_pct', 'Underlying return on capital employed, %', function () { return TEN.ratios.underlying_roce_pct; }, 1],
+  ['net_leverage', 'Net leverage', function () { return TEN.ratios.net_leverage; }, 1],
+  ['ffo_gross_debt_pct', 'FFO / gross debt, %', function () { return TEN.ratios.ffo_gross_debt_pct; }, 1],
+  ['ffo_interest_coverage', 'FFO interest coverage', function () { return TEN.ratios.ffo_interest_coverage; }, 1],
+  ['solvency_pct', 'Solvency, %', function () { return TEN.ratios.solvency_pct; }, 1],
+  ['average_fte', 'Average full-time equivalents', function () { return TEN.ratios.average_fte; }, 0],
+  ['sect', 'Amsterdam Airport Schiphol'],
+  ['ams_pax', 'Passengers, m', function () { return TEN.traffic_ams.passengers_m; }, 1],
+  ['ams_mvt', 'Air transport movements', function () { return TEN.traffic_ams.movements; }, 0],
+  ['ams_cargo', 'Cargo, thousand tonnes', function () { return TEN.traffic_ams.cargo_kt; }, 0],
+  ['ams_charges', 'Revenue from airport charges, € million', function () { return TEN.airport_charges_ams.values; }, 0],
+  ['sect', 'Schiphol Group traffic'],
+  ['grp_pax', 'Passengers, m', function () { return TEN.traffic_group.passengers_m; }, 1],
+  ['grp_mvt', 'Air transport movements', function () { return TEN.traffic_group.movements; }, 0],
+  ['sect', 'Derived on this page'],
+  ['ppm', 'Passengers per movement, AMS', function () { return DER.ppm; }, 2],
+  ['yld', 'Airport charge per passenger, AMS, €', function () { return DER.yld; }, 2],
+  ['margin', 'EBITDA margin, %', function () { return DER.margin; }, 1],
+  ['capexPct', 'Capex as % of revenue', function () { return DER.capexPct; }, 1]
+];
+function viewTenYears() {
+  var sd = SERIES[S.series] || SERIES.revenue;
+  var picker = SERIES_GROUPS.map(function (g) {
+    return '<div style="margin-bottom:10px"><div class="eyebrow" style="margin-bottom:6px">' + g[0] + '</div>' +
+      '<div class="tabs" style="margin:0">' + g[1].map(function (k) {
+        return '<button class="tab' + (S.series === k ? ' on' : '') + '" data-set=\'{"series":"' + k + '"}\'>' + esc(SERIES[k].label) + '</button>';
+      }).join('') + '</div></div>';
+  }).join('');
+  var body = TABLE_ROWS.map(function (r) {
+    if (r[0] === 'sect') return '<tr class="sect"><td colspan="11">' + esc(r[1]) + '</td></tr>';
+    var arr = r[2](), dp = r[3];
+    return '<tr' + (S.series === r[0] ? ' style="background:rgba(198,165,83,.09)"' : '') + '><td class="lab">' + esc(r[1]) + '</td>' +
+      arr.map(function (v) { return '<td class="n">' + (v === null ? '<span class="dim">—</span>' : par(v, dp)) + '</td>'; }).join('') + '</tr>';
+  }).join('');
+  return '<div style="display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;align-items:flex-start">' +
+    '<div><h2>Ten years, reported</h2>' +
+    '<p class="sub">FY2016 to FY2025 as Royal Schiphol Group states them. Nothing on this tab is modelled. The financial block is one source and one page, because RSG restates its own comparatives and this is the only place the ten years sit on a single basis.</p></div>' +
+    '<span class="tier t1 prov" data-prov="hist">Tier 1 · AR2025 pp.251–252</span></div>' +
+    '<div style="margin-top:20px">' + picker + '</div>' +
+    '<div class="card" style="margin-top:6px">' +
+      '<div style="display:flex;justify-content:space-between;gap:14px;align-items:baseline;flex-wrap:wrap">' +
+      '<h3>' + esc(sd.label) + ' <span class="dim mono" style="font-size:12px">' + esc(sd.unit) + '</span></h3>' +
+      '<span class="tier ' + sd.tier + '">' + (sd.tier === 't3' ? 'Tier 3 · derived here' : 'Tier 1 · reported') + '</span></div>' +
+      chart(sd) +
+      '<p class="note" style="margin-top:10px;max-width:820px">' + esc(sd.read) + '</p>' +
+    '</div>' +
+    '<h3 style="margin-top:30px">The whole panel</h3>' +
+    '<p class="sub">Brackets are negative. An em dash is not zero, it is not published on this basis.</p>' +
+    '<div class="scroll card" style="margin-top:12px"><table><thead><tr><th>Royal Schiphol Group</th>' +
+    Y.map(function (y) { return '<th class="n"' + (y === 2025 ? ' style="color:var(--gold);border-bottom-color:var(--gold);cursor:pointer" data-prov="fy25"' : '') + '>' + y + (y === 2025 ? ' A' : '') + '</th>'; }).join('') +
+    '</tr></thead><tbody>' + body + '</tbody></table></div>' +
+    '<p class="foot">' + esc(TEN.financials._provenance.basis) + '<br>' +
+    'Underlying EBITDA: ' + esc(TEN.underlying_ebitda._provenance.basis) + '<br>' +
+    'Airport charges: ' + esc(TEN.airport_charges_ams.definitional_break) + '</p>' +
+    '<div class="tabs" style="margin-top:16px"><button class="tab" data-go="benchmark">now compare the peers →</button>' +
+    '<button class="tab" data-go="background">what is not verified →</button></div>';
+}
+
+/* ---------------- 4. benchmark ---------------- */
+var PXQ = (function () {
+  var fx = PX.meta.fx.gbp_eur, o = {};
+  function aero(label) { var r = PX.aero_per_pax.rows.filter(function (x) { return x.label === label; })[0];
+    return r.rev / r.pax * (r.cur === 'GBP' ? fx : 1); }
+  function gauge(label) { var r = PX.gauge.rows.filter(function (x) { return x.label === label; })[0];
+    return r.mvt ? r.pax_m * 1e6 / r.mvt : null; }
+  function grp(id) { var r = PX.group_level.rows.filter(function (x) { return x.id === id; })[0];
+    return r.ebitda / r.revenue * 100; }
+  function aero24(label) { var r = PX.aero_per_pax.rows.filter(function (x) { return x.label === label; })[0];
+    return r.rev_2024 == null ? null : r.rev_2024 / r.pax_2024 * (r.cur === 'GBP' ? fx : 1); }
+  function gauge24(label) { var r = PX.gauge.rows.filter(function (x) { return x.label === label; })[0];
+    return r.mvt_2024 ? r.pax_m_2024 * 1e6 / r.mvt_2024 : null; }
+  function grp24(id) { var r = PX.group_level.rows.filter(function (x) { return x.id === id; })[0];
+    return r.revenue_2024 == null ? null : r.ebitda_2024 / r.revenue_2024 * 100; }
+  o.aeroPeers = [['Paris, all fees', aero('Paris, fees plus ancillary plus security'), aero24('Paris, fees plus ancillary plus security')],
+                 ['Frankfurt', aero('Frankfurt, Aviation segment'), aero24('Frankfurt, Aviation segment')],
+                 ['Heathrow', aero('Heathrow, aeronautical income'), aero24('Heathrow, aeronautical income')]];
+  o.marginPeers = [['Groupe ADP', grp('adp'), grp24('adp')], ['Fraport', grp('fraport'), grp24('fraport')], ['Heathrow', grp('heathrow'), grp24('heathrow')]];
+  o.gaugePeers = [['Frankfurt, total ATM', gauge('Frankfurt'), gauge24('Frankfurt')],
+                  ['Heathrow, pax ATM', gauge('London Heathrow'), gauge24('London Heathrow')]];
+  // FY2019-FY2025 traffic history, the only metrics carried back (PCF-14)
+  var TH = PX.traffic_history, THY = TH._years;
+  function hist(label, fn) {
+    var a = TH.airports.filter(function (x) { return x.label === label; })[0];
+    return THY.map(function (y, i) {
+      return (a.pax_m[i] == null || a.mvt[i] == null) ? null : fn(a.pax_m[i], a.mvt[i]);
+    });
+  }
+  o.histYears = THY;
+  o.gaugeHist = [['Frankfurt', airportColour('Frankfurt'), hist('Frankfurt', function (p, m) { return p * 1e6 / m; })],
+                 ['London Heathrow', airportColour('London Heathrow'), hist('London Heathrow', function (p, m) { return p * 1e6 / m; })]];
+  o.mvtHist = [['Frankfurt', airportColour('Frankfurt'), hist('Frankfurt', function (p, m) { return m; })],
+               ['London Heathrow', airportColour('London Heathrow'), hist('London Heathrow', function (p, m) { return m; })]];
+  // FY2019-FY2025 financials, for the two issuers whose filings carry the series
+  var FH = PX.financial_history;
+  function fin(label, fn) {
+    var a = FH.issuers.filter(function (x) { return x.label === label; })[0];
+    var t = TH.airports.filter(function (x) { return x.label === label; })[0];
+    return FH._years.map(function (y, i) {
+      if (a.revenue[i] == null) return null;
+      var scale = a.cur === 'GBP' ? fx : 1;
+      return fn(a, i, scale, t ? t.pax_m[i] : null);
+    });
+  }
+  var PARIS = 'Paris A\u00e9roport, CDG and Orly';
+  o.yieldHist = [['Frankfurt', airportColour('Frankfurt'), fin('Frankfurt', function (a, i, sc, pax) { return pax ? a.aero[i] * sc / pax : null; })],
+                 ['London Heathrow', airportColour('London Heathrow'), fin('London Heathrow', function (a, i, sc, pax) { return pax ? a.aero[i] * sc / pax : null; })],
+                 ['Groupe ADP', airportColour('Groupe ADP'), fin('Groupe ADP', function (a, i, sc) {
+                    var t = TH.airports.filter(function (x) { return x.label === PARIS; })[0];
+                    return t && t.pax_m[i] ? a.aero[i] / t.pax_m[i] : null; })]];
+  o.marginHist = [['Frankfurt', airportColour('Frankfurt'), fin('Frankfurt', function (a, i) { return a.ebitda[i] / a.revenue[i] * 100; })],
+                  ['London Heathrow', airportColour('London Heathrow'), fin('London Heathrow', function (a, i) { return a.ebitda[i] / a.revenue[i] * 100; })],
+                  ['Groupe ADP', airportColour('Groupe ADP'), fin('Groupe ADP', function (a, i) { return a.ebitda[i] / a.revenue[i] * 100; })]];
+  return o;
+})();
+var BM = {
+  yield: {title: 'Aeronautical revenue per passenger', unit: '\u20ac', dp: 2, min: 0, max: 36,
+    act: function () { return DER.yld; }, proj: function (r) { return r.yld; },
+    peers: PXQ.aeroPeers, hist: PXQ.yieldHist,
+    read: 'Six years, and this is the strongest line on the page. Amsterdam went \u20ac12.66 to \u20ac25.86, up 104%, starting as the cheapest of the three. Frankfurt went \u20ac14.56 to \u20ac21.24, up 46%. Heathrow went \u20ac26.41 to \u20ac31.19, up 18%, and it PEAKED at \u20ac36.44 in 2023 before the CAA H7 settlement cut it to \u20ac31.01. That cut is the same shape as the 12.5% scheduled at Schiphol for 2027, which means the ceiling is not theoretical: a comparable hub has already hit one and been pulled back. The constructions still differ per issuer, and the panels below say how.'},
+  margin: {title: 'EBITDA margin, group level', unit: '', dp: 1, min: -40, max: 60,
+    act: function () { return DER.margin; }, proj: function (r) { return r.ebitda / r.rev * 100; },
+    peers: PXQ.marginPeers, hist: PXQ.marginHist,
+    read: 'Below 2019 is a sector condition, not an Amsterdam failing, and this page implied otherwise before the peer series existed. FY2019 to FY2025: Amsterdam 42.7% to 39.8%, Groupe ADP 37.7% to 34.6%, Heathrow 61.4% to 55.5%, Fraport 31.9% to 32.4%. Three of the four are below their 2019 margin six years on, and Amsterdam\u2019s 2.9-point fall is the smallest of the three that fell. Heathrow is not a group: it is one airport under a single till, which is most of why its level is what it is. What remains Amsterdam\u2019s own is the operating leverage: average FTE rose 36% between FY2023 and FY2025 against group passengers up 10%.'},
+  perMvt: {title: 'Passengers per air transport movement', unit: '', dp: 1, min: 80, max: 200,
+    act: function () { return DER.ppm; }, proj: function (r) { return r.pm; },
+    peers: PXQ.gaugePeers, hist: PXQ.gaugeHist,
+    read: 'Six years changes what one year says. FY2019 to FY2025: Amsterdam 144.32 to 144.07, minus 0.25. Frankfurt 137.30 to 137.28, flat. Heathrow 170.95 to 177.67, plus 6.72, with seats per ATM up 213.7 to 221.5 on a load factor that barely moved, so the gain is gauge and not fuller aircraft. Over one year Amsterdam was the only airport gaining; over six it is the only major peer that has not. Both readings are true, and together they say FY2025 recovered ground rather than extending a trend. Heathrow is the proof the lever exists. Paris CDG cannot be placed here in any year because the URD discloses no CDG movements.'},
+  mvt: {title: 'Movements, index FY2019 = 100', unit: '', dp: 0, min: 40, max: 110,
+    act: function () { return TEN.traffic_ams.movements.map(function (m) { return m / 496826 * 100; }); },
+    proj: function (r) { return r.mvt / 496826 * 100; },
+    peers: [], hist: PXQ.mvtHist.map(function (h) { var b = h[2][0];
+      return [h[0], h[1], h[2].map(function (v) { return v == null ? null : v / b * 100; })]; }),
+    read: 'Each line is rebased to its own FY2019, so the comparison is recovery against each airport\u2019s own baseline. Amsterdam reached 96.1% of FY2019 and stopped, one movement short of the ceiling, then fell 4% in H1 2026. Heathrow operates under a 480,000 movement cap against Amsterdam\u2019s 478,000, which is the nearest structural parallel in the peer set.'}
+};
+var PEER_DEFECTS = D.peers.findings_on_pull.map(function (f) {
+  return [f.issuer === 'all' ? 'The anchors themselves' : f.issuer, f.text + '  (' + f.cite + ')'];
+});
+function viewBenchmark() {
+  var bm = BM[S.bench], act = bm.act(), rows = model(S.scen);
+  var W = 900, H = 330, L = 62, R = 130, T = 20, B = 40, N = 20;
+  var all = act.filter(function (x) { return x !== null; }).concat(rows.map(bm.proj)).concat(bm.peers.map(function (p) { return p[1]; }));
+  var lo = Math.min.apply(null, all), hi = Math.max.apply(null, all);
+  var pad = (hi - lo) * 0.12; lo -= pad; hi += pad;
+  var sx = function (i) { return L + i * (W - L - R) / (N - 1); };
+  var sy = function (v) { return T + (hi - v) / (hi - lo) * (H - T - B); };
+  var g = [0, 1, 2, 3, 4].map(function (k) {
+    var v = lo + (hi - lo) * k / 4;
+    return '<line x1="' + L + '" y1="' + sy(v).toFixed(1) + '" x2="' + (W - R) + '" y2="' + sy(v).toFixed(1) + '" stroke="#2B5054"/>' +
+      '<text x="' + (L - 8) + '" y="' + (sy(v) + 3.5).toFixed(1) + '" fill="#7E9895" font-size="10" font-family="ui-monospace,Menlo,monospace" text-anchor="end">' + bm.unit + n(v, 0) + '</text>';
+  }).join('');
+  var xt = [0, 3, 6, 9, 12, 15, 19].map(function (i) {
+    return '<text x="' + sx(i).toFixed(1) + '" y="' + (H - 18) + '" fill="#7E9895" font-size="10" font-family="ui-monospace,Menlo,monospace" text-anchor="middle">' + (2016 + i) + '</text>';
+  }).join('');
+  var actSegs = [], cur = [];
+  act.forEach(function (v, i) { if (v === null) { if (cur.length) actSegs.push(cur); cur = []; } else cur.push(sx(i).toFixed(1) + ',' + sy(v).toFixed(1)); });
+  if (cur.length) actSegs.push(cur);
+  var actLine = actSegs.map(function (s) { return '<polyline points="' + s.join(' ') + '" fill="none" stroke="#F4F0E9" stroke-width="2.6"/>'; }).join('');
+  var projPts = rows.map(function (r, i) { return sx(9 + i).toFixed(1) + ',' + sy(bm.proj(r)).toFixed(1); }).join(' ');
+  var projLine = '<polyline points="' + projPts + '" fill="none" stroke="#F4F0E9" stroke-width="2" stroke-dasharray="5 4" opacity=".9"/>';
+  var band = '<rect x="' + sx(9).toFixed(1) + '" y="' + T + '" width="' + (sx(19) - sx(9)).toFixed(1) + '" height="' + (H - T - B) + '" fill="rgba(198,165,83,.05)"/>' +
+    '<text x="' + (sx(9) + 10).toFixed(1) + '" y="' + (T + 14) + '" fill="#7E9895" font-size="10" font-family="ui-monospace,Menlo,monospace">' + esc(SC[S.scen].name) + ' scenario, modelled</text>';
+  // Peers are one observation each, at FY2025. Drawing them as lines across a
+  // 2016-2035 axis said they were flat for twenty years, which is not a claim
+  // anyone made. A marker at the FY2025 tick says what is actually known.
+  var px25 = sx(9), taken = [];
+  var histLines = (bm.hist || []).map(function (h) {
+    var pts = [];
+    (PXQ.histYears || []).forEach(function (y, i) {
+      var v = h[2][i];
+      if (v != null) pts.push(sx(3 + i).toFixed(1) + ',' + sy(v).toFixed(1));
+    });
+    return pts.length < 2 ? '' :
+      '<polyline points="' + pts.join(' ') + '" fill="none" stroke="' + h[1] + '" stroke-width="1.6" opacity=".75"/>';
+  }).join('');
+  var peerLines = bm.peers.map(function (p, i) {
+    var c = airportColour(p[0]), y = sy(p[1]);
+    var ly = y + 3.5;
+    taken.forEach(function (t) { if (Math.abs(ly - t) < 12) ly = t + 13; });
+    taken.push(ly);
+    var y24 = (p[2] == null) ? null : sy(p[2]);
+    var seg = (y24 === null)
+      ? '<line x1="' + (px25 - 9).toFixed(1) + '" y1="' + y.toFixed(1) + '" x2="' + (px25 + 9).toFixed(1) + '" y2="' + y.toFixed(1) + '" stroke="' + c + '" stroke-width="2.4" opacity=".85"/>'
+      : '<line x1="' + sx(8).toFixed(1) + '" y1="' + y24.toFixed(1) + '" x2="' + px25.toFixed(1) + '" y2="' + y.toFixed(1) + '" stroke="' + c + '" stroke-width="2.4" opacity=".85"/>' +
+        '<circle cx="' + sx(8).toFixed(1) + '" cy="' + y24.toFixed(1) + '" r="2.4" fill="' + c + '" opacity=".7"/>' +
+        '<circle cx="' + px25.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="3" fill="' + c + '"/>';
+    return seg +
+      '<line x1="' + (px25 + 9).toFixed(1) + '" y1="' + y.toFixed(1) + '" x2="' + (W - R + 5) + '" y2="' + (ly - 3.5).toFixed(1) + '" stroke="' + c + '" stroke-width="1" stroke-dasharray="1 3" opacity=".45"/>' +
+      '<text x="' + (W - R + 8) + '" y="' + ly.toFixed(1) + '" fill="' + c + '" font-size="10.5" font-family="ui-monospace,Menlo,monospace">' + esc(p[0]) + ' ' + bm.unit + n(p[1], bm.dp > 1 ? 2 : 0) + '</text>';
+  }).join('');
+  var amsEnd = act[act.length - 1], amsY = sy(amsEnd) + 3.5;
+  // Peer labels sit in the same right margin; nudge ours clear rather than overprint.
+  taken.forEach(function (t) { if (Math.abs(amsY - t) < 12) amsY = t + 13; });
+  var amsLab = '<line x1="' + (W - R - 2) + '" y1="' + sy(amsEnd).toFixed(1) + '" x2="' + (W - R + 5) + '" y2="' + (amsY - 3.5).toFixed(1) + '" stroke="#7E9895" stroke-width="1"/>' +
+    '<text x="' + (W - R + 8) + '" y="' + amsY.toFixed(1) + '" fill="#F4F0E9" font-size="10.5" font-family="ui-monospace,Menlo,monospace">AMS ' + bm.unit + n(amsEnd, bm.dp) + ' FY2025</text>';
+  var tabs = [['yield', 'Yield per passenger'], ['margin', 'EBITDA margin'], ['perMvt', 'Pax per movement'], ['mvt', 'Movements index']]
+    .map(function (t) { return '<button class="tab' + (S.bench === t[0] ? ' on' : '') + '" data-set=\'{"bench":"' + t[0] + '"}\'>' + t[1] + '</button>'; }).join('');
+  var fx = PX.meta.fx.gbp_eur;
+  function eurOf(v, cur) { return cur === 'GBP' ? v * fx : v; }
+
+  var gaugeRows = PX.gauge.rows.map(function (r) {
+    var v = r.mvt ? r.pax_m * 1e6 / r.mvt : null, ams = /^Amsterdam/.test(r.label);
+    var v24 = r.mvt_2024 ? r.pax_m_2024 * 1e6 / r.mvt_2024 : null;
+    return '<tr' + (ams ? ' style="background:rgba(198,165,83,.09)"' : '') + '>' +
+      '<td class="lab"' + (ams ? ' style="color:var(--gold)"' : '') + '>' + esc(r.label) + '</td>' +
+      '<td class="n">' + n(r.pax_m, 1) + '</td>' +
+      '<td class="n">' + (r.mvt ? n(r.mvt, 0) : '<span class="dim">—</span>') + '</td>' +
+      '<td class="n">' + (v24 ? n(v24, 2) : '<span class="dim">—</span>') + '</td>' +
+      '<td class="n" style="color:' + (ams ? 'var(--gold)' : 'var(--ink)') + '">' + (v ? n(v, 2) : '<span class="dim">—</span>') + '</td>' +
+      '<td class="n">' + delta(v, v24, 2) + '</td>' +
+      '<td class="dim" style="font-size:11.5px">' + esc(r.mvt_basis) + '</td>' +
+      '<td class="dim mono" style="font-size:11px">' + esc(r.cite) + '</td></tr>';
+  }).join('');
+
+  var TIERLBL = {charges: 'Charges basis — what the airline is billed by the airport',
+                 business_area: 'Business-area basis — the wider aviation segment'};
+  var lastTier = null;
+  var aeroRows = PX.aero_per_pax.rows.map(function (r) {
+    var ams = /^Amsterdam/.test(r.label), per = r.rev / r.pax, head = '';
+    var per24 = (r.rev_2024 == null) ? null : r.rev_2024 / r.pax_2024;
+    var cs = r.cur === 'GBP' ? '\u00a3' : '\u20ac';
+    if (r.tier_group !== lastTier) {
+      lastTier = r.tier_group;
+      head = '<tr class="sect"><td colspan="8">' + esc(TIERLBL[r.tier_group] || r.tier_group) + '</td></tr>';
+    }
+    return head + '<tr' + (ams ? ' style="background:rgba(198,165,83,.09)"' : '') + '>' +
+      '<td class="lab"' + (ams ? ' style="color:var(--gold)"' : '') + '>' + esc(r.label) + '</td>' +
+      '<td class="n">' + (r.cur === 'GBP' ? '\u00a3' : '\u20ac') + n(r.rev, 0) + '</td>' +
+      '<td class="n">' + n(r.pax, 1) + '</td>' +
+      '<td class="n" style="color:' + (ams ? 'var(--gold)' : 'var(--ink)') + '">' + (r.cur === 'GBP' ? '\u00a3' : '\u20ac') + n(per, 2) +
+        (r.cur === 'GBP' ? '<span class="dim"> \u00b7 \u20ac' + n(per * fx, 2) + '</span>' : '') + '</td>' +
+      '<td class="n">' + (per24 == null ? '<span class="dim">\u2014</span>' : cs + n(per24, 2)) + '</td>' +
+      '<td class="n">' + delta(per, per24, 2) + '</td>' +
+      '<td class="dim" style="font-size:11.5px">' + esc(r.basis) + '</td>' +
+      '<td class="dim mono" style="font-size:11px">' + esc(r.cite) + '</td></tr>';
+  }).join('');
+
+  var secRows = PX.security.rows.map(function (r) {
+    var ams = /^Amsterdam/.test(r.label), gone = r.amount === null, cur = r.cur === 'GBP' ? '\u00a3' : '\u20ac';
+    return '<tr' + (ams ? ' style="background:rgba(198,165,83,.09)"' : '') + '>' +
+      '<td class="lab"' + (ams ? ' style="color:var(--gold)"' : '') + '>' + esc(r.label) +
+        (gone ? ' <span class="tier ill">not disclosed</span>' : '') + '</td>' +
+      '<td class="n">' + (gone ? '<span class="dim">\u2014</span>' : cur + n(r.amount, 0)) + '</td>' +
+      '<td class="n">' + cur + n(r.of_line, 0) + '</td>' +
+      '<td class="n" style="color:' + (gone ? 'var(--ink3)' : 'var(--rust)') + '">' +
+        (gone ? '\u2014' : n(r.amount / r.of_line * 100, 1) + '%') + '</td>' +
+      '<td class="dim" style="font-size:11.5px">' + esc(r.scope) + '. ' + esc(r.regime) + '</td>' +
+      '<td class="dim mono" style="font-size:11px">' + esc(r.cite) + '</td></tr>';
+  }).join('');
+
+  var grpRows = PX.group_level.rows.map(function (r) {
+    var iss = PX.issuers[r.id.replace('_underlying', '')], rsg = r.id.indexOf('rsg') === 0;
+    return '<tr' + (rsg ? ' style="background:rgba(198,165,83,.09)"' : '') + '>' +
+      '<td class="lab"' + (rsg ? ' style="color:var(--gold)"' : '') + '>' + esc(iss ? iss.name : r.id) + '</td>' +
+      '<td class="n">' + (r.cur === 'GBP' ? '£' : '€') + n(r.revenue, 0) + '</td>' +
+      '<td class="n">' + (r.cur === 'GBP' ? '£' : '€') + n(r.ebitda, 0) + '</td>' +
+      '<td class="n" style="color:' + (rsg ? 'var(--gold)' : 'var(--ink)') + '">' + n(r.ebitda / r.revenue * 100, 1) + '%</td>' +
+      '<td class="n">' + (r.revenue_2024 == null ? '<span class="dim">—</span>' : n(r.ebitda_2024 / r.revenue_2024 * 100, 1) + '%') + '</td>' +
+      '<td class="n">' + (r.revenue_2024 == null ? '<span class="dim">—</span>' : delta(r.ebitda / r.revenue * 100, r.ebitda_2024 / r.revenue_2024 * 100, 1, 'pt')) + '</td>' +
+      '<td class="dim" style="font-size:11.5px">' + esc(r.ebitda_basis) + '</td>' +
+      '<td class="dim mono" style="font-size:11px">' + esc(r.cite) + '</td></tr>';
+  }).join('');
+
+  function panel(title, note, head, body) {
+    return '<h3 style="margin-top:28px">' + esc(title) + '</h3>' +
+      '<p class="sub">' + esc(note) + '</p>' +
+      '<div class="scroll card" style="margin-top:12px"><table><thead><tr>' +
+      head.map(function (h, i) { return '<th' + (i >= 1 && i <= 3 ? ' class="n"' : '') + '>' + esc(h) + '</th>'; }).join('') +
+      '</tr></thead><tbody>' + body + '</tbody></table></div>';
+  }
+
+  var findings = PX.findings.map(function (f) {
+    return '<div class="defect" style="border-left-color:var(--gold)"><b style="color:var(--gold)">' + esc(f.id) + '</b>' +
+      '<p class="note" style="margin-top:4px">' + esc(f.text) + '</p></div>';
+  }).join('');
+
+  return '<h2>Ten years reported, ten years modelled, and the airports it is judged against</h2>' +
+    '<p class="sub">Amsterdam is white throughout: solid to FY2025 as reported, dashed from FY2026 as the ' + esc(SC[S.scen].name.toLowerCase()) + ' scenario. Colour is the airport, the dash is the model. Frankfurt and Heathrow run FY2019 to FY2025 in their own colours on all four measures, each year taken from that year\u2019s own report. Groupe ADP joins them from FY2019 on the financial measures; its yield line breaks for FY2021 to FY2023 because Paris passenger totals for those years were not found, and it has no gauge line in any year because CDG movements are never disclosed.</p>' +
+    '<div class="tabs" style="margin-top:16px">' + tabs + '</div>' +
+    '<div class="card" style="margin-top:12px"><div class="eyebrow">' + esc(bm.title) + '</div>' +
+    '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%">' + band + g + histLines + peerLines + actLine + projLine + amsLab + xt + '</svg>' +
+    '<p class="note" style="margin-top:10px;max-width:820px">' + esc(bm.read) + '</p></div>' +
+
+    panel('Gauge, FY2025, and the denominator is the whole argument',
+      PX.gauge._construction,
+      ['', 'Passengers, m', 'Movements', 'FY2024', 'FY2025', 'Change', 'What the denominator counts', 'Source'],
+      gaugeRows) +
+
+    panel('Seats per movement, FY2025, where gauge and load factor come apart',
+      PX.seats._construction,
+      ['', 'Seats/ATM 2024', 'Seats/ATM 2025', 'Change', 'Seat factor', 'Pax per ATM', 'Basis', 'Source'],
+      PX.seats.rows.map(function (r) {
+        var ams = /^Amsterdam/.test(r.label), gone = r.seats_per_atm === null;
+        return '<tr' + (ams ? ' style="background:rgba(198,165,83,.09)"' : '') + '>' +
+          '<td class="lab"' + (ams ? ' style="color:var(--gold)"' : '') + '>' + esc(r.label) +
+            (gone ? ' <span class="tier ill">not disclosed</span>' : '') + '</td>' +
+          '<td class="n">' + (r.seats_per_atm_2024 == null ? '<span class="dim">\u2014</span>' : n(r.seats_per_atm_2024, 1)) + '</td>' +
+          '<td class="n" style="color:' + (gone ? 'var(--ink3)' : 'var(--ink)') + '">' +
+            (gone ? '\u2014' : n(r.seats_per_atm, 1)) + '</td>' +
+          '<td class="n">' + delta(r.seats_per_atm, r.seats_per_atm_2024, 1) + '</td>' +
+          '<td class="n">' + (r.seat_factor_pct === null ? '<span class="dim">\u2014</span>' : n(r.seat_factor_pct, 1) + '%') + '</td>' +
+          '<td class="n" style="color:' + (ams ? 'var(--gold)' : 'var(--ink)') + '">' +
+            (r.pax_per_atm === null ? '<span class="dim">\u2014</span>' : n(r.pax_per_atm, 2)) + '</td>' +
+          '<td class="dim" style="font-size:11.5px">' + esc(r.basis) + '</td>' +
+          '<td class="dim mono" style="font-size:11px">' + esc(r.cite) + '</td></tr>';
+      }).join('')) +
+
+    panel('Aeronautical revenue per passenger, FY2025',
+      PX.aero_per_pax._construction,
+      ['', 'Revenue', 'Passengers, m', 'Per passenger', 'FY2024', 'Change', 'Construction', 'Source'],
+      aeroRows) +
+
+    panel('How much of that is security, and therefore carries no return',
+      PX.security._construction,
+      ['', 'Security revenue', 'Of the line', 'Share', 'Regime', 'Source'],
+      secRows) +
+
+    panel('At group level, FY2025',
+      PX.group_level._construction,
+      ['', 'Revenue', 'EBITDA', 'Margin', 'FY2024', 'Change', 'EBITDA basis', 'Source'],
+      grpRows) +
+
+    '<h3 style="margin-top:30px">What the extraction found</h3>' +
+    '<p class="sub">Six things, from the filings now in corpus/peers/. Three of them change what the recommendation tab should say.</p>' +
+    '<div style="margin-top:12px">' + findings + '</div>' +
+
+    '<div class="card" style="margin-top:20px;border-color:rgba(160,91,74,.5)">' +
+    '<div class="eyebrow" style="color:var(--rust)">What this still is not</div>' +
+    '<p class="note" style="margin-top:9px">' + esc(PX.meta.rule) + ' State: ' + esc(PX.meta.state) + '. ' +
+    'Heathrow is reported in sterling. Every euro figure for it is converted at ' + fx + ' to the pound, which is ' + esc(PX.meta.fx.basis) + ' ' + esc(PX.meta.fx.why_annual_average) + '</p>' +
+    '<p class="foot">The rows above are not interchangeable and the page will not let them be read as though they were. The construction is ruled in peer_mapping_v0_1.yaml: nine flags decided, four open. The build reconciles twenty figures against that file and refuses to render if the two disagree. What is still not ruled: whether the compared object is what the airport collects or what the airline pays (PCF-4), and the sterling rate (PCF-8). What is not earned: a second reading. The Schiphol file has blind pairs and an arbiter behind it. This one has one analyst.</p></div>';
+}
+
+/* ---------------- 5. scenarios ---------------- */
+function wfData(k, metric) {
+  var rows = model(k), r0 = rows[0], r1 = rows[rows.length - 1];
+  var mvtEff = (r1.mvt * r0.pm / 1e6) * r0.yld - r0.aero;
+  var gaugeEff = (r1.mvt * r1.pm / 1e6) * r0.yld - (r1.mvt * r0.pm / 1e6) * r0.yld;
+  var tarEff = r1.aero - (r1.mvt * r1.pm / 1e6) * r0.yld;
+  var revSteps = [['movements', mvtEff], ['gauge', gaugeEff], ['tariff', tarEff],
+    ['AMS non-|aero', r1.nonAero - r0.nonAero], ['other|group', r1.other - r0.other]];
+  var M = {
+    revenue: {title: 'Group revenue, FY2025 to FY2035', start: r0.rev, end: r1.rev, steps: revSteps},
+    ebitda: {title: 'Underlying EBITDA, FY2025 to FY2035', start: r0.ebitda, end: r1.ebitda,
+      steps: revSteps.concat([['operating|cost', -(r1.opex - r0.opex)]])},
+    net: {title: 'Net result, FY2025 to FY2035', start: r0.net, end: r1.net,
+      steps: [['EBITDA', r1.ebitda - r0.ebitda], ['depre-|ciation', -(r1.da - r0.da)], ['interest', -(r1.int - r0.int)], ['tax', -(r1.tax - r0.tax)]]},
+    fcf: {title: 'Free cash flow after capex, FY2025 to FY2035', start: r0.fcf, end: r1.fcf,
+      steps: [['EBITDA', r1.ebitda - r0.ebitda], ['tax', -(r1.tax - r0.tax)], ['interest', -(r1.int - r0.int)], ['capital|spend', -(r1.capex - r0.capex)]]}
+  };
+  return M[metric];
+}
+function waterfall(w) {
+  var geo = [], cum = w.start, lo = Math.min(0, w.start), hi = Math.max(0, w.start);
+  geo.push({lb: 'FY2025|reported', v: w.start, from: 0, to: w.start, kind: 't'});
+  w.steps.forEach(function (s) {
+    var f = cum, t2 = cum + s[1];
+    geo.push({lb: s[0], v: s[1], from: f, to: t2, kind: 'd'});
+    cum = t2; lo = Math.min(lo, f, t2); hi = Math.max(hi, f, t2);
+  });
+  geo.push({lb: 'FY2035|' + SC[S.scen].name.toLowerCase(), v: w.end, from: 0, to: w.end, kind: 't'});
+  lo = Math.min(lo, w.end); hi = Math.max(hi, w.end);
+  var pad = (hi - lo) * 0.14 || 10, yTop = 26, yBot = 232;
+  var sv = function (v) { return yBot - ((v - (lo - pad)) / ((hi + pad) - (lo - pad))) * (yBot - yTop); };
+  var N = geo.length, slot = (884 - 46) / N, bw = Math.min(78, slot * 0.62);
+  var bars = geo.map(function (g, i) {
+    var cx = 46 + slot * i + slot / 2, x = cx - bw / 2;
+    var y = Math.min(sv(g.from), sv(g.to)), h = Math.max(2, Math.abs(sv(g.to) - sv(g.from)));
+    var parts = String(g.lb).split('|');
+    var fill = g.kind === 't' ? '#C6A553' : (g.v >= 0 ? '#8FCE9A' : '#E0A3A3');
+    var link = i > 0 && g.kind === 'd'
+      ? '<line x1="' + (46 + slot * (i - 1) + slot / 2 + bw / 2).toFixed(1) + '" y1="' + sv(g.from).toFixed(1) + '" x2="' + x.toFixed(1) + '" y2="' + sv(g.from).toFixed(1) + '" stroke="rgba(244,240,233,.28)" stroke-dasharray="2 3"/>' : '';
+    return link + '<rect x="' + x.toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + h.toFixed(1) + '" fill="' + fill + '"/>' +
+      '<text x="' + cx.toFixed(1) + '" y="' + (y - 8).toFixed(1) + '" fill="' + fill + '" font-size="11" font-family="ui-monospace,Menlo,monospace" text-anchor="middle">' +
+      (g.kind === 't' ? (g.v < 0 ? '−' : '') : (g.v >= 0 ? '+' : '−')) + n(Math.abs(g.v), 0) + '</text>' +
+      '<text x="' + cx.toFixed(1) + '" y="252" fill="#AFC3C0" font-size="10" font-family="ui-monospace,Menlo,monospace" text-anchor="middle">' + esc(parts[0]) + '</text>' +
+      (parts[1] ? '<text x="' + cx.toFixed(1) + '" y="264" fill="#AFC3C0" font-size="10" font-family="ui-monospace,Menlo,monospace" text-anchor="middle">' + esc(parts[1]) + '</text>' : '');
+  }).join('');
+  return '<svg viewBox="0 0 900 288" width="100%">' +
+    (lo < 0 ? '<line x1="40" y1="' + sv(0).toFixed(1) + '" x2="890" y2="' + sv(0).toFixed(1) + '" stroke="#7E9895"/>' : '') + bars + '</svg>';
+}
+function viewScenarios() {
+  var cards = Object.keys(SC).map(function (k) {
+    var rs = model(k), l = rs[rs.length - 1], on = S.scen === k;
+    return '<button class="pick' + (on ? ' on' : '') + '" style="background:' + (on ? 'var(--panel2)' : 'var(--panel)') + ';padding:16px 17px" data-set=\'{"scen":"' + k + '"}\'>' +
+      '<div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline"><h3>' + esc(SC[k].name) + '</h3>' +
+      '<span class="eyebrow">' + esc(SC[k].tag) + '</span></div>' +
+      '<ul style="margin:11px 0 0 15px;color:var(--ink2);font-size:12.5px;line-height:1.6">' +
+      SC[k].levers.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ul>' +
+      '<div style="display:flex;gap:26px;margin-top:13px">' +
+      '<div><div class="eyebrow">FY2035 EBITDA</div><div style="font:19px/1.2 var(--serif);margin-top:3px">' + eur(l.ebitda, 0) + 'm</div></div>' +
+      '<div><div class="eyebrow">FY2035 free cash flow</div><div style="font:19px/1.2 var(--serif);margin-top:3px;color:' + (l.fcf < 0 ? 'var(--pink)' : 'var(--green)') + '">' + eur(l.fcf, 0) + 'm</div></div></div></button>';
+  }).join('');
+  var mtabs = [['revenue', 'Revenue'], ['ebitda', 'EBITDA'], ['net', 'Net result'], ['fcf', 'Free cash flow']]
+    .map(function (t) { return '<button class="tab' + (S.metric === t[0] ? ' on' : '') + '" data-set=\'{"metric":"' + t[0] + '"}\'>' + t[1] + '</button>'; }).join('');
+  var w = wfData(S.scen, S.metric);
+  var d = dcfOf(S.scen), book = A.equity * A.stake / 1000;
+  var cmp = function (v) { return '€' + v.toFixed(1) + 'bn, or ' + (v / book).toFixed(2) + '× book'; };
+  var cLo = cmp(d.lo * A.stake), cHi = cmp(d.hi * A.stake);
+  var READ = {
+    base: 'A decade of negative free cash flow discounted at a rate the tariff frame will not pay. The State’s 70% comes out at ' + cLo + ' at the regulated 5.36%, and ' + cHi + ' at the State’s own funding cost. The asset is worth what it is worth; the gap between those two numbers is an argument about who should own it.',
+    constrained: 'This is the case the shareholder should look at hardest. Movements below the cap, a frozen tariff and a slowed programme leave EBITDA below its FY2025 level in nominal terms, and the State’s 70% falls to ' + cLo + ' at the regulated rate, ' + cHi + ' at its own. Nothing in this scenario requires bad management. It requires only that nothing moves.',
+    stretch: 'Trading the cap for a step-change in gauge, with the return cap renegotiated first, is the only path in this file where the €10bn earns its cost of capital: ' + cLo + ' at the regulated rate, ' + cHi + ' at the State’s own. It requires two decisions the airport cannot take, a replacement movement instrument and a change to what the statute allows the shareholder to earn.'
+  };
+  var rowsT = model(S.scen);
+  var TR = [['Movements', function (r) { return n(r.mvt, 0); }], ['Passengers, m', function (r) { return n(r.pax, 1); }],
+    ['Pax per movement', function (r) { return n(r.pm, 1); }], ['Aero yield, €/pax', function (r) { return '€' + n(r.yld, 2); }],
+    ['Revenue', function (r) { return n(r.rev, 0); }], ['Underlying EBITDA', function (r) { return n(r.ebitda, 0); }],
+    ['EBITDA margin', function (r) { return n(r.ebitda / r.rev * 100, 1) + '%'; }], ['Depreciation', function (r) { return '(' + n(r.da, 0) + ')'; }],
+    ['Net result', function (r) { return par(r.net, 0); }], ['Capital expenditure', function (r) { return '(' + n(r.capex, 0) + ')'; }],
+    ['Free cash flow', function (r) { return par(r.fcf, 0); }], ['Net debt', function (r) { return n(r.nd, 0); }]];
+  var tbl = TR.map(function (r) {
+    return '<tr><td class="lab">' + esc(r[0]) + '</td>' + rowsT.map(function (x) { return '<td class="n">' + r[1](x) + '</td>'; }).join('') + '</tr>';
+  }).join('');
+  return '<h2>The €10bn programme, three ways</h2>' +
+    '<p class="sub">' + esc(SC[S.scen].note) + '</p>' +
+    '<div class="grid3" style="margin-top:18px">' + cards + '</div>' +
+    '<div class="tabs" style="margin-top:26px">' + mtabs + '</div>' +
+    '<div class="card" style="margin-top:12px"><div class="eyebrow">' + esc(w.title) + ' &middot; € million</div>' + waterfall(w) + '</div>' +
+    '<div class="grid2" style="margin-top:20px">' +
+      '<div class="card"><div class="eyebrow">Equity value, discounted cash flow</div>' +
+      '<div class="big" style="margin-top:8px">' + '€' + d.lo.toFixed(1) + 'bn to €' + d.hi.toFixed(1) + 'bn</div>' +
+      '<div class="foot">100% of the equity, at 5.36% and at 2.50%</div>' +
+      '<div class="kv" style="margin-top:12px"><span>The State’s 70%</span><span>€' + (d.lo * A.stake).toFixed(1) + 'bn to €' + (d.hi * A.stake).toFixed(1) + 'bn</span></div>' +
+      '<div class="kv"><span>Book value of the 70%</span><span>€' + book.toFixed(1) + 'bn</span></div></div>' +
+      '<div class="card"><div class="eyebrow">What it means</div><p class="note" style="margin-top:9px">' + esc(READ[S.scen]) + '</p></div>' +
+    '</div>' +
+    '<h3 style="margin-top:28px">The projection, FY2025 to FY2035</h3>' +
+    '<div class="scroll card" style="margin-top:12px"><table><thead><tr><th>' + esc(SC[S.scen].name) + '</th>' +
+    rowsT.map(function (r) { return '<th class="n"' + (r.y === 2025 ? ' style="color:var(--gold);border-bottom-color:var(--gold);cursor:pointer" data-prov="fy25"' : '') + '>' + r.y + (r.y === 2025 ? ' A' : '') + '</th>'; }).join('') +
+    '</tr></thead><tbody>' + tbl + '</tbody></table></div>' +
+    '<p class="foot">Only the FY2025 column is reported. Every other column is modelled from three levers and is not a forecast. ' +
+    '<span class="prov" data-go="tenyears">The ten-year tab</span> holds what is actually on the record.</p>';
+}
+
+/* ---------------- 6. recommendation ---------------- */
+var RECS = [
+  {num: '01', head: 'Earn the cap. No movement growth without a step-change in passengers per movement.',
+   body: 'Make the replacement movement instrument due in November 2026 conditional on gauge rather than on a flight number. The court struck the 478,000 decree because a flight number is not a noise norm, which is an opening rather than a setback: an instrument written on noise and on passengers per movement gives the airport a route to growth and gives the State an enforceable environmental norm. Heathrow runs 177.67 passengers per movement against Amsterdam’s 144.07, and that is on passenger ATM because Heathrow does not disclose total ATM, so the real gap is smaller again. Frankfurt on the same denominator as Amsterdam runs 137.31, which is behind. Half the Heathrow gap is still worth more than any tariff Schiphol can defend, and the number to quote is 34 passengers per movement, not 46.',
+   rests: 'The ten-year series: 144.32 passengers per movement in FY2019 and 144.07 in FY2025. Six years, no gain. H1 2026 reported 146.24 while movements fell 4%. Extraction finding E1: on the same denominator Amsterdam is ahead of Frankfurt, so the case rests on Heathrow rather than on the continental pair. The €10bn programme rebuilds Piers B, C, D and H/M for larger aircraft, so the capital and this lever are the same object.',
+   jl: 'see the ten-year gauge series', tab: 'tenyears',
+   fals: 'Passengers per movement falling below 144.1 for FY2026, which would mean the H1 gain was load factor rather than gauge. Seats per movement is the clean series and Schiphol does not disclose it. Heathrow does: 221.5 seats per ATM at an 80.2% seat factor (HAL Annual Report 2025 p.6). The ask now has a precedent at a directly comparable European hub, so ask for the series in those terms.'},
+  {num: '02', head: 'Fix the return, then the tariff. The statutory return cap is what makes €10bn unfundable.',
+   body: 'Under the Wet luchtvaart airlines bear the cost of the airport with a statutorily limited margin, so capex enters the regulated asset base and mechanically raises future allowed revenue on a capped passenger base. The airport has already shown it cannot price its way out: it withdrew the 2026 increase and discounted daytime charges within thirteen months of a 41.4% rise. Approving the programme without changing the return frame commits the State to funding a regulated asset base at a return below its own cost of capital. Settle the return question before the capital question, not after.',
+   rests: 'Group ROCE of 9.9% in FY2025 against a regulated WACC of 5.36%, on a regulated asset base that is redacted at art. 29 elfde lid Bels and quantified in no public ACM document. The ten-year ROCE series shows 9.9% is a one-year high, not a run rate: the ten-year mean is 3.8%.',
+   jl: 'see the scenarios', tab: 'scenarios',
+   fals: 'A published regulated asset base showing the realised return already at or above the allowed return, which would make this a tariff question rather than a statutory one.'},
+  {num: '03', head: 'Phase the €10bn against demonstrated yield. Tranches, each gated on the peer gap closing.',
+   body: 'Release the capital in tranches rather than as a programme, with each tranche conditional on revenue per passenger closing a stated share of the gap to Frankfurt and Paris, and on passengers per movement holding above the prior year. Sequence that gate rather than simply imposing it: Heathrow reports that growth through larger or fuller aircraft is now limited by terminal capacity, and the €10bn is largely terminal and pier reconstruction, so the capital is what makes the gauge possible. A gate that demands the gauge before funding the building tests the wrong thing. Assets under construction stood at €2,379m of €6,218m of net property, plant and equipment at the end of 2025: 38% of the asset base earns nothing yet and enters the tariff base as it commissions. Gating the tranches keeps that entry under the shareholder’s control instead of the construction schedule’s.',
+   rests: 'Cash flow after capex was negative in eight of the last ten years, cumulatively minus €2,384m, and turned positive by €23m in FY2025. €801m was spent in H1 2026 against €963m of cash capex for the whole of FY2025. Delivery milestones are observable and dateable, so the gate is enforceable.',
+   jl: 'see the cash flow series', tab: 'tenyears',
+   fals: 'Pier A slipping past 2027 or being descoped, which would mean the phasing is being set by delivery capacity rather than by the shareholder.'}
+];
+function viewRec() {
+  var cards = RECS.map(function (r) {
+    return '<div class="card" style="margin-bottom:16px">' +
+      '<div style="display:flex;gap:16px;align-items:flex-start">' +
+      '<div class="mono" style="font-size:22px;color:var(--gold);line-height:1">' + r.num + '</div>' +
+      '<div style="flex:1"><h3>' + esc(r.head) + '</h3>' +
+      '<p class="note" style="margin-top:10px">' + esc(r.body) + '</p>' +
+      '<div class="grid2" style="margin-top:14px">' +
+      '<div><div class="eyebrow">What it rests on</div><p class="note" style="margin-top:6px">' + esc(r.rests) + '</p></div>' +
+      '<div><div class="eyebrow">What would falsify it</div><p class="note" style="margin-top:6px">' + esc(r.fals) + '</p></div></div>' +
+      '<button class="tab" style="margin-top:14px" data-go="' + r.tab + '">' + esc(r.jl) + ' →</button></div></div></div>';
+  }).join('');
+  return '<h2>What we recommend the shareholder does</h2>' +
+    '<p class="sub">Three asks, each with the evidence it rests on and the observation that would kill it. None of them requires a forecast to be right.</p>' +
+    '<div style="margin-top:18px">' + cards + '</div>';
+}
+
+/* ---------------- 7. background ---------------- */
+var CORRECTIONS = [
+  {what: 'AMS yield per passenger, FY2021 and FY2022',
+   was: '€11.20 and €14.80', now: '€14.75 and €15.64',
+   why: 'The source deck carried illustrative anchors for the two pandemic-recovery years. Recomputed from AMS airport-charge revenue of €376m and €821m over 25.5m and 52.5m AMS passengers, both stated in the AR2021 and AR2022 financial performance narratives.'},
+  {what: 'FY2025 capital expenditure',
+   was: '€1,056m, single figure', now: '€963m cash, €1,056m before adjustments, both shown',
+   why: 'RSG publishes both. €1,056m is the key-figures basis at AR2025 p.10 and €963m is the cash outflow in the historical summary at p.251. The ten-year series uses the cash basis so it is comparable across ten years. Recorded as defect D3.'},
+  {what: 'FY2025 EBITDA',
+   was: '€1,122m throughout', now: '€1,098m reported, €1,122m underlying, separated',
+   why: 'The historical summary prints plain EBITDA and the key figures print underlying EBITDA. The €24m wedge is the adjustment set, not rounding. The underlying series does not exist before FY2021 and is left blank rather than back-filled.'},
+  {what: 'Passengers per movement, FY2019 reference',
+   was: '"about 144.3"', now: '144.32, derived and shown',
+   why: 'Now computed on the page from 71.7m AMS passengers over 496,826 AMS movements, both AR2019 p.10. The approximation is replaced by the arithmetic.'},
+  {what: 'AMS passengers and movements, FY2024 and FY2025',
+   was: 'Tier 2, traffic release', now: 'Tier 1, AR2025 p.42',
+   why: 'The network narrative in the 2025 annual report states 68.8m and 477,552 with the 2024 comparatives of 66.8m and 473,815. That is an audited-report figure, so the tier improves.'},
+  {what: 'Aeronautical yield construction',
+   was: '€27.27, one figure', now: '€27.27 business area, €25.86 airport charges, both labelled',
+   why: 'Aviation business-area revenue over AMS passengers gives €27.27. AMS airport charges over AMS passengers gives €25.86 and is the narrower, cleaner construction. The projection keeps €27.27 for continuity with the model; the ten-year series uses €25.86 because that is the only line published back to FY2019.'}
+];
+function viewBackground() {
+  var srcRows = Object.keys(D.ten_year.sources).map(function (k) {
+    var s = D.ten_year.sources[k];
+    return '<tr><td class="lab">' + esc(k) + '</td><td class="mono" style="font-size:11.5px">' + esc(s.file) + '</td>' +
+      '<td class="n">' + esc((s.pages_used || []).join(', ') || '—') + '</td>' +
+      '<td class="dim" style="font-size:12px">' + esc(s.note || s.published || '') + '</td></tr>';
+  }).join('');
+  var tiers = D.ten_year.meta.tier_scale;
+  var tierRows = Object.keys(tiers).map(function (k) {
+    var cls = {T1: 't1', T2: 't2', T3: 't3', ILL: 'ill'}[k];
+    return '<div class="kv"><span><span class="tier ' + cls + '">' + k + '</span></span><span style="font-family:var(--sans);text-align:right;color:var(--ink2);font-size:12.5px">' + esc(tiers[k]) + '</span></div>';
+  }).join('');
+  var defects = D.ten_year.defects.map(function (d) {
+    return '<div class="defect"><b>' + esc(d.id) + ' &middot; ' + esc(d.state) + '</b><p class="note" style="margin-top:4px">' + esc(d.text) + '</p></div>';
+  }).join('');
+  var corr = CORRECTIONS.map(function (c) {
+    return '<tr><td class="lab" style="white-space:normal;max-width:200px">' + esc(c.what) + '</td>' +
+      '<td class="dim mono" style="font-size:11.5px">' + esc(c.was) + '</td>' +
+      '<td class="mono" style="font-size:11.5px;color:var(--gold)">' + esc(c.now) + '</td>' +
+      '<td class="note" style="font-size:12px">' + esc(c.why) + '</td></tr>';
+  }).join('');
+  var rest = D.ten_year.traffic_group.restatements;
+  var restRows = Object.keys(rest).map(function (k) {
+    return '<div class="kv"><span>' + esc(k.replace(/_/g, ' ')) + '</span><span style="font-family:var(--sans);text-align:right;color:var(--ink2);font-size:12.5px;max-width:520px">' + esc(rest[k]) + '</span></div>';
+  }).join('') +
+  '<div class="kv"><span>AMS cargo 2017</span><span style="font-family:var(--sans);text-align:right;color:var(--ink2);font-size:12.5px;max-width:520px">' + esc(D.ten_year.traffic_ams.cargo_note) + '</span></div>';
+  return '<h2>Background: where every figure on this page comes from</h2>' +
+    '<p class="sub">This tab is the audit trail. If a number on another tab is not traceable from here, it should not leave the building.</p>' +
+
+    '<div class="grid2" style="margin-top:20px">' +
+      '<div class="card"><div class="eyebrow">The tier scale</div><div style="margin-top:10px">' + tierRows + '</div>' +
+      '<p class="foot">Everything on the ten-year tab is T1 or T3. Everything on the scenarios tab from FY2026 onward is a model, not a tier. Peer columns and the twenty-two portfolio scores are ILL.</p></div>' +
+      '<div class="card"><div class="eyebrow">Curation state</div>' +
+      '<p class="note" style="margin-top:10px">' + esc(D.ten_year.meta.curation_state) + '</p>' +
+      '<p class="note" style="margin-top:10px">' + esc(D.ten_year.meta.note) + '</p>' +
+      '<div class="kv" style="margin-top:10px"><span>Mapping</span><span>' + esc(D.ten_year.meta.mapping.split('/').pop()) + '</span></div>' +
+      '<div class="kv"><span>Registry</span><span>' + esc(D.ten_year.meta.canonical_registry.split('/').pop()) + '</span></div>' +
+      '<div class="kv"><span>Built</span><span>' + esc(D.ten_year.meta.built) + '</span></div></div>' +
+    '</div>' +
+
+    '<h3 style="margin-top:30px">The corpus, and which pages were read</h3>' +
+    '<div class="scroll card" style="margin-top:12px"><table><thead><tr><th>Ref</th><th>File in the corpus</th><th class="n">Pages</th><th>Note</th></tr></thead>' +
+    '<tbody>' + srcRows + '</tbody></table></div>' +
+    '<p class="foot">Page numbers are the printed page numbers of the PDF as delivered. The corpus folder holds eleven annual reports, FY2015 to FY2025, plus the ACM tariff decision and the allocation system for 2025 to 2027.</p>' +
+
+    '<h3 style="margin-top:30px">What changed against the source dashboard</h3>' +
+    '<p class="sub">This build replaces the mock financial block with the reported record. Six figures moved, and each one moved for a stated reason.</p>' +
+    '<div class="scroll card" style="margin-top:12px"><table><thead><tr><th>Figure</th><th>Was</th><th>Now</th><th>Why</th></tr></thead>' +
+    '<tbody>' + corr + '</tbody></table></div>' +
+
+    '<h3 style="margin-top:30px">Recorded defects</h3>' + defects +
+
+    '<h3 style="margin-top:30px">Restatements the issuer made, carried rather than smoothed</h3>' +
+    '<div class="card" style="margin-top:12px">' + restRows + '</div>' +
+
+    '<h3 style="margin-top:30px">What is not verified, and should not be cited</h3>' +
+    '<div class="card" style="margin-top:12px">' +
+    '<div class="kv"><span>Paris CDG, Frankfurt, Heathrow columns</span><span class="tier ill">unsourced anchors</span></div>' +
+    PEER_DEFECTS.map(function (d) {
+      return '<div class="kv" style="padding-left:16px"><span class="dim">' + esc(d[0]) + '</span>' +
+        '<span style="font-family:var(--sans);text-align:right;color:var(--ink3);font-size:12px;max-width:560px">' + esc(d[1]) + '</span></div>';
+    }).join('') +
+    '<div class="kv"><span>Twenty-two portfolio scores on three axes</span><span class="tier ill">analyst judgement</span></div>' +
+    '<div class="kv"><span>Balance sheets and stakes of the other twenty-one holdings</span><span class="tier t2">not re-verified</span></div>' +
+    '<div class="kv"><span>Every column from FY2026 onward</span><span class="tier ill">modelled, not forecast</span></div>' +
+    '<div class="kv"><span>H1 2026 figures quoted in narrative</span><span class="tier t2">interim release</span></div>' +
+    '<div class="kv"><span>Raad van State and permit dates</span><span class="tier t2">public record, single source</span></div>' +
+    '<p class="foot">' + esc(PF.meta.caveat) + '</p></div>' +
+
+    '<h3 style="margin-top:30px">The peer corpus, pulled and not yet extracted</h3>' +
+    '<p class="sub">' + esc(PEERS.meta.purpose) + '</p>' +
+    '<div class="scroll card" style="margin-top:12px"><table><thead><tr><th>Issuer</th><th>Document</th><th class="n">Pages</th><th>Anchor</th></tr></thead><tbody>' +
+    PEERS.filings.map(function (f) {
+      return '<tr><td class="lab">' + esc(f.issuer) + '</td>' +
+        '<td class="mono" style="font-size:11.5px">' + esc(f.doc) + '</td>' +
+        '<td class="n">' + n(f.pages, 0) + '</td>' +
+        '<td class="dim" style="font-size:12px">' + esc(f.anchor) + '</td></tr>';
+    }).join('') + '</tbody></table></div>' +
+    '<p class="foot">State: ' + esc(PEERS.meta.state) + '. ' + esc(PEERS.next) + '</p>' +
+    '<h3 style="margin-top:30px">The data behind this page</h3>' +
+    '<div class="card" style="margin-top:12px">' +
+    '<p class="note">The whole payload is inlined in this file and is also on disk beside it:</p>' +
+    '<div class="kv" style="margin-top:10px"><span>Ten-year panel, with per-field provenance</span><span>data/schiphol_10y.json</span></div>' +
+    '<div class="kv"><span>Same panel, flat</span><span>data/schiphol_10y.csv</span></div>' +
+    '<div class="kv"><span>Twenty-two participations</span><span>data/portfolio_22.json</span></div>' +
+    '<div class="kv"><span>Peer filings pulled, with what was checked</span><span>data/peer_corpus.json</span></div>' +
+    '<div class="kv"><span>Rebuild from source</span><span>python3 build.py</span></div>' +
+    '<p class="foot">Editing the JSON and re-running the build changes the page. No figure on any tab is typed into the markup.</p></div>';
+}
+
+render();
+
+</script>
+</body>
+</html>
