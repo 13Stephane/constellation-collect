@@ -1,0 +1,698 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>nova curva · entrada rápida</title>
+<style>
+:root{
+  --bg:rgb(25,60,63); --ink:rgb(244,240,233); --gold:rgb(198,165,83);
+  --panel:#17383B; --line:#2B5054; --muted:#7E9895; --dim:#0F2426;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);
+  font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+  overscroll-behavior:none}
+button{font:inherit;color:inherit;background:none;border:none;padding:0;cursor:pointer}
+input{font:inherit}
+
+/* ---- shell: one screen, never scrolls ---- */
+#app{height:100dvh;display:flex;flex-direction:column;overflow:hidden;
+  padding:env(safe-area-inset-top) 10px env(safe-area-inset-bottom)}
+
+/* ---- header: mesa + sessão, always visible ---- */
+header{flex:0 0 auto;padding:10px 2px 8px;border-bottom:1px solid var(--line)}
+#hdr{font-family:Georgia,serif;font-size:clamp(22px,7vw,30px);letter-spacing:.02em;
+  line-height:1.1;margin:0}
+#hdr .sep{color:var(--gold)}
+#hdrsub{font-family:ui-monospace,Menlo,monospace;font-size:10.5px;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--muted);margin-top:3px;
+  display:flex;justify-content:space-between;gap:8px}
+
+/* ---- the four steps ---- */
+#steps{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:6px;padding:8px 0}
+.step{border:1px solid var(--line);border-radius:4px;background:var(--panel);
+  display:flex;flex-direction:column;overflow:hidden;flex:0 0 auto}
+.step.closed{opacity:.38}
+.step.open{flex:1 1 auto;min-height:0;border-color:var(--gold)}
+.step-head{flex:0 0 auto;display:flex;align-items:baseline;gap:8px;padding:9px 11px}
+.step-n{font-family:ui-monospace,Menlo,monospace;font-size:11px;color:var(--gold)}
+.step-t{font-family:Georgia,serif;font-size:15px}
+.step-s{margin-left:auto;font-family:ui-monospace,Menlo,monospace;font-size:10px;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.step-body{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;
+  padding:0 9px 9px;gap:7px}
+
+/* ---- chips (triagem 4x4, muro 4x3) ---- */
+.grid{flex:1 1 auto;min-height:0;display:grid;gap:6px}
+.grid.g16{grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(4,1fr)}
+.grid.g12{grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(3,1fr)}
+.chip{border:1.5px solid var(--line);border-radius:4px;background:var(--dim);
+  color:var(--muted);font-family:Georgia,serif;font-size:clamp(17px,5.4vw,26px);
+  display:flex;align-items:center;justify-content:center;user-select:none;
+  transition:background .08s,border-color .08s,color .08s;touch-action:manipulation}
+.chip[data-v="1"]{background:var(--gold);border-color:var(--gold);color:var(--dim)}
+.chip[data-v="2"]{background:transparent;border-color:var(--gold);color:var(--gold)}
+.chip[data-v="x"]{color:var(--muted);text-decoration:line-through;
+  text-decoration-thickness:2px;border-style:dashed}
+
+/* ---- placement: 7 rows x 3 buttons ---- */
+.axes{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:5px}
+.axis{flex:1 1 0;min-height:0;display:flex;align-items:stretch;gap:5px}
+.axis-n{flex:0 0 22px;display:flex;align-items:center;
+  font-family:ui-monospace,Menlo,monospace;font-size:11px;color:var(--muted)}
+.axis.named .axis-n{flex:0 0 27%;font-family:Georgia,serif;font-size:12px;line-height:1.15;
+  color:var(--ink);overflow:hidden}
+.axis.named .abtn{font-size:clamp(11px,3.1vw,14px)}
+.axis-btns{flex:1 1 auto;display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
+.abtn{border:1.5px solid var(--line);border-radius:4px;background:var(--dim);
+  color:var(--muted);font-size:clamp(12px,3.6vw,15px);display:flex;align-items:center;
+  justify-content:center;touch-action:manipulation}
+.abtn.on{background:var(--gold);border-color:var(--gold);color:var(--dim)}
+
+/* ---- text inputs (the only two in the flow) ---- */
+.field{flex:0 0 auto;display:flex;align-items:center;gap:8px;
+  border:1px solid var(--line);border-radius:4px;background:var(--dim);padding:7px 9px}
+.field label{font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--muted);white-space:nowrap}
+.field input{flex:1 1 auto;min-width:0;background:none;border:none;outline:none;
+  color:var(--ink);font-family:Georgia,serif;font-size:15px}
+
+/* ---- foot: lock · undo · queue ---- */
+.foot{flex:0 0 auto;display:flex;align-items:center;gap:7px}
+.lock{flex:1 1 auto;border:1.5px solid var(--gold);border-radius:4px;color:var(--gold);
+  padding:13px 10px;font-family:ui-monospace,Menlo,monospace;font-size:12px;letter-spacing:.14em;
+  text-transform:uppercase;text-align:center}
+.lock[disabled]{opacity:.35;border-color:var(--line);color:var(--muted)}
+.undo{flex:0 0 auto;border:1.5px solid var(--line);border-radius:4px;padding:13px 12px;
+  font-family:ui-monospace,Menlo,monospace;font-size:12px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--muted)}
+.undo.hide{display:none}
+.quiet{flex:0 0 auto;font-size:12px;color:var(--muted);font-style:italic}
+.readback{flex:1 1 auto;min-height:0;overflow:auto;font-family:Georgia,serif;font-size:14.5px;
+  color:var(--ink);padding:2px 0}
+.readback b{color:var(--gold);font-weight:normal}
+.hint{flex:0 0 auto;font-family:ui-monospace,Menlo,monospace;font-size:9.5px;
+  letter-spacing:.04em;text-transform:uppercase;color:var(--muted);
+  display:flex;align-items:center;justify-content:space-between;gap:8px}
+.pending{color:var(--gold)}
+
+/* ---- the "?" card-text sheet ---- */
+#sheet{position:fixed;inset:0;background:rgba(15,36,38,.94);z-index:20;
+  display:none;flex-direction:column;padding:16px}
+#sheet.on{display:flex}
+#sheet .txt{flex:1 1 auto;overflow:auto;font-family:Georgia,serif;font-size:16px;
+  line-height:1.5;padding-top:18px}
+#sheet .cls{flex:0 0 auto;align-self:flex-end;border:1px solid var(--line);border-radius:4px;
+  padding:9px 16px;font-family:ui-monospace,Menlo,monospace;font-size:12px;color:var(--muted)}
+.qbtn{flex:0 0 auto;align-self:flex-start;border:1px solid var(--line);border-radius:999px;
+  width:26px;height:26px;color:var(--muted);font-size:13px;line-height:1}
+
+/* ---- console ---- */
+#console{height:100dvh;overflow:auto;padding:22px 18px 40px;max-width:820px;margin:0 auto}
+#console h1{font-family:Georgia,serif;font-size:23px;margin:0 0 2px}
+.eyebrow{font-family:ui-monospace,Menlo,monospace;font-size:10.5px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--muted)}
+.cpanel{border:1px solid var(--line);border-radius:4px;background:var(--panel);
+  padding:14px 15px;margin:14px 0}
+.cpanel h2{font-family:Georgia,serif;font-size:16px;margin:0 0 9px;font-weight:normal}
+.opener{display:grid;grid-template-columns:repeat(2,1fr);gap:7px}
+.opener button{border:1.5px solid var(--line);border-radius:4px;padding:11px 9px;
+  text-align:left;font-size:13.5px;color:var(--muted)}
+.opener button.on{border-color:var(--gold);color:var(--gold)}
+.opener button small{display:block;font-family:ui-monospace,Menlo,monospace;font-size:10px;
+  letter-spacing:.1em;text-transform:uppercase;opacity:.75;margin-top:3px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--muted);font-weight:normal;padding:4px 6px 4px 0;
+  border-bottom:1px solid var(--line)}
+td{padding:6px 6px 6px 0;border-bottom:1px solid var(--line);color:var(--ink);
+  font-family:ui-monospace,Menlo,monospace;font-size:11.5px}
+td.na{color:var(--muted)}
+td.ok{color:var(--gold)}
+textarea{width:100%;min-height:190px;background:var(--dim);color:var(--ink);
+  border:1px solid var(--line);border-radius:4px;padding:10px;
+  font-family:ui-monospace,Menlo,monospace;font-size:13px;line-height:1.7;outline:none;resize:vertical}
+.crow{display:flex;gap:8px;align-items:center;margin-top:9px;flex-wrap:wrap}
+.cbtn{border:1.5px solid var(--gold);border-radius:4px;color:var(--gold);padding:9px 15px;
+  font-family:ui-monospace,Menlo,monospace;font-size:11.5px;letter-spacing:.12em;
+  text-transform:uppercase}
+.cbtn.ghost{border-color:var(--line);color:var(--muted)}
+.note{color:var(--muted);font-size:12.5px;margin:6px 0 0}
+.err{color:var(--gold);font-family:ui-monospace,Menlo,monospace;font-size:11.5px;
+  white-space:pre-wrap;margin-top:8px}
+a{color:var(--gold)}
+@media (min-width:760px){ .chip{font-size:30px} }
+</style></head>
+<body>
+
+<!-- ============================ RELATOR ============================ -->
+<div id="app" hidden>
+  <header>
+    <h1 id="hdr">—</h1>
+    <div id="hdrsub"><span>relator</span></div>
+  </header>
+  <div id="steps"></div>
+</div>
+
+<!-- ============================ CONSOLE ============================ -->
+<div id="console" hidden></div>
+
+<!-- ============================ ? SHEET ============================ -->
+<div id="sheet"><div class="txt" id="sheettxt"></div>
+  <button class="cls" onclick="document.getElementById('sheet').classList.remove('on')">fechar</button>
+</div>
+
+<script>
+/* ===================================================================
+   nova curva · entrada rápida — change request 7
+   One screen, four steps, no doors. Every tap saves. Nothing submits.
+
+   CONTENT below is the only block to edit between sessions. The three
+   lists are carried by the deck, not by this file: the surface works
+   with them empty (chips show number/letter only, which is what the
+   relator taps), and the "?" toggle simply says nothing is loaded
+   until a text is put here.
+   =================================================================== */
+
+const CONTENT = {
+  // the sixteen cards, in card order. text: null → the "?" toggle says so.
+  cartas: Array.from({length:16}, (_,i) => ({n:i+1, texto:null})),
+  // the seven axes. nome: null → the row is numbered only.
+  eixos: Array.from({length:7}, (_,i) => ({n:i+1, nome:null})),
+  // the twelve wall items, A–L.
+  muro: Array.from({length:12}, (_,i) => ({l:String.fromCharCode(65+i), texto:null})),
+  // the commitment fork is carried by the model, not by this request.
+  // Fill { pergunta, opcoes:[{id,rotulo}] } to arm step 4.
+  compromisso: null
+};
+
+const TRANSPORT = {
+  endpoint: null,   // e.g. "https://…/nova-curva" — POST {events} / GET ?since=
+  pollMs: 4000
+};
+
+const STEPS = [
+  {id:'triagem',     n:1, titulo:'A triagem',    tipo:'cartas'},
+  {id:'colocacao',   n:2, titulo:'A colocação',  tipo:'eixos'},
+  {id:'muro',        n:3, titulo:'O muro',       tipo:'muro'},
+  {id:'compromisso', n:4, titulo:'O compromisso',tipo:'fork'}
+];
+
+const ROTULO = {
+  cartas: {'1':'submerso', '2':"pôlder", 'x':'sem acordo'},
+  muro:   {'1':'nosso e mais escasso', '2':'genérico ou alugado'},
+  eixos:  {acima:'acima', igual:'igual', abaixo:'abaixo'}
+};
+
+/* ---------------- store: local first, always ---------------- */
+const K = {
+  state:  (s,m) => `nc7:${s}:${m}:state`,
+  queue:  'nc7:queue',
+  control:(s)   => `nc7:${s}:control`,
+  tables: (s)   => `nc7:${s}:tables`
+};
+const ls = {
+  get(k, d){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; }catch(e){ return d; } },
+  set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+};
+const chan = ('BroadcastChannel' in window) ? new BroadcastChannel('nc7') : null;
+
+function blankState(){
+  const st = {cartas:{}, eixos:{}, muro:{}, rival:'', muroExtra:'', fork:null, locked:{}};
+  return st;
+}
+function loadState(s,m){ return Object.assign(blankState(), ls.get(K.state(s,m), {})); }
+function saveState(s,m,st){ ls.set(K.state(s,m), st); registerTable(s,m,st); }
+
+// every table this device has seen, so the console can read them back
+function registerTable(s,m,st){
+  const t = ls.get(K.tables(s), {});
+  t[m] = {at: Date.now(), locked: Object.assign({}, st.locked)};
+  ls.set(K.tables(s), t);
+  if (chan) chan.postMessage({kind:'state', sessao:s, mesa:m, state:st});
+}
+
+/* ---------------- the queue: no spinner, no error ---------------- */
+function enqueue(ev){
+  const q = ls.get(K.queue, []);
+  q.push(ev); ls.set(K.queue, q);
+  flush();
+}
+let flushing = false;
+async function flush(){
+  const q = ls.get(K.queue, []);
+  if (!q.length){ paintNet(); return; }
+  if (flushing || !TRANSPORT.endpoint || !navigator.onLine){ paintNet(); return; }
+  flushing = true;
+  try{
+    const res = await fetch(TRANSPORT.endpoint, {
+      method:'POST', headers:{'content-type':'application/json'},
+      body: JSON.stringify({events:q})
+    });
+    if (res.ok) ls.set(K.queue, ls.get(K.queue, []).slice(q.length));
+  }catch(e){ /* stays queued; the relator never sees this */ }
+  flushing = false;
+  paintNet();
+}
+function pending(){ return ls.get(K.queue, []).length; }
+setInterval(flush, 8000);
+addEventListener('online', flush);
+addEventListener('offline', paintNet);
+
+function paintNet(){
+  const el = document.getElementById('hdrnet');
+  if (!el) return;
+  const p = pending();
+  el.textContent = p ? `${p} por sincronizar` : (TRANSPORT.endpoint ? 'sincronizado' : 'no aparelho');
+  el.className = p ? 'pending' : '';
+}
+
+/* ---------------- undo: one tap, sixty seconds ---------------- */
+let undoEntry = null, undoTimer = null;
+function armUndo(apply){
+  undoEntry = {apply, until: Date.now()+60000};
+  clearInterval(undoTimer);
+  undoTimer = setInterval(() => {
+    if (!undoEntry || Date.now() > undoEntry.until){ undoEntry = null; clearInterval(undoTimer); paintUndo(); }
+    else paintUndo();
+  }, 1000);
+  paintUndo();
+}
+function paintUndo(){
+  const b = document.querySelector('.undo');
+  if (!b) return;
+  if (!undoEntry){ b.classList.add('hide'); return; }
+  b.classList.remove('hide');
+  b.textContent = 'desfazer ' + Math.max(0, Math.ceil((undoEntry.until - Date.now())/1000));
+}
+function doUndo(){
+  if (!undoEntry) return;
+  const f = undoEntry.apply; undoEntry = null; clearInterval(undoTimer);
+  f(); render();
+}
+
+/* ===================================================================
+   RELATOR
+   =================================================================== */
+const qs = new URLSearchParams(location.search);
+const MODE = qs.has('console') ? 'console' : 'relator';
+const SESSAO = (qs.get('sessao') || 'tarde').toLowerCase();
+const MESA = qs.get('mesa') || '';
+let S = null;
+
+function openStep(){
+  const c = ls.get(K.control(SESSAO), {aberto:null});
+  return c.aberto;
+}
+function setOpenStep(id){
+  ls.set(K.control(SESSAO), {aberto:id, at:Date.now()});
+  if (chan) chan.postMessage({kind:'control', sessao:SESSAO, aberto:id});
+  enqueue({t:'control', sessao:SESSAO, aberto:id, at:Date.now()});
+}
+
+function tap(kind, key){
+  const st = S, before = st[kind][key];
+  let next;
+  if (kind === 'cartas') next = before === 'x' ? null : (before == null ? '1' : before === '1' ? '2' : null);
+  else                   next = before == null ? '1' : before === '1' ? '2' : null;
+  commit(kind, key, before, next);
+}
+function longTap(key){                       // sem acordo, triagem only
+  const before = S.cartas[key];
+  commit('cartas', key, before, before === 'x' ? null : 'x');
+}
+function pick(axis, v){                      // acima · igual · abaixo
+  const before = S.eixos[axis];
+  commit('eixos', axis, before, before === v ? null : v);
+}
+function commit(kind, key, before, next){
+  if (next == null) delete S[kind][key]; else S[kind][key] = next;
+  saveState(SESSAO, MESA, S);
+  enqueue({t:'tap', sessao:SESSAO, mesa:MESA, kind, key, v:next ?? null, at:Date.now()});
+  armUndo(() => {
+    if (before == null) delete S[kind][key]; else S[kind][key] = before;
+    saveState(SESSAO, MESA, S);
+    enqueue({t:'undo', sessao:SESSAO, mesa:MESA, kind, key, v:before ?? null, at:Date.now()});
+  });
+  render();
+}
+function setText(field, v){
+  S[field] = v;
+  saveState(SESSAO, MESA, S);
+  enqueue({t:'text', sessao:SESSAO, mesa:MESA, field, v, at:Date.now()});
+  paintNet();
+}
+function lock(stepId){
+  S.locked[stepId] = Date.now();
+  saveState(SESSAO, MESA, S);
+  enqueue({t:'lock', sessao:SESSAO, mesa:MESA, step:stepId, at:Date.now()});
+  undoEntry = null; clearInterval(undoTimer);
+  render();
+}
+
+/* ---- read-back, in plain language ---- */
+function readback(stepId){
+  if (stepId === 'triagem'){
+    const g = v => CONTENT.cartas.filter(c => S.cartas[c.n] === v).map(c => c.n);
+    const parts = [];
+    if (g('1').length) parts.push(`<b>submerso:</b> ${g('1').join(', ')}`);
+    if (g('2').length) parts.push(`<b>pôlder:</b> ${g('2').join(', ')}`);
+    if (g('x').length) parts.push(`<b>sem acordo:</b> ${g('x').join(', ')}`);
+    return parts.join(' &middot; ') || 'nada marcado';
+  }
+  if (stepId === 'muro'){
+    const g = v => CONTENT.muro.filter(c => S.muro[c.l] === v).map(c => c.l);
+    const parts = [];
+    if (g('1').length) parts.push(`<b>nosso e mais escasso:</b> ${g('1').join(', ')}`);
+    if (g('2').length) parts.push(`<b>genérico ou alugado:</b> ${g('2').join(', ')}`);
+    if (S.muroExtra) parts.push(`<b>acrescentado:</b> ${esc(S.muroExtra)}`);
+    return parts.join(' &middot; ') || 'nada marcado';
+  }
+  if (stepId === 'colocacao'){
+    const line = CONTENT.eixos.map(e => S.eixos[e.n] || '—').join(', ');
+    return (SESSAO === 'manha' && S.rival ? `<b>rival:</b> ${esc(S.rival)} &middot; ` : '') + line;
+  }
+  if (stepId === 'compromisso'){
+    if (!S.fork) return 'nada marcado';
+    const o = (CONTENT.compromisso?.opcoes || []).find(x => x.id === S.fork);
+    return o ? o.rotulo : S.fork;
+  }
+  return '';
+}
+function esc(s){ return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+function count(stepId){
+  if (stepId === 'triagem')   return Object.keys(S.cartas).length;
+  if (stepId === 'muro')      return Object.keys(S.muro).length;
+  if (stepId === 'colocacao') return Object.keys(S.eixos).length;
+  if (stepId === 'compromisso') return S.fork ? 1 : 0;
+  return 0;
+}
+
+function render(){
+  document.getElementById('hdr').innerHTML =
+    `MESA ${esc(MESA)} <span class="sep">&middot;</span> ${esc(SESSAO.toUpperCase())}`;
+  const aberto = openStep();
+  const wrap = document.getElementById('steps');
+  wrap.innerHTML = '';
+  for (const st of STEPS){
+    const open = st.id === aberto;
+    const el = document.createElement('div');
+    el.className = 'step ' + (open ? 'open' : 'closed');
+    const locked = !!S.locked[st.id];
+    const status = locked ? 'travado' : open ? 'aberto' : (count(st.id) ? count(st.id) + ' marcas' : '');
+    el.innerHTML = `<div class="step-head"><span class="step-n">${st.n}</span>
+      <span class="step-t">${st.titulo}</span><span class="step-s">${status}</span></div>`;
+    if (open) el.appendChild(body(st, locked));
+    wrap.appendChild(el);
+  }
+  paintNet(); paintUndo();
+}
+
+function body(st, locked){
+  const b = document.createElement('div');
+  b.className = 'step-body';
+  if (locked){
+    b.innerHTML = `<div class="readback">${readback(st.id)}</div>` +
+      (pending() ? `<div class="quiet">guardado no aparelho, vai sincronizar.</div>` : '');
+    return b;
+  }
+  if (st.tipo === 'cartas'){
+    b.appendChild(chipGrid('g16', CONTENT.cartas.map(c => ({key:c.n, face:c.n, texto:c.texto})),
+      'cartas', true, '1 submerso &middot; 2 pôlder &middot; 3 neutro &middot; segurar sem acordo'));
+  }
+  if (st.tipo === 'muro'){
+    b.appendChild(chipGrid('g12', CONTENT.muro.map(c => ({key:c.l, face:c.l, texto:c.texto})),
+      'muro', false, '1 nosso e mais escasso &middot; 2 genérico ou alugado &middot; 3 neutro'));
+    b.appendChild(field('acrescentar', 'muroExtra', S.muroExtra, 'opcional'));
+  }
+  if (st.tipo === 'eixos'){
+    if (SESSAO === 'manha') b.appendChild(field('rival', 'rival', S.rival, 'nome do rival da mesa'));
+    const ax = document.createElement('div'); ax.className = 'axes';
+    for (const e of CONTENT.eixos){
+      const row = document.createElement('div');
+      row.className = 'axis' + (e.nome ? ' named' : '');
+      row.innerHTML = `<div class="axis-n">${e.nome ? esc(e.nome) : e.n}</div>`;
+      const g = document.createElement('div'); g.className = 'axis-btns';
+      for (const v of ['acima','igual','abaixo']){
+        const btn = document.createElement('button');
+        btn.className = 'abtn' + (S.eixos[e.n] === v ? ' on' : '');
+        btn.textContent = v;
+        btn.onclick = () => pick(e.n, v);
+        g.appendChild(btn);
+      }
+      row.appendChild(g); ax.appendChild(row);
+    }
+    b.appendChild(ax);
+  }
+  if (st.tipo === 'fork'){
+    const box = document.createElement('div'); box.className = 'axes';
+    if (!CONTENT.compromisso){
+      box.innerHTML = `<div class="quiet">a bifurcação do compromisso não está carregada
+        neste aparelho. O facilitador anota esta mesa no console.</div>`;
+    } else {
+      const q = document.createElement('div'); q.className = 'hint';
+      q.innerHTML = esc(CONTENT.compromisso.pergunta || ''); box.appendChild(q);
+      for (const o of CONTENT.compromisso.opcoes){
+        const btn = document.createElement('button');
+        btn.className = 'abtn' + (S.fork === o.id ? ' on' : '');
+        btn.style.flex = '1 1 0';
+        btn.textContent = o.rotulo;
+        btn.onclick = () => {
+          const before = S.fork;
+          S.fork = S.fork === o.id ? null : o.id;
+          saveState(SESSAO, MESA, S);
+          enqueue({t:'fork', sessao:SESSAO, mesa:MESA, v:S.fork, at:Date.now()});
+          armUndo(() => { S.fork = before; saveState(SESSAO, MESA, S);
+            enqueue({t:'undo', sessao:SESSAO, mesa:MESA, kind:'fork', v:before, at:Date.now()}); });
+          render();
+        };
+        box.appendChild(btn);
+      }
+    }
+    b.appendChild(box);
+  }
+  // foot: lock + undo, no submit anywhere
+  const foot = document.createElement('div'); foot.className = 'foot';
+  const lk = document.createElement('button'); lk.className = 'lock'; lk.textContent = 'travar';
+  if (st.tipo === 'fork' && !CONTENT.compromisso) lk.disabled = true;
+  lk.onclick = () => lock(st.id);
+  const un = document.createElement('button'); un.className = 'undo hide';
+  un.onclick = doUndo;
+  foot.appendChild(lk); foot.appendChild(un);
+  b.appendChild(foot);
+  return b;
+}
+
+function hint(html, onQuery){
+  const d = document.createElement('div'); d.className = 'hint';
+  d.innerHTML = `<span>${html}</span>`;
+  if (onQuery){
+    const q = document.createElement('button');
+    q.className = 'qbtn'; q.textContent = '?'; q.onclick = onQuery;
+    d.appendChild(q);
+  }
+  return d;
+}
+
+function field(label, key, val, ph){
+  const d = document.createElement('div'); d.className = 'field';
+  d.innerHTML = `<label>${label}</label>`;
+  const i = document.createElement('input');
+  i.value = val || ''; i.placeholder = ph || ''; i.autocomplete = 'off';
+  i.oninput = () => setText(key, i.value);
+  d.appendChild(i);
+  return d;
+}
+
+function chipGrid(cls, items, kind, longPress, legenda){
+  const outer = document.createElement('div');
+  outer.style.cssText = 'flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:6px';
+  const g = document.createElement('div'); g.className = 'grid ' + cls;
+  for (const it of items){
+    const c = document.createElement('button');
+    c.className = 'chip';
+    const v = S[kind][it.key];
+    if (v) c.dataset.v = v;
+    c.textContent = it.face;
+    let timer = null;
+    c.addEventListener('pointerdown', () => {
+      if (!longPress) return;
+      timer = setTimeout(() => { swallowClick(); navigator.vibrate?.(12); longTap(it.key); }, 450);
+    });
+    ['pointerup','pointerleave','pointercancel'].forEach(ev =>
+      c.addEventListener(ev, () => clearTimeout(timer)));
+    c.addEventListener('contextmenu', e => e.preventDefault());
+    c.onclick = () => { if (clickSwallowed()) return; tap(kind, it.key); };
+    g.appendChild(c);
+  }
+  outer.appendChild(g);
+  outer.appendChild(hint(legenda, () => showTexts(items)));
+  return outer;
+}
+
+/* a long press must not also fire the click that follows it */
+let swallowUntil = 0;
+function swallowClick(){ swallowUntil = Date.now() + 700; }
+function clickSwallowed(){ return Date.now() < swallowUntil; }
+
+function showTexts(items){
+  const t = items.map(i => i.texto ? `<b>${esc(String(i.face))}</b> — ${esc(i.texto)}` : null)
+                 .filter(Boolean);
+  document.getElementById('sheettxt').innerHTML = t.length ? t.join('<br><br>')
+    : 'os textos das cartas não estão carregados neste aparelho.';
+  document.getElementById('sheet').classList.add('on');
+}
+
+/* ===================================================================
+   CONSOLE — one screen: open a step, watch the tables, type the fallback
+   =================================================================== */
+function renderConsole(){
+  const el = document.getElementById('console');
+  const aberto = openStep();
+  const tables = ls.get(K.tables(SESSAO), {});
+  const mesas = Object.keys(tables).sort((a,b) => Number(a) - Number(b));
+  el.innerHTML = `
+    <div class="eyebrow">nova curva &middot; console do facilitador</div>
+    <h1>${esc(SESSAO.toUpperCase())}</h1>
+    <div class="cpanel">
+      <h2>O passo aberto</h2>
+      <div class="opener">${STEPS.map(s => `
+        <button class="${s.id === aberto ? 'on' : ''}" data-step="${s.id}">
+          ${s.titulo}<small>${s.id === aberto ? 'aberto' : 'fechado'}</small></button>`).join('')}
+        <button class="${!aberto ? 'on' : ''}" data-step="">Fechar todos<small>nenhum passo</small></button>
+      </div>
+      <p class="note">O relator não escolhe onde ir. O passo aberto aqui é o passo
+        que abre em todas as mesas.</p>
+    </div>
+    <div class="cpanel">
+      <h2>As mesas</h2>
+      <table><thead><tr><th>mesa</th><th>triagem</th><th>colocação</th><th>muro</th>
+        <th>compromisso</th></tr></thead><tbody>
+        ${mesas.length ? mesas.map(m => {
+          const st = loadState(SESSAO, m);
+          const cell = id => st.locked[id]
+            ? `<td class="ok">travado</td>`
+            : `<td class="na">${countFor(st, id) || '—'}</td>`;
+          return `<tr><td>${esc(m)}</td>${cell('triagem')}${cell('colocacao')}${cell('muro')}${cell('compromisso')}</tr>`;
+        }).join('') : `<tr><td colspan="5" class="na">nenhuma mesa neste aparelho</td></tr>`}
+      </tbody></table>
+    </div>
+    <div class="cpanel">
+      <h2>Entrada pelo facilitador</h2>
+      <p class="note">Uma linha por mesa e por passo. Os três formatos se distinguem sozinhos:
+        dígitos são a triagem, letras são o muro, palavras são a colocação.</p>
+      <textarea id="fb" spellcheck="false" placeholder="3: 1,2,3,7 | 16
+3: A,C,F | D,J
+3: acima,igual,abaixo,igual,abaixo,acima,igual"></textarea>
+      <div class="crow">
+        <button class="cbtn" id="fbgo">Gravar</button>
+        <button class="cbtn ghost" id="fbclear">Limpar</button>
+        <span class="note" id="fbnote"></span>
+      </div>
+      <div class="err" id="fberr"></div>
+    </div>
+    <p class="note">QR do relator: <code>?mesa=3&amp;sessao=${esc(SESSAO)}</code> &middot;
+      por sincronizar: <span id="hdrnet">—</span></p>`;
+  el.querySelectorAll('[data-step]').forEach(b => b.onclick = () => {
+    setOpenStep(b.dataset.step || null); renderConsole();
+  });
+  el.querySelector('#fbgo').onclick = runFallback;
+  el.querySelector('#fbclear').onclick = () => {
+    el.querySelector('#fb').value = ''; el.querySelector('#fberr').textContent = '';
+    el.querySelector('#fbnote').textContent = '';
+  };
+  paintNet();
+}
+function countFor(st, id){
+  if (id === 'triagem')   return Object.keys(st.cartas || {}).length;
+  if (id === 'muro')      return Object.keys(st.muro || {}).length;
+  if (id === 'colocacao') return Object.keys(st.eixos || {}).length;
+  if (id === 'compromisso') return st.fork ? 1 : 0;
+  return 0;
+}
+
+const VALORES = ['acima','igual','abaixo'];
+function runFallback(){
+  const raw = document.getElementById('fb').value;
+  const errs = [], done = [];
+  raw.split('\n').forEach((line, i) => {
+    const t = line.trim();
+    if (!t) return;
+    const m = t.match(/^(\d+)\s*:\s*(.*)$/);
+    if (!m){ errs.push(`linha ${i+1}: falta "mesa:"`); return; }
+    const mesa = m[1];
+    const halves = m[2].split('|').map(h => h.split(',').map(x => x.trim()).filter(Boolean));
+    const flat = halves.flat();
+    if (!flat.length){ errs.push(`linha ${i+1}: linha vazia`); return; }
+    const st = loadState(SESSAO, mesa);
+    if (flat.every(x => /^\d+$/.test(x))){
+      st.cartas = {};
+      halves.forEach((h, j) => h.forEach(x => {
+        const n = Number(x);
+        if (n < 1 || n > 16) errs.push(`linha ${i+1}: carta ${x} fora de 1–16`);
+        else st.cartas[n] = j === 0 ? '1' : '2';
+      }));
+      done.push(`${mesa} triagem`);
+    } else if (flat.every(x => /^[A-La-l]$/.test(x))){
+      st.muro = {};
+      halves.forEach((h, j) => h.forEach(x => { st.muro[x.toUpperCase()] = j === 0 ? '1' : '2'; }));
+      done.push(`${mesa} muro`);
+    } else if (flat.every(x => VALORES.includes(x.toLowerCase()))){
+      if (flat.length !== 7) errs.push(`linha ${i+1}: ${flat.length} eixos, esperados 7`);
+      st.eixos = {};
+      flat.slice(0,7).forEach((x, j) => { st.eixos[j+1] = x.toLowerCase(); });
+      done.push(`${mesa} colocação`);
+    } else {
+      errs.push(`linha ${i+1}: não são dígitos, nem letras A–L, nem acima/igual/abaixo`);
+      return;
+    }
+    saveState(SESSAO, mesa, st);
+    enqueue({t:'fallback', sessao:SESSAO, mesa, line:t, at:Date.now()});
+  });
+  renderConsole();
+  document.getElementById('fb').value = raw;
+  document.getElementById('fberr').textContent = errs.join('\n');
+  document.getElementById('fbnote').textContent = done.length ? done.join(' · ') : 'nada gravado';
+}
+
+/* ---------------- boot ---------------- */
+if (MODE === 'console'){
+  document.getElementById('app').remove();          // keeps #hdrnet unique
+  document.getElementById('console').hidden = false;
+  renderConsole();
+  if (chan) chan.onmessage = e => { if (e.data?.sessao === SESSAO) renderConsole(); };
+  addEventListener('storage', renderConsole);
+} else {
+  if (!MESA){
+    document.body.innerHTML = `<div id="console"><div class="eyebrow">nova curva</div>
+      <h1>Falta a mesa</h1>
+      <p class="note">Este endereço abre sem número de mesa. Use o QR da mesa, ou
+      acrescente <code>?mesa=3&amp;sessao=tarde</code>. Mesa errada e sessão errada são as
+      duas falhas que estragam os dados em silêncio, por isso a tela não abre sem elas.</p>
+      <p class="note"><a href="?console=1&amp;sessao=${esc(SESSAO)}">console do facilitador</a></p>
+      </div>`;
+  } else {
+    S = loadState(SESSAO, MESA);
+    document.getElementById('app').hidden = false;
+    render();
+    if (chan) chan.onmessage = e => {
+      if (e.data?.kind === 'control' && e.data.sessao === SESSAO) render();
+    };
+    addEventListener('storage', e => { if (e.key === K.control(SESSAO)) render(); });
+    setInterval(() => { if (TRANSPORT.endpoint) pullControl(); }, TRANSPORT.pollMs);
+  }
+}
+async function pullControl(){
+  try{
+    const r = await fetch(TRANSPORT.endpoint + '?sessao=' + encodeURIComponent(SESSAO));
+    if (!r.ok) return;
+    const d = await r.json();
+    if (d && d.aberto !== undefined){
+      const c = ls.get(K.control(SESSAO), {});
+      if (c.aberto !== d.aberto){ ls.set(K.control(SESSAO), {aberto:d.aberto, at:Date.now()}); render(); }
+    }
+  }catch(e){ /* quiet */ }
+}
+</script>
+</body></html>
