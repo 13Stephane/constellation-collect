@@ -514,7 +514,7 @@ function render() {
     : (S.tab === 'decisions' ? null : CRUMB[S.tab]);
   el('crumb').innerHTML = cr ? '<div class="crumb"><button class="back" data-back="1">← back</button><span>' + esc(cr) + '</span></div>' : '';
   var v = el('view');
-  if (S.hold) v.innerHTML = viewHold();
+  if (S.hold) v.innerHTML = viewPortfolio(true) + '<div id="holdcard">' + viewHold() + '</div>';
   else v.innerHTML = ({portfolio: viewPortfolio, schiphol: viewSchiphol, tenyears: viewTenYears,
     benchmark: viewBenchmark, scenarios: viewScenarios, programme: viewProgramme,
     recommendation: viewRec, background: viewBackground, deck: viewDeck,
@@ -539,7 +539,13 @@ document.addEventListener('click', function (e) {
   }
   if (t.dataset.go) return set({tab: t.dataset.go, hold: null, yieldPick: null, driverPick: null});
   if (t.dataset.back) return set(S.hold ? {hold: null} : {tab: BACKTO[S.tab] || 'portfolio'});
-  if (t.dataset.hold) return set({tab: 'portfolio', hold: t.dataset.hold});
+  if (t.dataset.hold) {
+    set({tab: 'portfolio', hold: t.dataset.hold});
+    var card = el('holdcard');
+    if (card) card.scrollIntoView({block: 'start',
+      behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'});
+    return;
+  }
   if (t.dataset.prov) { e.stopPropagation(); return set({prov: t.dataset.prov}); }
   if (t.dataset.close) return set({prov: null});
   if (t.dataset.set) { var p = JSON.parse(t.dataset.set); return set(p); }
@@ -586,8 +592,9 @@ function scatter(xk, yk, xlab, ylab, hi, lo) {
   var dots = PF.holdings.map(function (h) {
     var sz = sizeOf(h), none = sz === null || sz === undefined;
     var cx = px(h[xk]), cy = py(h[yk]), r = none ? 3.2 : 2.4 + Math.sqrt(sz) * K;
-    var hot = S.hover === h.id, end = h[xk] > 7.2;
-    var dim = S.hover ? !hot : (S.pick ? h.posture !== S.pick : false);
+    var focusId = S.hover || S.hold;
+    var hot = focusId === h.id, end = h[xk] > 7.2;
+    var dim = focusId ? !hot : (S.pick ? h.posture !== S.pick : false);
     var fill = FILL[h.posture];
     return '<g data-hov="' + h.id + '" data-hold="' + h.id + '" style="cursor:pointer" opacity="' + (dim ? 0.22 : 0.92) + '">' +
       '<circle cx="' + cx + '" cy="' + cy + '" r="' + r.toFixed(1) + '"' +
@@ -734,7 +741,7 @@ function rubricBlock() {
     '<p class="foot">' + esc(R.frame) + '</p>';
 }
 
-function viewPortfolio() {
+function viewPortfolio(chartsOnly) {
   var WCOUNT = {strategic: 0, split: 0, non_strategic: 0, none: 0};
   PF.holdings.forEach(function (h) { WCOUNT[wennikClass(h.id)]++; });
   var legend = [['g', 'the company holds', 'sets terms others must accept'],
@@ -823,7 +830,7 @@ function viewPortfolio() {
         '<p class="foot">' + esc(B._source) + '</p></div>';
     })() + '</div>';
 
-  return '<h2>Where the Dutch state’s money sits, and what it is exposed to</h2>' +
+  var charts = '<h2>Where the Dutch state’s money sits, and what it is exposed to</h2>' +
     // The caption used to say "dot area proportional to total assets", which the
     // radius formula does not do: the square root plus the floor turn a 950x
     // spread in assets into a 49x spread in area.
@@ -841,7 +848,11 @@ function viewPortfolio() {
     '<div class="tabs" style="margin-top:12px">' +
     [['state', 'size by the State\u2019s equity'], ['assets', 'size by total assets']].map(function (o) {
       return '<button class="tab' + (S.size === o[0] ? ' on' : '') + '" data-set=\'{"size":"' + o[0] + '"}\'>' + o[1] + '</button>';
-    }).join('') + '</div>' + wennink +
+    }).join('') + '</div>';
+  // With a company open, the charts stay and everything explanatory stands down:
+  // the reference blocks are there to be read, not to be scrolled past.
+  if (chartsOnly) return charts;
+  return charts + wennink +
     '<p class="foot">Scores are analyst judgements against the rubric below, not measurements, and each is meant to be argued with. ' +
     'Balance sheets and stakes are Tier 2 and were not re-verified against the filings in this pass. ' +
     '<span class="prov" data-go="background">See the background tab</span> for what is reported and what is asserted.</p>' +
