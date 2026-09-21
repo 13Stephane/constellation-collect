@@ -261,7 +261,7 @@ var DER = (function () {
 var S = {
   tab: 'portfolio', hold: null, hover: null,
   scen: 'base', metric: 'ebitda', bench: 'yield', series: 'revenue',
-  yieldPick: null, driverPick: null, prov: null, sort: false, slide: 0,
+  yieldPick: null, driverPick: null, prov: null, colour: 'wennink', slide: 0,
   // The leverage the reader is willing to let the balance sheet carry. An
   // assumption, not a disclosure: the page does not know Schiphol's rating
   // guidance. It does not enter model(), it only reads its output.
@@ -408,7 +408,7 @@ var BACKTO = {schiphol: 'portfolio', tenyears: 'schiphol', benchmark: 'tenyears'
 var FILL = {g: '#C6A553', c: '#9FB3B0', r: '#A05B4A'};
 // Wennink's sort, overlaid on the same dots. Gold keeps, rust sells, dim unclassified.
 var WS = PF.wennink_sort;
-var WFILL = {strategic: '#C6A553', split: '#8FCE9A', non_strategic: '#A05B4A', none: '#3E5A5C'};
+var WFILL = {strategic: '#C6A553', split: '#8FCE9A', non_strategic: '#A05B4A', none: '#5F7D80'};
 function wennikClass(id) {
   if (WS.classes.strategic.indexOf(id) >= 0) return 'strategic';
   if (WS.classes.split.indexOf(id) >= 0) return 'split';
@@ -492,7 +492,7 @@ function scatter(xk, yk, xlab, ylab, hi, lo) {
   var dots = PF.holdings.map(function (h) {
     var cx = px(h[xk]), cy = py(h[yk]), r = 2.4 + Math.sqrt(h.total_assets_bn) * 0.95;
     var hot = S.hover === h.id, dim = S.hover && !hot, end = h[xk] > 7.2;
-    var fill = S.sort ? WFILL[wennikClass(h.id)] : FILL[h.posture];
+    var fill = S.colour === 'wennink' ? WFILL[wennikClass(h.id)] : FILL[h.posture];
     return '<g data-hov="' + h.id + '" data-hold="' + h.id + '" style="cursor:pointer" opacity="' + (dim ? 0.22 : 0.92) + '">' +
       '<circle cx="' + cx + '" cy="' + cy + '" r="' + r.toFixed(1) + '" fill="' + fill + '"' +
       (hot ? ' stroke="#F4F0E9" stroke-width="1.6"' : '') + '/>' +
@@ -507,7 +507,73 @@ function scatter(xk, yk, xlab, ylab, hi, lo) {
     '<text x="54" y="366" fill="#7E9895" font-size="9.5" font-family="ui-monospace,Menlo,monospace">' + esc(lo) + '</text>' +
     dots + '</svg>';
 }
+/* The four axes, explained under the two charts they are the axes OF.
+   Each card says which panel and which direction it is, so a reader who has
+   just looked at a dot can find the scale that put it there. The components
+   come out of the deck's own rubric slide; nothing here is invented at render. */
+var AXIS_WHERE = {
+  value_to_nl: ['Reading one', 'horizontal'], return_to_state: ['Reading one', 'vertical'],
+  investment_need_2035: ['Reading two', 'horizontal'], geopolitical_exposure: ['Reading two', 'vertical']
+};
+function rubricCard(a) {
+  var w = AXIS_WHERE[a.key] || ['', ''];
+  var body = '';
+  if (a.components) {
+    var top = Math.max.apply(null, a.components.map(function (c) { return c.weight; }));
+    body = '<div style="margin-top:12px">' + a.components.map(function (c) {
+      return '<div style="margin-top:9px">' +
+        '<div style="display:flex;justify-content:space-between;gap:12px;align-items:baseline">' +
+        '<span style="font-size:13px;color:var(--ink)">' + esc(c.what) + '</span>' +
+        '<span class="mono" style="font-size:12px;color:var(--gold)">' + c.weight + '%</span></div>' +
+        '<div class="bar" style="height:3px;margin-top:4px;width:' + (c.weight / top * 100).toFixed(0) +
+        '%;background:var(--gold);opacity:.55"></div>' +
+        '<div class="foot" style="margin-top:3px">' + esc(c.gloss) + '</div></div>';
+    }).join('') + '</div>';
+  }
+  if (a.bands) {
+    body += '<div style="margin-top:12px">' + a.bands.map(function (b) {
+      return '<div class="kv"><span class="mono" style="color:var(--gold);font-size:12.5px">' +
+        (b.lo === b.hi ? b.lo : b.lo + '\u2013' + b.hi) + '</span>' +
+        '<span style="font-family:var(--sans);text-align:right;color:var(--ink2)">' + esc(b.means) + '</span></div>';
+    }).join('') + '</div>';
+  }
+  if (a.domains) {
+    body += '<div style="margin-top:12px"><div class="eyebrow">The six domains, each scored 0 to 3</div>' +
+      '<div class="lg" style="margin-top:7px;gap:8px">' + a.domains.map(function (d) {
+        return '<span class="tier">' + esc(d) + '</span>';
+      }).join('') + '</div></div>';
+  }
+  return '<div class="card">' +
+    '<div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline">' +
+    '<h3>' + esc(a.name) + '</h3>' +
+    '<span class="eyebrow" style="white-space:nowrap">' + esc(w[0]) + ' &middot; ' + esc(w[1]) + '</span></div>' +
+    '<div class="foot" style="margin-top:2px">' + esc(a.kind) + '</div>' +
+    body +
+    '<p class="note" style="margin-top:13px;padding-left:10px;border-left:2px solid var(--line)">' + esc(a.note) + '</p>' +
+    '</div>';
+}
+function rubricBlock() {
+  var R = PF.rubric;
+  return '<h3 style="margin-top:30px">What the four axes are made of</h3>' +
+    '<p class="sub">Every dot above is placed by these four scales. Two of them are the axes of the first panel and two are the axes of the second.</p>' +
+    // Two columns, and the rubric's own order would interleave the panels. Sort
+    // so each row is one reading: value and return, then capital call and exposure.
+    '<div class="grid2" style="margin-top:14px">' +
+    ['value_to_nl', 'return_to_state', 'investment_need_2035', 'geopolitical_exposure']
+      .map(function (k) { return R.axes.filter(function (a) { return a.key === k; })[0]; })
+      .filter(Boolean).map(rubricCard).join('') + '</div>' +
+    '<div class="card" style="margin-top:14px;border-color:rgba(160,91,74,.45)">' +
+    '<div class="eyebrow" style="color:var(--rust)">What this rubric cannot tell you</div>' +
+    '<p class="note" style="margin-top:9px">' + esc(R._caveat) + '</p>' +
+    '<p class="foot">' + esc(R._source) + '</p>' +
+    '<p class="foot">Return to the state is the exception: it was not on slides 3 and 4 at all and was re-scored against these bands, one holding at a time. ' +
+    'Open any holding to see which band it was put in and why.</p></div>' +
+    '<p class="foot">' + esc(R.frame) + '</p>';
+}
+
 function viewPortfolio() {
+  var WCOUNT = {strategic: 0, split: 0, non_strategic: 0, none: 0};
+  PF.holdings.forEach(function (h) { WCOUNT[wennikClass(h.id)]++; });
   var legend = [['g', 'holds', 'sets terms others must accept'],
                 ['c', 'participates', 'on equal footing, substitutable at the margin'],
                 ['r', 'depends', 'on a route, supplier or decision seat it does not control']]
@@ -517,7 +583,7 @@ function viewPortfolio() {
     }).join('');
   var AXL = [['value_to_nl', 'Value to the Netherlands'], ['return_to_state', 'Return to the state'],
              ['investment_need_2035', 'Investment need to 2035'], ['geopolitical_exposure', 'Geopolitical exposure']];
-  var wennink = !S.sort ? '' :
+  var wennink = S.colour !== 'wennink' ? '' :
     '<div class="card" style="margin-top:18px;border-color:rgba(198,165,83,.5)">' +
     '<div class="eyebrow" style="color:var(--gold)">What the sort is sorting by</div>' +
     '<p class="note" style="margin-top:9px;font-family:var(--serif);font-size:14px;color:var(--ink)">\u201c' + esc(WS.quote) + '\u201d</p>' +
@@ -577,17 +643,19 @@ function viewPortfolio() {
     '<div class="grid2" style="margin-top:18px">' +
       '<div class="card"><div class="eyebrow">Reading one &middot; value against return</div>' + scatter('value_to_nl', 'return_to_state', 'Value to the Netherlands', 'Return to the state', 'earns its keep twice', 'the mandate, priced') + '</div>' +
       '<div class="card"><div class="eyebrow">Reading two &middot; capital call against geopolitical exposure</div>' + scatter('investment_need_2035', 'geopolitical_exposure', 'Investment need to 2035', 'Geopolitical exposure', 'expensive and exposed', 'cheap to hold') + '</div>' +
-    '</div><div class="lg">' + (S.sort
+    '</div><div class="lg">' + (S.colour === 'wennink'
       ? [['strategic', 'strategically crucial'], ['split', 'named on both sides'],
-         ['non_strategic', 'not strategic, sellable'], ['none', 'not sorted by Wennink']]
-        .map(function (l) { return '<div><span class="dot" style="background:' + WFILL[l[0]] + '"></span>' + l[1] + '</div>'; }).join('')
+         ['non_strategic', 'not strategic, sellable'], ['none', 'not named by Wennink']]
+        .map(function (l) { return '<div><span class="dot" style="background:' + WFILL[l[0]] + '"></span>' + l[1] +
+          ' <span class="dim">' + WCOUNT[l[0]] + ' of ' + PF.holdings.length + '</span></div>'; }).join('')
       : legend) + '</div>' +
-    '<div class="tabs" style="margin-top:14px"><button class="tab' + (S.sort ? ' on' : '') +
-      '" data-set=\'{"sort":' + (S.sort ? 'false' : 'true') + '}\'>' +
-      (S.sort ? 'back to posture' : 'overlay the Wennink sort') + '</button></div>' + wennink +
-    '<p class="foot">Scores are analyst judgements against the rubric, not measurements, and each is meant to be argued with. ' +
+    '<div class="tabs" style="margin-top:14px"><button class="tab' + (S.colour === 'posture' ? ' on' : '') +
+      '" data-set=\'{"colour":"' + (S.colour === 'wennink' ? 'posture' : 'wennink') + '"}\'>' +
+      (S.colour === 'wennink' ? 'colour by posture instead' : 'back to the Wennink sort') + '</button></div>' + wennink +
+    '<p class="foot">Scores are analyst judgements against the rubric below, not measurements, and each is meant to be argued with. ' +
     'Balance sheets and stakes are Tier 2 and were not re-verified against the filings in this pass. ' +
-    '<span class="prov" data-go="background">See the background tab</span> for what is reported and what is asserted.</p>';
+    '<span class="prov" data-go="background">See the background tab</span> for what is reported and what is asserted.</p>' +
+    rubricBlock();
 }
 
 /* ---------------- 1b. holding drill ---------------- */
@@ -1401,9 +1469,10 @@ function viewProgramme() {
   // The end bar is the gap itself, not the clamped requirement: where the
   // threshold leaves room, the bar reads as headroom instead of pretending
   // the shortfall is zero. The card above clamps; the chart does not.
-  var FW = {title: 'How the capital programme is funded, FY2026 to FY2035',
+  var SCN = SC[S.scen].name.toLowerCase();
+  var FW = {title: 'How the ' + SCN + ' case funds its capital, FY2026 to FY2035',
     start: F.capex, end: F.gap,
-    startLabel: 'capital|programme',
+    startLabel: SCN + ' case|' + (F.capex / 1000).toFixed(1) + 'bn',
     endLabel: (F.gap > 0 ? 'unfunded|at ' : 'headroom|at ') + lvTxt(),
     steps: [['less operating|cash', -F.opCash], ['plus dividends|paid', F.div],
             ['less debt within|' + lvTxt(), -F.debtRoom]]};
@@ -1487,12 +1556,19 @@ function viewProgramme() {
     '<p class="sub">Five bars and one identity. Capital spent, less the cash the business throws off, ' +
     'plus the dividends it pays out anyway, less the debt the threshold will carry. What is left is ' +
     'the last bar. Move the slider on the scenarios tab and the last bar moves.</p>' +
+    '<p class="sub">The first bar is what the <b>' + esc(SC[S.scen].name) + '</b> case spends, not the announced figure. ' +
+    'Only the base case is \u20ac' + PR.announced.amount_bn + '.0bn: constrained holds capital to \u20ac0.6bn a year ' +
+    'and stretch front-loads it at \u20ac1.3bn, because stretch is the case where the cap is traded for gauge and the ' +
+    'piers have to come forward to earn it.</p>' +
     '<div class="card" style="margin-top:12px"><div class="eyebrow">' + esc(FW.title) + ' &middot; \u20ac million</div>' +
     waterfall(FW) +
     '<p class="note" style="margin-top:10px">Airlines fund the operating cash through the tariff as the ' +
     'asset base commissions. The State funds nothing directly in the model. By default the last bar is ' +
     'the shareholder\u2019s line.</p>' +
-    '<div class="kv" style="margin-top:12px"><span>Capital programme, FY2026 to FY2035</span><span>\u20ac' + n(F.capex, 0) + 'm</span></div>' +
+    '<div class="kv" style="margin-top:12px"><span>Announced, ' + esc(PR.announced.announced_on) + '</span>' +
+    '<span class="dim">\u20ac' + n(PR.announced.amount_bn * 1000, 0) + 'm</span></div>' +
+    '<div class="kv"><span>Capital spent in the ' + esc(SC[S.scen].name) + ' case, FY2026 to FY2035</span>' +
+    '<span' + (F.capex !== PR.announced.amount_bn * 1000 ? ' style="color:var(--gold)"' : '') + '>\u20ac' + n(F.capex, 0) + 'm</span></div>' +
     '<div class="kv"><span>Operating cash after tax and interest</span><span>\u20ac' + n(F.opCash, 0) + 'm</span></div>' +
     '<div class="kv"><span>Dividends paid, 40% of positive net result</span><span>\u20ac' + n(F.div, 0) + 'm</span></div>' +
     '<div class="kv"><span>New net debt, FY2025 to FY2035</span><span>\u20ac' + n(F.newDebt, 0) + 'm</span></div>' +
