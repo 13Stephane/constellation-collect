@@ -253,6 +253,12 @@ var DER = (function () {
     ppm: t.passengers_m.map(function (p, i) { return p * 1e6 / t.movements[i]; }),
     yld: ac.map(function (v, i) { return v === null ? null : v / t.passengers_m[i]; }),
     margin: f.ebitda.map(function (e, i) { return e / f.revenue[i] * 100; }),
+    ebitMargin: f.operating_result.map(function (e, i) { return e / f.revenue[i] * 100; }),
+    // Capital employed = total assets less current liabilities, year-end. The
+    // historical summary publishes no debt line, so equity plus net debt cannot
+    // be built for ten years; this construction can, from p.251 alone.
+    capEmployed: f.total_assets.map(function (a, i) { return a - f.current_liabilities[i]; }),
+    capTurn: f.revenue.map(function (r, i) { return r / (f.total_assets[i] - f.current_liabilities[i]); }),
     capexPct: f.investments_intangibles_ppe.map(function (c, i) { return Math.abs(c) / f.revenue[i] * 100; })
   };
 })();
@@ -442,8 +448,9 @@ function render() {
 }
 
 document.addEventListener('click', function (e) {
-  var t = e.target.closest('[data-go],[data-back],[data-hold],[data-prov],[data-set],[data-close]');
+  var t = e.target.closest('[data-go],[data-back],[data-hold],[data-prov],[data-set],[data-close],[data-clear]');
   if (!t) return;
+  if (t.dataset.clear) return S.hover === null ? undefined : set({hover: null});
   if (t.dataset.go) return set({tab: t.dataset.go, hold: null, yieldPick: null, driverPick: null});
   if (t.dataset.back) return set(S.hold ? {hold: null} : {tab: BACKTO[S.tab] || 'portfolio'});
   if (t.dataset.hold) return set({tab: 'portfolio', hold: t.dataset.hold});
@@ -477,7 +484,7 @@ function modalProv(p) {
 }
 
 /* ---------------- 1. portfolio ---------------- */
-function scatter(xk, yk, xlab, ylab, hi, lo) {
+function scatter(xk, yk, xlab, ylab, hi, lo, palette) {
   var px = function (v) { return 52 + (v / 11) * 496; };
   var py = function (v) { return 352 - (v / 11) * 328; };
   var ticks = [0, 2, 4, 6, 8, 10];
@@ -492,7 +499,7 @@ function scatter(xk, yk, xlab, ylab, hi, lo) {
   var dots = PF.holdings.map(function (h) {
     var cx = px(h[xk]), cy = py(h[yk]), r = 2.4 + Math.sqrt(h.total_assets_bn) * 0.95;
     var hot = S.hover === h.id, dim = S.hover && !hot, end = h[xk] > 7.2;
-    var fill = S.colour === 'wennink' ? WFILL[wennikClass(h.id)] : FILL[h.posture];
+    var fill = palette === 'wennink' ? WFILL[wennikClass(h.id)] : FILL[h.posture];
     return '<g data-hov="' + h.id + '" data-hold="' + h.id + '" style="cursor:pointer" opacity="' + (dim ? 0.22 : 0.92) + '">' +
       '<circle cx="' + cx + '" cy="' + cy + '" r="' + r.toFixed(1) + '" fill="' + fill + '"' +
       (hot ? ' stroke="#F4F0E9" stroke-width="1.6"' : '') + '/>' +
@@ -500,7 +507,8 @@ function scatter(xk, yk, xlab, ylab, hi, lo) {
       'text-anchor="' + (end ? 'end' : 'start') + '" fill="' + (hot ? '#F4F0E9' : '#AFC3C0') + '" ' +
       'font-size="' + (hot ? 12.5 : 10.5) + '" font-family="ui-monospace,Menlo,monospace">' + esc(h.label) + '</text></g>';
   }).join('');
-  return '<svg viewBox="0 0 560 412" width="100%" role="img">' + g + lab +
+  return '<svg viewBox="0 0 560 412" width="100%" role="img">' +
+    '<rect data-clear="1" x="0" y="0" width="560" height="412" fill="transparent"/>' + g + lab +
     '<text x="300" y="392" fill="#7E9895" font-size="10" font-family="ui-monospace,Menlo,monospace" text-anchor="middle" letter-spacing="1">' + esc(xlab) + '</text>' +
     '<text transform="rotate(-90 14 188)" x="14" y="188" fill="#7E9895" font-size="10" font-family="ui-monospace,Menlo,monospace" text-anchor="middle" letter-spacing="1">' + esc(ylab) + '</text>' +
     '<text x="546" y="18" fill="#7E9895" font-size="9.5" font-family="ui-monospace,Menlo,monospace" text-anchor="end">' + esc(hi) + '</text>' +
@@ -581,6 +589,12 @@ function viewPortfolio() {
       return '<div><span class="dot" style="background:' + FILL[l[0]] + '"></span>' +
         '<b style="color:' + FILL[l[0]] + '">' + l[1] + '</b> <span class="dim">' + l[2] + '</span></div>';
     }).join('');
+  var wlegend = [['strategic', 'strategically crucial'], ['split', 'named on both sides'],
+                 ['non_strategic', 'not strategic, sellable'], ['none', 'not named by Wennink']]
+    .map(function (l) {
+      return '<div><span class="dot" style="background:' + WFILL[l[0]] + '"></span>' + l[1] +
+        ' <span class="dim">' + WCOUNT[l[0]] + ' of ' + PF.holdings.length + '</span></div>';
+    }).join('');
   var AXL = [['value_to_nl', 'Value to the Netherlands'], ['return_to_state', 'Return to the state'],
              ['investment_need_2035', 'Investment need to 2035'], ['geopolitical_exposure', 'Geopolitical exposure']];
   var wennink = S.colour !== 'wennink' ? '' :
@@ -641,17 +655,16 @@ function viewPortfolio() {
   return '<h2>Where the Dutch state’s money sits, and what it is exposed to</h2>' +
     '<p class="sub">Twenty-two Ministry of Finance participations. Dot area proportional to total assets. Hover to link the two readings, click to open the holding.</p>' +
     '<div class="grid2" style="margin-top:18px">' +
-      '<div class="card"><div class="eyebrow">Reading one &middot; value against return</div>' + scatter('value_to_nl', 'return_to_state', 'Value to the Netherlands', 'Return to the state', 'earns its keep twice', 'the mandate, priced') + '</div>' +
-      '<div class="card"><div class="eyebrow">Reading two &middot; capital call against geopolitical exposure</div>' + scatter('investment_need_2035', 'geopolitical_exposure', 'Investment need to 2035', 'Geopolitical exposure', 'expensive and exposed', 'cheap to hold') + '</div>' +
-    '</div><div class="lg">' + (S.colour === 'wennink'
-      ? [['strategic', 'strategically crucial'], ['split', 'named on both sides'],
-         ['non_strategic', 'not strategic, sellable'], ['none', 'not named by Wennink']]
-        .map(function (l) { return '<div><span class="dot" style="background:' + WFILL[l[0]] + '"></span>' + l[1] +
-          ' <span class="dim">' + WCOUNT[l[0]] + ' of ' + PF.holdings.length + '</span></div>'; }).join('')
-      : legend) + '</div>' +
-    '<div class="tabs" style="margin-top:14px"><button class="tab' + (S.colour === 'posture' ? ' on' : '') +
-      '" data-set=\'{"colour":"' + (S.colour === 'wennink' ? 'posture' : 'wennink') + '"}\'>' +
-      (S.colour === 'wennink' ? 'colour by posture instead' : 'back to the Wennink sort') + '</button></div>' + wennink +
+      '<div class="card"><div class="eyebrow">Reading one &middot; value against return</div>' +
+        scatter('value_to_nl', 'return_to_state', 'Value to the Netherlands', 'Return to the state', 'earns its keep twice', 'the mandate, priced', 'posture') +
+        '<div class="lg">' + legend + '</div></div>' +
+      '<div class="card"><div class="eyebrow">Reading two &middot; capital call against geopolitical exposure</div>' +
+        scatter('investment_need_2035', 'geopolitical_exposure', 'Investment need to 2035', 'Geopolitical exposure', 'expensive and exposed', 'cheap to hold', S.colour) +
+        '<div class="lg">' + (S.colour === 'wennink' ? wlegend : legend) + '</div>' +
+        '<div class="tabs" style="margin-top:12px"><button class="tab' + (S.colour === 'posture' ? ' on' : '') +
+        '" data-set=\'{"colour":"' + (S.colour === 'wennink' ? 'posture' : 'wennink') + '"}\'>' +
+        (S.colour === 'wennink' ? 'colour this panel by posture too' : 'back to the Wennink sort') + '</button></div></div>' +
+    '</div>' + wennink +
     '<p class="foot">Scores are analyst judgements against the rubric below, not measurements, and each is meant to be argued with. ' +
     'Balance sheets and stakes are Tier 2 and were not re-verified against the filings in this pass. ' +
     '<span class="prov" data-go="background">See the background tab</span> for what is reported and what is asserted.</p>' +
@@ -917,11 +930,15 @@ var SERIES = {
   yld: {label: 'AMS charge yield per passenger', unit: '€', dp: 2, get: function () { return DER.yld; }, kind: 'line', tier: 't3',
     read: 'Derived from AMS airport-charge revenue over AMS passengers. €12.66 in FY2019, €25.86 in FY2025: the charge per passenger has doubled in six years. FY2016 to FY2018 are left blank because the pre-2020 basis is not the same one and splicing it would invent a trend.'},
   margin: {label: 'EBITDA margin', unit: '%', dp: 1, get: function () { return DER.margin; }, kind: 'line', tier: 't3',
-    read: 'Derived. This is the row that does not recover. FY2025 at 39.8% is below every pre-pandemic year in the series, which ran 42.1% to 45.9%. Revenue is up 71% on FY2019 and the margin is 2.9 points lower. RSG headlines 40.6% on the underlying basis, which is still below FY2019.'}
+    read: 'Derived. This is the row that does not recover. FY2025 at 39.8% is below every pre-pandemic year in the series, which ran 42.1% to 45.9%. Revenue is up 71% on FY2019 and the margin is 2.9 points lower. RSG headlines 40.6% on the underlying basis, which is still below FY2019.'},
+  ebit_margin: {label: 'EBIT margin', unit: '%', dp: 1, get: function () { return DER.ebitMargin; }, kind: 'line', tier: 't3',
+    read: 'Operating result over revenue. FY2025 at 25.5% is the best year since 2016 and is still a point below FY2016\u2019s 29.3%. The gap to the EBITDA margin is depreciation, and it widens as the programme commissions: \u20ac238m of D&A on \u20ac1,435m of revenue in FY2016, \u20ac393m on \u20ac2,761m in FY2025. Every euro of the \u20ac10bn that enters service arrives in this row before it arrives anywhere else.'},
+  cap_turnover: {label: 'Capital turnover', unit: '\u00d7 revenue / capital employed', dp: 3, get: function () { return DER.capTurn; }, kind: 'line', tier: 't3',
+    read: 'Revenue over capital employed, where capital employed is total assets less current liabilities at the year end. FY2025 at 0.305 is the highest in the series and FY2019 ran 0.224, so the asset base is working harder than before the pandemic. That is the flattering reading. The other one: 38% of net property, plant and equipment is assets under construction, sitting in this denominator and earning nothing, and the \u20ac10bn programme adds to that side of the ratio for ten years before it adds to the other.'}
 };
 var SERIES_GROUPS = [
-  ['Income', ['revenue', 'ebitda', 'underlying_ebitda', 'net_result', 'margin']],
-  ['Capital', ['investments_intangibles_ppe', 'cash_flow_after_capex', 'total_assets', 'total_equity', 'solvency_pct', 'underlying_roce_pct']],
+  ['Income', ['revenue', 'ebitda', 'underlying_ebitda', 'net_result', 'margin', 'ebit_margin']],
+  ['Capital', ['investments_intangibles_ppe', 'cash_flow_after_capex', 'total_assets', 'total_equity', 'cap_turnover', 'solvency_pct', 'underlying_roce_pct']],
   ['Operations', ['ams_pax', 'ams_mvt', 'ppm', 'yld', 'average_fte']]
 ];
 function chart(sd) {
@@ -991,6 +1008,9 @@ var TABLE_ROWS = [
   ['investments_intangibles_ppe', 'Investments in intangibles and PP&E', function () { return TEN.financials.investments_intangibles_ppe; }, 0],
   ['cash_flow_after_capex', 'Cash flow after capex', function () { return TEN.financials.cash_flow_after_capex; }, 0],
   ['sect', 'Ratios'],
+  ['ebit_margin', 'EBIT margin, %', function () { return DER.ebitMargin; }, 1, 'b'],
+  ['cap_turnover', 'Capital turnover, revenue / capital employed', function () { return DER.capTurn; }, 3, 'b'],
+  ['cap_employed', 'Capital employed, \u20ac million', function () { return DER.capEmployed; }, 0],
   ['underlying_roe_pct', 'Underlying return on equity, %', function () { return TEN.ratios.underlying_roe_pct; }, 1],
   ['underlying_roce_pct', 'Underlying return on capital employed, %', function () { return TEN.ratios.underlying_roce_pct; }, 1],
   ['net_leverage', 'Net leverage', function () { return TEN.ratios.net_leverage; }, 1],
@@ -1022,8 +1042,10 @@ function viewTenYears() {
   }).join('');
   var body = TABLE_ROWS.map(function (r) {
     if (r[0] === 'sect') return '<tr class="sect"><td colspan="11">' + esc(r[1]) + '</td></tr>';
-    var arr = r[2](), dp = r[3];
-    return '<tr' + (S.series === r[0] ? ' style="background:rgba(198,165,83,.09)"' : '') + '><td class="lab">' + esc(r[1]) + '</td>' +
+    var arr = r[2](), dp = r[3], st = [];
+    if (S.series === r[0]) st.push('background:rgba(198,165,83,.09)');
+    if (r[4] === 'b') st.push('font-weight:700');
+    return '<tr' + (st.length ? ' style="' + st.join(';') + '"' : '') + '><td class="lab">' + esc(r[1]) + '</td>' +
       arr.map(function (v) { return '<td class="n">' + (v === null ? '<span class="dim">—</span>' : par(v, dp)) + '</td>'; }).join('') + '</tr>';
   }).join('');
   return '<div style="display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;align-items:flex-start">' +
@@ -1046,6 +1068,23 @@ function viewTenYears() {
     '<p class="foot">' + esc(TEN.financials._provenance.basis) + '<br>' +
     'Underlying EBITDA: ' + esc(TEN.underlying_ebitda._provenance.basis) + '<br>' +
     'Airport charges: ' + esc(TEN.airport_charges_ams.definitional_break) + '</p>' +
+    '<div class="card" style="margin-top:14px;border-color:rgba(159,179,176,.4)">' +
+    '<div class="eyebrow">The two bold rows, and how they are built</div>' +
+    '<p class="note" style="margin-top:9px">EBIT margin is the operating result over revenue, both Tier 1 off p.251. ' +
+    'Capital turnover is revenue over capital employed, and capital employed is total assets less current liabilities at ' +
+    'the year end. That construction is used because it is the only one the historical summary supports for all ten years: ' +
+    'RSG publishes no debt line there, so equity plus net debt cannot be built back to FY2016. The two are not the same ' +
+    'thing. For FY2025, capital employed is \u20ac' + n(DER.capEmployed[9], 0) + 'm against equity plus net debt of \u20ac8,684m, ' +
+    'and the \u20ac372m between them is provisions, deferred tax and other non-current liabilities that are not debt.</p>' +
+    '<p class="note" style="margin-top:10px">Multiplied together the two rows are a return on capital, and they do not ' +
+    'reproduce the published one. FY2025 gives ' + n(DER.ebitMargin[9], 1) + '% \u00d7 ' + n(DER.capTurn[9], 3) + ' = ' +
+    n(DER.ebitMargin[9] * DER.capTurn[9], 1) + '% against a reported underlying ROCE of ' + n(TEN.ratios.underlying_roce_pct[9], 1) + '%. ' +
+    'Three reasons, all of them definitional: RSG\u2019s ROCE is underlying and these rows are reported, RSG uses average ' +
+    'capital employed and these are year-end, and RSG does not publish the capital-employed figure it divides by. The gap ' +
+    'runs from \u22122.7 points to +1.8 across the ten years. Read the two rows as a decomposition of direction, not as an ' +
+    'arithmetic bridge to the printed ratio.</p>' +
+    '<p class="foot">Tier 3. Derived here from Tier 1 inputs on AR2025 p.251. Capital employed is shown as its own row so ' +
+    'the denominator is visible rather than implied.</p></div>' +
     '<div class="tabs" style="margin-top:16px"><button class="tab" data-go="benchmark">now compare the peers →</button>' +
     '<button class="tab" data-go="background">what is not verified →</button></div>';
 }
